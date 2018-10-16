@@ -1,0 +1,19 @@
+{
+  "partitions" : [
+    {
+      "tables":["table11"],
+      "owner":"",
+      "titTableName":"transactioninformation",
+      "rrtTableName":"redorecords",
+      "partitionId":"",
+      "replicationFactor":1
+    }
+  ],
+  "musicNamespace":"namespace",
+  "tableToPartitionName":"tabletopartition",
+  "partitionInformationTableName":"partitioninfo",
+  "redoHistoryTableName":"redohistory",
+  "sqlDatabaseName":"test",
+  "internalNamespace":"music_internal",
+  "internalReplicationFactor":1
+}
