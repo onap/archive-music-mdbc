@@ -1,16 +1,9 @@
 package com.att.research.mdbc.tools;
 
 import com.att.research.logging.EELFLoggerDelegate;
-import com.att.research.mdbc.DatabasePartition;
-import com.att.research.mdbc.MDBCUtils;
-import com.att.research.mdbc.Range;
 import com.att.research.mdbc.configurations.NodeConfiguration;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 
 public class CreatePartition {
     public static final EELFLoggerDelegate LOG = EELFLoggerDelegate.getLogger(CreatePartition.class);
@@ -27,9 +20,9 @@ public class CreatePartition {
     @Parameter(names = { "-n", "--tit-table-name" }, required = true,
             description = "Tit Table name")
     private String titTable;
-    @Parameter(names = { "-r", "--redorecords-table-name" }, required = true,
-            description = "Redo Records Table name")
-    private String rrTable;
+    @Parameter(names = { "-r", "--music-tx-digest-table-name" }, required = true,
+            description = "Music Transaction Digest Table name")
+    private String mTxDTable;
     @Parameter(names = { "-p", "--partition-id" }, required = true,
             description = "Partition Id")
     private String partitionId;
@@ -43,7 +36,7 @@ public class CreatePartition {
     }
 
     public void convert(){
-        config = new NodeConfiguration(tables,titIndex,titTable,partitionId,"test","",rrTable);
+        config = new NodeConfiguration(tables,titIndex,titTable,partitionId,"test","", mTxDTable);
     }
 
     public void saveToFile(){

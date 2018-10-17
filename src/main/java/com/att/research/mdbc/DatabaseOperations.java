@@ -263,64 +263,9 @@ public class DatabaseOperations {
         return id;
     }
 
-    	/**
-	 * This function creates the TransactionInformation table. It contain information related
-	 * to the transactions happening in a given partition.
-	 * 	 * The schema of the table is
-	 * 		* Id, uiid.
-	 * 		* Partition, uuid id of the partition
-	 * 		* LatestApplied, int indicates which values from the redologtable wast the last to be applied to the data tables
-	 *		* Applied: boolean, indicates if all the values in this redo log table where already applied to data tables
-	 *		* Redo: list of uiids associated to the Redo Records Table
-	 *
-	 */
-	public static void CreateTransactionInformationTable( String musicNamespace, String transactionInformationTableName) throws MDBCServiceException {
-		String tableName = transactionInformationTableName;
-		String priKey = "id";
-		StringBuilder fields = new StringBuilder();
-		fields.append("id uuid, ");
-		fields.append("partition uuid, ");
-		fields.append("latestapplied int, ");
-		fields.append("applied boolean, ");
-		//TODO: Frozen is only needed for old versions of cassandra, please update correspondingly
-		fields.append("redo list<frozen<tuple<text,tuple<text,varint>>>> ");
-		String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", musicNamespace, tableName, fields, priKey);
-        try {
-            executeMusicWriteQuery(musicNamespace,tableName,cql);
-        } catch (MDBCServiceException e) {
-            logger.error("Initialization error: Failure to create transaction information table");
-            throw(e);
-        }
-    }
 
-	/**
-	 * This function creates the RedoRecords table. It contain information related to each transaction committed
-	 * 	* LeaseId: id associated with the lease, text
-	 * 	* LeaseCounter: transaction number under this lease, bigint \TODO this may need to be a varint later
-	 *  * TransactionDigest: text that contains all the changes in the transaction
-	 */
-	public static void CreateRedoRecordsTable(int redoTableNumber, String musicNamespace, String redoRecordTableName) throws MDBCServiceException {
-		String tableName = redoRecordTableName;
-		if(redoTableNumber >= 0) {
-			StringBuilder table = new StringBuilder();
-			table.append(tableName);
-			table.append("-");
-			table.append(Integer.toString(redoTableNumber));
-			tableName=table.toString();
-		}
-		String priKey = "leaseid,leasecounter";
-		StringBuilder fields = new StringBuilder();
-		fields.append("leaseid text, ");
-		fields.append("leasecounter varint, ");
-		fields.append("transactiondigest text ");//notice lack of ','
-		String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", musicNamespace, tableName, fields, priKey);
-        try {
-            executeMusicWriteQuery(musicNamespace,tableName,cql);
-        } catch (MDBCServiceException e) {
-            logger.error("Initialization error: Failure to create redo records table");
-            throw(e);
-        }
-    }
+
+
 
 	/**
 	 * This function creates the Table To Partition table. It contain information related to
@@ -440,4 +385,65 @@ public class DatabaseOperations {
             }
         }
     }
+
+    /**
+     * This function creates the MusicTxDigest table. It contain information related to each transaction committed
+     * 	* LeaseId: id associated with the lease, text
+     * 	* LeaseCounter: transaction number under this lease, bigint \TODO this may need to be a varint later
+     *  * TransactionDigest: text that contains all the changes in the transaction
+     */
+    public static void CreateMusicTxDigest(int musicTxDigestTableNumber, String musicNamespace, String musicTxDigestTableName) throws MDBCServiceException {
+        String tableName = musicTxDigestTableName;
+        if(musicTxDigestTableNumber >= 0) {
+            StringBuilder table = new StringBuilder();
+            table.append(tableName);
+            table.append("-");
+            table.append(Integer.toString(musicTxDigestTableNumber));
+            tableName=table.toString();
+        }
+        String priKey = "leaseid,leasecounter";
+        StringBuilder fields = new StringBuilder();
+        fields.append("leaseid text, ");
+        fields.append("leasecounter varint, ");
+        fields.append("transactiondigest text ");//notice lack of ','
+        String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", musicNamespace, tableName, fields, priKey);
+        try {
+            executeMusicWriteQuery(musicNamespace,tableName,cql);
+        } catch (MDBCServiceException e) {
+            logger.error("Initialization error: Failure to create redo records table");
+            throw(e);
+        }
+    }
+
+    /**
+     * This function creates the TransactionInformation table. It contain information related
+     * to the transactions happening in a given partition.
+     * 	 * The schema of the table is
+     * 		* Id, uiid.
+     * 		* Partition, uuid id of the partition
+     * 		* LatestApplied, int indicates which values from the redologtable wast the last to be applied to the data tables
+     *		* Applied: boolean, indicates if all the values in this redo log table where already applied to data tables
+     *		* Redo: list of uiids associated to the Redo Records Table
+     *
+     */
+    public static void CreateMusicRangeInformationTable(String musicNamespace, String musicRangeInformationTableName) throws MDBCServiceException {
+        String tableName = musicRangeInformationTableName;
+        String priKey = "id";
+        StringBuilder fields = new StringBuilder();
+        fields.append("id uuid, ");
+        fields.append("partition uuid, ");
+        fields.append("latestapplied int, ");
+        fields.append("applied boolean, ");
+        //TODO: Frozen is only needed for old versions of cassandra, please update correspondingly
+        fields.append("redo list<frozen<tuple<text,tuple<text,varint>>>> ");
+        String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", musicNamespace, tableName, fields, priKey);
+        try {
+            executeMusicWriteQuery(musicNamespace,tableName,cql);
+        } catch (MDBCServiceException e) {
+            logger.error("Initialization error: Failure to create transaction information table");
+            throw(e);
+        }
+    }
+
+
 }

@@ -7,6 +7,7 @@ import java.util.Set;
 
 import com.att.research.mdbc.Range;
 import com.att.research.mdbc.TableInfo;
+import com.att.research.mdbc.tables.StagingTable;
 
 /**
  * This Interface defines the methods that MDBC needs in order to mirror data to/from a Database instance.

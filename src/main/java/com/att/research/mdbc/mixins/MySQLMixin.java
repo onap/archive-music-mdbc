@@ -21,6 +21,8 @@ import com.att.research.logging.EELFLoggerDelegate;
 import com.att.research.mdbc.MusicSqlManager;
 import com.att.research.mdbc.Range;
 import com.att.research.mdbc.TableInfo;
+import com.att.research.mdbc.tables.OperationType;
+import com.att.research.mdbc.tables.StagingTable;
 
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;

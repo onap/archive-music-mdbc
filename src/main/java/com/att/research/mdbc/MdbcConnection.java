@@ -26,7 +26,7 @@ import com.att.research.logging.format.AppMessages;
 import com.att.research.logging.format.ErrorSeverity;
 import com.att.research.logging.format.ErrorTypes;
 import com.att.research.mdbc.mixins.MusicInterface;
-import com.att.research.mdbc.mixins.TxCommitProgress;
+import com.att.research.mdbc.tables.TxCommitProgress;
 
 
 /**

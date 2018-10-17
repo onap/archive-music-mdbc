@@ -10,6 +10,15 @@ import com.att.research.exceptions.MDBCServiceException;
 import com.att.research.mdbc.DatabasePartition;
 import com.att.research.mdbc.Range;
 import com.att.research.mdbc.TableInfo;
+import com.att.research.mdbc.tables.PartitionInformation;
+import com.att.research.mdbc.tables.RedoHistoryElement;
+import com.att.research.mdbc.tables.RedoRecordId;
+import com.att.research.mdbc.tables.StagingTable;
+import com.att.research.mdbc.tables.TablePartitionInformation;
+import com.att.research.mdbc.tables.TitReference;
+import com.att.research.mdbc.tables.TransactionInformationElement;
+import com.att.research.mdbc.tables.TxCommitProgress;
+
 import org.onap.music.exceptions.MusicLockingException;
 
 /**
@@ -22,7 +31,7 @@ public interface MusicInterface {
 	 * This function is used to created all the required data structures, both local  
 	 * \TODO Check if this function is required in the MUSIC interface or could be just created on the constructor
 	 */
-	void initializeMdbcDataStructures() throws MDBCServiceException;
+	void initializeMetricDataStructures() throws MDBCServiceException;
 	/**
 	 * Get the name of this MusicInterface mixin object.
 	 * @return the name

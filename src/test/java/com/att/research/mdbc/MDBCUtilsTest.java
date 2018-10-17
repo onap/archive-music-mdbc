@@ -1,7 +1,8 @@
 package com.att.research.mdbc;
 
-import com.att.research.mdbc.mixins.OperationType;
-import com.att.research.mdbc.mixins.StagingTable;
+import com.att.research.mdbc.tables.OperationType;
+import com.att.research.mdbc.tables.StagingTable;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;

@@ -1,9 +1,9 @@
 {
   "sqlDatabaseName": "test",
   "partition": {
-    "transactionInformationTable": "transactioninformation",
-    "transactionInformationIndex": "259a7a7c-f741-44ae-8d6e-227a02ddc96e",
-    "redoRecordsTable": "redorecords",
+    "musicRangeInformationTable": "transactioninformation",
+    "musicRangeInformationIndex": "259a7a7c-f741-44ae-8d6e-227a02ddc96e",
+    "musicTxDigestTable": "musictxdigest",
     "partitionId": "ad766447-1adf-4800-aade-9f31a356ab4b",
     "lockId": "",
     "ranges": [

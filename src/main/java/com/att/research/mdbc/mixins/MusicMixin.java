@@ -18,6 +18,15 @@ import com.att.research.exceptions.MDBCServiceException;
 import com.att.research.mdbc.DatabasePartition;
 import com.att.research.mdbc.Range;
 import com.att.research.mdbc.TableInfo;
+import com.att.research.mdbc.tables.PartitionInformation;
+import com.att.research.mdbc.tables.RedoHistoryElement;
+import com.att.research.mdbc.tables.RedoRecordId;
+import com.att.research.mdbc.tables.StagingTable;
+import com.att.research.mdbc.tables.TablePartitionInformation;
+import com.att.research.mdbc.tables.TitReference;
+import com.att.research.mdbc.tables.TransactionInformationElement;
+import com.att.research.mdbc.tables.TxCommitProgress;
+
 import org.onap.music.main.MusicPureCassaCore;
 
 /**
@@ -172,7 +181,7 @@ public class MusicMixin implements MusicInterface {
 	}
 
 	@Override
-	public void initializeMdbcDataStructures() {
+	public void initializeMetricDataStructures() {
 		// 
 		
 	}

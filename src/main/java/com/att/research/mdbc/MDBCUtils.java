@@ -2,26 +2,23 @@ package com.att.research.mdbc;
 
 import java.io.*;
 import java.util.Base64;
+import java.util.Deque;
+import java.util.HashMap;
 
 import com.att.research.logging.EELFLoggerDelegate;
 import com.att.research.logging.format.AppMessages;
 import com.att.research.logging.format.ErrorSeverity;
 import com.att.research.logging.format.ErrorTypes;
+import com.att.research.mdbc.tables.Operation;
+import com.att.research.mdbc.tables.StagingTable;
+
+import javassist.bytecode.Descriptor.Iterator;
+
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 
 public class MDBCUtils {
-    /** Read the object from Base64 string. */
-   public static Object fromString( String s ) throws IOException ,
-                                                       ClassNotFoundException {
-        byte [] data = Base64.getDecoder().decode( s );
-        ObjectInputStream ois = new ObjectInputStream( 
-                                        new ByteArrayInputStream(  data ) );
-        Object o  = ois.readObject();
-        ois.close();
-        return o;
-   }
-
-    /** Write the object to a Base64 string. */
+        /** Write the object to a Base64 string. */
     public static String toString( Serializable o ) throws IOException {
     	//TODO We may want to also compress beside serialize
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -43,6 +40,17 @@ public class MDBCUtils {
         oos.writeObject( o );
         oos.close();
         return Base64.getEncoder().encodeToString(baos.toByteArray());
+    }
+    
+    /** Read the object from Base64 string. */
+    public static Object fromString( String s ) throws IOException ,
+                                                        ClassNotFoundException {
+         byte [] data = Base64.getDecoder().decode( s );
+         ObjectInputStream ois = new ObjectInputStream( 
+                                         new ByteArrayInputStream(  data ) );
+         Object o  = ois.readObject();
+         ois.close();
+         return o;
     }
 
     public static void saveToFile(String serializedContent, String filename, EELFLoggerDelegate logger) throws IOException {
