@@ -31,7 +31,7 @@ public interface MusicInterface {
 	 * This function is used to created all the required data structures, both local  
 	 * \TODO Check if this function is required in the MUSIC interface or could be just created on the constructor
 	 */
-	void initializeMetricDataStructures() throws MDBCServiceException;
+	void initializeMdbcDataStructures() throws MDBCServiceException;
 	/**
 	 * Get the name of this MusicInterface mixin object.
 	 * @return the name

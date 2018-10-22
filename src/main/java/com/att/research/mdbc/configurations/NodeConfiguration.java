@@ -22,8 +22,8 @@ public class NodeConfiguration {
     public DatabasePartition partition;
     public String nodeName;
 
-    public NodeConfiguration(String tables, String mriIndex, String mriTableName, String partitionId, String sqlDatabaseName, String node, String redoRecordsTable){
-        partition = new DatabasePartition(toRanges(tables), mriIndex,  mriTableName, partitionId, null, redoRecordsTable) ;
+    public NodeConfiguration(String tables, String titIndex, String titTableName, String partitionId, String sqlDatabaseName, String node, String redoRecordsTable){
+        partition = new DatabasePartition(toRanges(tables), titIndex, titTableName, partitionId, null, redoRecordsTable) ;
         this.sqlDatabaseName = sqlDatabaseName;
         this.nodeName = node;
     }

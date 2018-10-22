@@ -19,7 +19,7 @@ import java.util.List;
 public class TablesConfiguration {
 
     private final String TIT_TABLE_NAME = "transactioninformation";
-    private final String MUSIC_TX_DIGEST_TABLE_NAME = "musictxdigest";
+    private final String REDO_RECORDS_NAME = "redorecords";
 
     private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(TablesConfiguration.class);
     private List<PartitionInformation> partitions;
@@ -54,13 +54,13 @@ public class TablesConfiguration {
             throw new MDBCServiceException("Partition was not correctly initialized");
         }
         for(PartitionInformation partitionInfo : partitions){
-            String titTableName = partitionInfo.mriTableName;
+            String titTableName = partitionInfo.titTableName;
             titTableName = (titTableName==null || titTableName.isEmpty())?TIT_TABLE_NAME:titTableName;
             //0) Create the corresponding TIT table
-            DatabaseOperations.CreateMusicRangeInformationTable(musicNamespace,titTableName);
-            String musicTxDigestTableName = partitionInfo.mtxdTableName;
-            musicTxDigestTableName = (musicTxDigestTableName==null || musicTxDigestTableName.isEmpty())? MUSIC_TX_DIGEST_TABLE_NAME :musicTxDigestTableName;
-            DatabaseOperations.CreateMusicTxDigest(-1,musicNamespace,musicTxDigestTableName);
+            DatabaseOperations.CreateTransactionInformationTable(musicNamespace,titTableName);
+            String redoRecordsName = partitionInfo.rrtTableName;
+            redoRecordsName = (redoRecordsName==null || redoRecordsName.isEmpty())?REDO_RECORDS_NAME:redoRecordsName;
+            DatabaseOperations.CreateRedoRecordsTable(-1,musicNamespace,redoRecordsName);
             //0) Create the corresponding TIT table
             String partitionId;
             if(partitionInfo.partitionId==null || partitionInfo.partitionId.isEmpty()){
@@ -87,7 +87,7 @@ public class TablesConfiguration {
             //5) Add it to the redo history table
             DatabaseOperations.createRedoHistoryBeginRow(musicNamespace,rhName,newRedoRow,partitionId,null);
             //6) Create config for this node
-            nodeConfigs.add(new NodeConfiguration(String.join(",",partitionInfo.tables),titIndex,titTableName,partitionId,sqlDatabaseName,partitionInfo.owner,musicTxDigestTableName));
+            nodeConfigs.add(new NodeConfiguration(String.join(",",partitionInfo.tables),titIndex,titTableName,partitionId,sqlDatabaseName,partitionInfo.owner,redoRecordsName));
         }
         return nodeConfigs;
     }
@@ -124,8 +124,8 @@ public class TablesConfiguration {
     public class PartitionInformation{
         private List<String> tables;
         private String owner;
-        private String mriTableName;
-        private String mtxdTableName;
+        private String titTableName;
+        private String rrtTableName;
         private String partitionId;
         private int replicationFactor;
 
@@ -145,12 +145,12 @@ public class TablesConfiguration {
             this.owner = owner;
         }
 
-        public String getMriTableName() {
-            return mriTableName;
+        public String getTitTableName() {
+            return titTableName;
         }
 
-        public void setMriTableName(String mriTableName) {
-            this.mriTableName = mriTableName;
+        public void setTitTableName(String titTableName) {
+            this.titTableName = titTableName;
         }
 
         public String getPartitionId() {
@@ -169,12 +169,12 @@ public class TablesConfiguration {
             this.replicationFactor = replicationFactor;
         }
 
-        public String getMtxdTableName(){
-           return mtxdTableName;
+        public String getRrtTableName(){
+           return rrtTableName;
         }
 
-        public void setMtxdTableName(String mtxdTableName) {
-            this.mtxdTableName = mtxdTableName;
+        public void setRrtTableName(String rrtTableName) {
+            this.rrtTableName = rrtTableName;
         }
     }
 }

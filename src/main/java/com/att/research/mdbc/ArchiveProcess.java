@@ -12,9 +12,10 @@ public class ArchiveProcess {
 	//TODO: This is a place holder for taking snapshots and moving data from redo record into actual tables
 	
 	/**
-	 * This method is called whenever there is a DELETE on the transaction digest and should be called when ownership changes, if required
-	 *  It updates the MUSIC/Cassandra tables (both dirty bits and actual data) corresponding to the SQL DELETE.
-	 * Music propagates it to the other replicas.
+	 * This method is called whenever there is a DELETE on a local SQL table, and should be called by the underlying databases
+	 * triggering mechanism. It updates the MUSIC/Cassandra tables (both dirty bits and actual data) corresponding to the SQL DELETE.
+	 * Music propagates it to the other replicas.  If the local database is in the middle of a transaction, the DELETEs to MUSIC are
+	 * delayed until the transaction is either committed or rolled back.
 	 * @param tableName This is the table on which the select is being performed
 	 * @param oldRow This is information about the row that is being deleted
 	 */
@@ -25,8 +26,8 @@ public class ArchiveProcess {
 	}
 	
 	/**
-	 * This method is called whenever there is an INSERT or UPDATE to a the transaction digest, and should be called by an
-	 * ownership chance. It updates the MUSIC/Cassandra tables (both dirty bits and actual data) corresponding to the SQL write.
+	 * This method is called whenever there is an INSERT or UPDATE to a local SQL table, and should be called by the underlying databases
+	 * triggering mechanism. It updates the MUSIC/Cassandra tables (both dirty bits and actual data) corresponding to the SQL write.
 	 * Music propagates it to the other replicas.  If the local database is in the middle of a transaction, the updates to MUSIC are
 	 * delayed until the transaction is either committed or rolled back.
 	 *

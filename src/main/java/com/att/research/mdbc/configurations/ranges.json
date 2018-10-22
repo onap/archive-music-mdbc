@@ -1,6 +1,6 @@
 {
-  "musicRangeInformationTable": "transactioninformation",
-  "musicRangeInformationIndex": "d0e8ef2e-aeca-4261-8d9d-1679f560b85b",
+  "transactionInformationTable": "transactioninformation",
+  "transactionInformationIndex": "d0e8ef2e-aeca-4261-8d9d-1679f560b85b",
   "partitionId": "798110cf-9c61-4db2-9446-cb2dbab5a143",
   "lockId": "",
   "ranges": [

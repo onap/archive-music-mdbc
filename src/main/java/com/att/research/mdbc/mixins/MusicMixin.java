@@ -181,7 +181,7 @@ public class MusicMixin implements MusicInterface {
 	}
 
 	@Override
-	public void initializeMetricDataStructures() {
+	public void initializeMdbcDataStructures() {
 		// 
 		
 	}

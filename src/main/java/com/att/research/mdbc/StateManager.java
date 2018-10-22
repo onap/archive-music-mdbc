@@ -61,14 +61,10 @@ public class StateManager {
     	//\fixme this is not really used, delete!
         String cassandraUrl  = info.getProperty(Configuration.KEY_CASSANDRA_URL, Configuration.CASSANDRA_URL_DEFAULT);
         String mixin  = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
-        init(mixin,cassandraUrl);
-    }
-
-    protected void init(String mixin, String cassandraUrl) throws MDBCServiceException {
         this.musicManager = MixinFactory.createMusicInterface(mixin, cassandraUrl, info,ranges);
         this.musicManager.createKeyspace();
         try {
-            this.musicManager.initializeMetricDataStructures();
+            this.musicManager.initializeMdbcDataStructures();
         } catch (MDBCServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
             throw(e);

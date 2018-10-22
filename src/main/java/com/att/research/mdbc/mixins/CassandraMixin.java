@@ -93,8 +93,8 @@ public class CassandraMixin implements MusicInterface {
 	public static final String PARTITION_INFORMATION_TABLE_NAME = "partitioninfo";
 	public static final String REDO_HISTORY_TABLE_NAME= "redohistory";
 	//\TODO Add logic to change the names when required and create the tables when necessary
-    private String musicTxDigestTableName = "musictxdigest";
-	private String musicRangeInformationTableName = "musicrangeinformation";
+    private String redoRecordTableName = "redorecords";
+	private String transactionInformationTableName = "transactioninformation";
 
 	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(CassandraMixin.class);
 	
@@ -161,7 +161,7 @@ public class CassandraMixin implements MusicInterface {
 
 		this.music_ns       = info.getProperty(KEY_MUSIC_NAMESPACE,DEFAULT_MUSIC_NAMESPACE);
 		logger.info(EELFLoggerDelegate.applicationLogger,"MusicSqlManager: music_ns="+music_ns);
-        musicRangeInformationTableName = "transactioninformation";
+        transactionInformationTableName = "transactioninformation";
         createMusicKeyspace();
     }
 
@@ -220,10 +220,10 @@ public class CassandraMixin implements MusicInterface {
 		}
 	}
 	@Override
-	public void initializeMetricDataStructures() throws MDBCServiceException {
+	public void initializeMdbcDataStructures() throws MDBCServiceException {
 	    try {
-			DatabaseOperations.CreateMusicTxDigest(-1, music_ns, musicTxDigestTableName);//\TODO If we start partitioning the data base, we would need to use the redotable number
-			DatabaseOperations.CreateMusicRangeInformationTable(music_ns, musicRangeInformationTableName);
+			DatabaseOperations.CreateRedoRecordsTable(-1, music_ns, redoRecordTableName);//\TODO If we start partitioning the data base, we would need to use the redotable number
+			DatabaseOperations.CreateTransactionInformationTable(music_ns, transactionInformationTableName);
 			DatabaseOperations.CreateTableToPartitionTable(music_ns, TABLE_TO_PARTITION_TABLE_NAME);
 			DatabaseOperations.CreatePartitionInfoTable(music_ns, PARTITION_INFORMATION_TABLE_NAME);
 			DatabaseOperations.CreateRedoHistoryTable(music_ns, REDO_HISTORY_TABLE_NAME);
@@ -1025,7 +1025,7 @@ public class CassandraMixin implements MusicInterface {
 	}
 
 
-	private PreparedQueryObject createAppendMtxdIndexToMriQuery(String titTable, String uuid, String table, String redoUuid){
+	private PreparedQueryObject createAppendRRTIndexToTitQuery(String titTable, String uuid, String table, String redoUuid){
         PreparedQueryObject query = new PreparedQueryObject();
         StringBuilder appendBuilder = new StringBuilder();
         appendBuilder.append("UPDATE ")
@@ -1097,12 +1097,12 @@ public class CassandraMixin implements MusicInterface {
         return lockId;
     }
 
-    protected void pushRowToMtxd(String lockId, String commitId, HashMap<Range,StagingTable> transactionDigest) throws MDBCServiceException{
+    protected void pushRowToRRT(String lockId, String commitId, HashMap<Range,StagingTable> transactionDigest) throws MDBCServiceException{
 		PreparedQueryObject query = new PreparedQueryObject();
 	    StringBuilder cqlQuery = new StringBuilder("INSERT INTO ")
                   .append(music_ns)
                   .append('.')
-	    	      .append(musicTxDigestTableName)
+	    	      .append(redoRecordTableName)
 	    	      .append(" (leaseid,leasecounter,transactiondigest) ")
 	    	      .append("VALUES ('")
 	    	      .append( lockId ).append("',")
@@ -1124,15 +1124,15 @@ public class CassandraMixin implements MusicInterface {
         }
     }
 
-    protected void appendIndexToMri(String lockId, String commitId, String TITIndex) throws MDBCServiceException{
+    protected void appendIndexToTit(String lockId, String commitId, String TITIndex) throws MDBCServiceException{
         StringBuilder redoUuidBuilder  = new StringBuilder();
         redoUuidBuilder.append("('")
                 .append(lockId)
                 .append("',")
                 .append(commitId)
                 .append(")");
-        PreparedQueryObject appendQuery = createAppendMtxdIndexToMriQuery(musicRangeInformationTableName, TITIndex, musicTxDigestTableName, redoUuidBuilder.toString());
-        ReturnType returnType = MusicPureCassaCore.criticalPut(music_ns, musicRangeInformationTableName, TITIndex, appendQuery, lockId, null);
+        PreparedQueryObject appendQuery = createAppendRRTIndexToTitQuery(transactionInformationTableName, TITIndex, redoRecordTableName, redoUuidBuilder.toString());
+        ReturnType returnType = MusicPureCassaCore.criticalPut(music_ns, transactionInformationTableName, TITIndex, appendQuery, lockId, null);
         if(returnType.getResult().compareTo(ResultType.SUCCESS) != 0 ){
             logger.error(EELFLoggerDelegate.errorLogger, "Error when executing append operation with return type: "+returnType.getMessage());
             throw new MDBCServiceException("Error when executing append operation with return type: "+returnType.getMessage());
@@ -1141,16 +1141,16 @@ public class CassandraMixin implements MusicInterface {
 
 	@Override
 	public void commitLog(DBInterface dbi, DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException{
-		String TITIndex = partition.getMusicRangeInformationIndex();
+		String TITIndex = partition.getTransactionInformationIndex();
 		if(TITIndex.isEmpty()) {
 			//\TODO Fetch TITIndex from the Range Information Table 
 			throw new MDBCServiceException("TIT Index retrieval not yet implemented");
 		}
-        String fullyQualifiedTitKey = music_ns+"."+ musicRangeInformationTableName +"."+TITIndex;
+        String fullyQualifiedTitKey = music_ns+"."+ transactionInformationTableName +"."+TITIndex;
 		//0. See if reference to lock was already created
 		String lockId = partition.getLockId();
 		if(lockId == null || lockId.isEmpty()) {
-            lockId = createAndAssignLock(fullyQualifiedTitKey,partition,music_ns, musicRangeInformationTableName,TITIndex);
+            lockId = createAndAssignLock(fullyQualifiedTitKey,partition,music_ns,transactionInformationTableName,TITIndex);
 		}
 
 		String commitId;
@@ -1165,14 +1165,14 @@ public class CassandraMixin implements MusicInterface {
         //Add creation type of transaction digest
 
 		//1. Push new row to RRT and obtain its index
-        pushRowToMtxd(lockId, commitId, transactionDigest);
+        pushRowToRRT(lockId, commitId, transactionDigest);
 
         //2. Save RRT index to RQ
 		if(progressKeeper!= null) {
 			progressKeeper.setRecordId(txId,new RedoRecordId(lockId, commitId));
 		}
 		//3. Append RRT index into the corresponding TIT row array
-        appendIndexToMri(lockId,commitId,TITIndex);
+        appendIndexToTit(lockId,commitId,TITIndex);
     }
 
     /**
