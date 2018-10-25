@@ -93,10 +93,10 @@
             <scope>provided</scope>
         </dependency>
         <!-- Music jar from onap -->
-        <dependency>
+         <dependency>
             <groupId>org.onap.music</groupId>
             <artifactId>MUSIC</artifactId>
-            <version>3.0.2</version>
+            <version>3.1.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.calcite.avatica/avatica-server -->
         <dependency>

@@ -27,7 +27,7 @@ import com.att.research.mdbc.tables.TitReference;
 import com.att.research.mdbc.tables.TransactionInformationElement;
 import com.att.research.mdbc.tables.TxCommitProgress;
 
-import org.onap.music.main.MusicPureCassaCore;
+import org.onap.music.main.MusicCore;
 
 /**
 
@@ -166,8 +166,8 @@ public class MusicMixin implements MusicInterface {
 		for(LockId lockId: lockIds) {
 			System.out.println("Releasing lock: "+lockId);
 			try {
-				MusicPureCassaCore.voluntaryReleaseLock(lockId.getFullyQualifiedLockKey(),lockId.getLockReference());
-				MusicPureCassaCore.destroyLockRef(lockId.getFullyQualifiedLockKey(),lockId.getLockReference());
+				MusicCore.voluntaryReleaseLock(lockId.getFullyQualifiedLockKey(),lockId.getLockReference());
+				MusicCore.destroyLockRef(lockId.getFullyQualifiedLockKey(),lockId.getLockReference());
 			} catch (MusicLockingException e) {
 				e.printStackTrace();
 			}

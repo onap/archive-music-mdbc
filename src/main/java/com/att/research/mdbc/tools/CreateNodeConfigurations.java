@@ -6,7 +6,6 @@ import com.att.research.mdbc.configurations.NodeConfiguration;
 import com.att.research.mdbc.configurations.TablesConfiguration;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-import org.onap.music.main.MusicPureCassaCore;
 
 import java.io.FileNotFoundException;
 import java.util.List;

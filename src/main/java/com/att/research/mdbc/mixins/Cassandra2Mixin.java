@@ -12,7 +12,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MusicServiceException;
-import org.onap.music.main.MusicPureCassaCore;
+import org.onap.music.main.MusicCore;
 import org.onap.music.main.ReturnType;
 
 import com.att.research.logging.EELFLoggerDelegate;
@@ -127,7 +127,7 @@ public class Cassandra2Mixin extends CassandraMixin {
 		pQueryObject.addValue(tableName);
 		pQueryObject.addValue(myId);
 		pQueryObject.addValue(keys);
-		ReturnType rt = MusicPureCassaCore.eventualPut(pQueryObject);
+		ReturnType rt = MusicCore.eventualPut(pQueryObject);
 		if(rt.getResult().getResult().toLowerCase().equals("failure")) {
 			logger.error(EELFLoggerDelegate.errorLogger, "Failure while eventualPut...: "+rt.getMessage());
 		}
@@ -155,7 +155,7 @@ public class Cassandra2Mixin extends CassandraMixin {
 		pQueryObject.addValue(myId);
 		ResultSet results = null;
 		try {
-			results = MusicPureCassaCore.get(pQueryObject);
+			results = MusicCore.get(pQueryObject);
 		} catch (MusicServiceException e) {
 			e.printStackTrace();
 		}
@@ -278,7 +278,7 @@ public class Cassandra2Mixin extends CassandraMixin {
 			pQueryObject.addValue(tableName);
 			pQueryObject.addValue(repl);
 			pQueryObject.addValue(buildJSON(ti, tableName, keys));
-			ReturnType rt = MusicPureCassaCore.eventualPut(pQueryObject);
+			ReturnType rt = MusicCore.eventualPut(pQueryObject);
 			if(rt.getResult().getResult().toLowerCase().equals("failure")) {
 				System.out.println("Failure while critical put..."+rt.getMessage());
 			}
