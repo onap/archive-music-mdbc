@@ -3,6 +3,70 @@ ETDB
 
 To enable edge computing in its full capacity, a crucial requirement is to manage the state of edge applications, preferably in database that provides the full features of SQL including joins and transactions. The key challenge here is to provide a replicated database for the edge that can scale to thousands of geo-distributed nodes. Existing solutions either provide semantics that are too weak (PostgreSQL replicates asynchronously) or too strong and hence expensive to realize in a geo-distributed network with its WAN latencies and complex failure modes (MariaDb, Spanner, provide full transactionality). Inspired by entry consistency in shared memory systems, wherein only the lock holder for an object obtains sequential consistency for the object, we define the notion of an entry transactional database, which is a novel partitioned database in which only the “owner” of a partition obtains full ACID transactionality. In this work, we define the semantics of an entry transactional database, describe the hard challenges faced in building it and present a novel middleware called mdbc that combines existing SQL databases with an underlying  geo-distributed entry consistent store to provide entry transactional semantics. Further, we present crucial use cases such as a federated regional controller for the network control plane and a state management service for edge mobility enabled by entry transactionality. 
 
+## Running METRIC
+
+run cassandra (tested with v3.11)
+run mysql/mariadb (5.7+, 10.2.3+)
+
+Download and install MUSIC (branch dev-cassandra-only). Install the jar into your local maven repository (from MUSIC home run)
+mvn install:install-file -Dfile=target/MUSIC.jar -DpomFile=./pom.xml
+
+
+1) Create a configuration file using as a template:
+src/main/java/com/att/research/mdbc/configurations/tableConfiguration.json
+
+The meaning of the fields is as follows: 
+
+•	partitions: is an array of each partition in the system. There is a partition for each ETDB (EDM). Each partition is composed of the following fields: 
+o	tables: all the tables that are going to be within this table. Should at least have one element
+o	owner: is the url of the ETDB (EDM) node. It can be an empty string
+o	titTableName: it is the name of the transaction information table that the owner of this partition is going to be using
+o	rrtTableName: it is the name of the redo records table that the owner of this partition is going to be using 
+o	partitionId: if this partition was previously createad, this is the uuid associated, if new just leave it empty
+o	replicationFactor: indicates the needs of replication for this partition (the max of all the tables involved). Note: this is not used yet in the code.
+•	musicNamespace: is the music (cassandra) namespace that is going to be used by all the tables
+•	tableToPartitionName:  it is the name of the table to partition table that the all nodes in the system are going to use
+•	partitionInformationTableName: it is the name of the partition information table that the all nodes in the system are going to use
+•	redoHistoryTableName:  it is the name of the redo history able that the all nodes in the system are going to use
+•	sqlDatabaseName: is the name of the local SQL database that is going to be used on each ETDB node.
+
+2) Create the configuration for each node using the command line program in the following location:
+
+src/main/java/com/att/research/mdbc/tools/CreateNodeConfiguration.java
+
+To run it, use the following parameters:
+
+-t ../ETDB/src/main/java/com/att/research/mdbc/configurations/tableConfiguration.json -b base -o /Users/quique/Desktop/
+
+This program is going to generate all the required configuration json for each ETDB node in the system and additionally initialize all the corresponding rows and tables for the system to correctly work. The meaning of the parameters is:
+•	-t: the tableConfiguration.json explained in the step 1
+•	-b: is the basename that is going to prepend to all the output files
+•	-d: output directory where all the configuration files are going to be saved (It has to exist already)
+
+Some notes about the limitations of this command line program:
+•	It cannot handle multiple nodes handling the same lock. For example when creating a new row (or modifying one) in the table to partition table, the program is just going to crash
+•	The creation of tables doesn’t include replication yet.
+•	It doesn’t create the directory for the output configurations.
+
+3) Run each of the server in its corresponding node: The ETDB server can be found in the file:
+ 
+src/main/java/com/att/research/mdbc/MdbcServer.java
+ 
+It requires three parameters:
+
+ -c ../ETDB/src/main/java/com/att/research/mdbc/configurations/config-0.json -u jdbc:mysql://localhost -p 30000
+
+ -c is a json with the configuration created in step 2. 
+•	-u is where the local mysql database is located (without the database name, just the url, see example)
+•	-p is the port that server is going to be used
+
+4) Run the clients. A client example can be found in this folder:
+ 
+src/main/java/com/att/research/mdbc/examples
+
+
+
+
 ## Building ETDB
 
 ETDB is built with Maven.  This directory contains two pom.xml files.

@@ -8,7 +8,7 @@ import com.att.research.mdbc.mixins.CassandraMixin;
 import com.google.gson.Gson;
 import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MusicServiceException;
-import org.onap.music.main.MusicPureCassaCore;
+import org.onap.music.main.MusicCore;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -100,7 +100,7 @@ public class TablesConfiguration {
         PreparedQueryObject queryObject = new PreparedQueryObject();
         queryObject.appendQueryString(createKeysTableCql.toString());
         try {
-            MusicPureCassaCore.createTable(internalNamespace,"unsynced_keys", queryObject,"critical");
+            MusicCore.createTable(internalNamespace,"unsynced_keys", queryObject,"critical");
         } catch (MusicServiceException e) {
             logger.error("Error creating unsynced keys table" );
             throw new MDBCServiceException("Error creating unsynced keys table");
