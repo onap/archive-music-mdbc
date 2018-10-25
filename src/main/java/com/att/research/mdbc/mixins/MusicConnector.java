@@ -15,7 +15,7 @@ import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PoolingOptions;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.exceptions.NoHostAvailableException;
-import org.onap.music.main.MusicPureCassaCore;
+import org.onap.music.main.MusicCore;
 
 /**
  * This class allows for management of the Cassandra Cluster and Session objects.
@@ -70,7 +70,7 @@ public class MusicConnector {
 	}
 	
 	private void connectToMultipleAddresses(String address) {
-		MusicPureCassaCore.getDSHandle(address);
+		MusicCore.getDSHandle(address);
 	/*
 	PoolingOptions poolingOptions =
 		new PoolingOptions()

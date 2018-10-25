@@ -27,11 +27,12 @@ import com.att.research.mdbc.tables.TxCommitProgress;
 
 import org.json.JSONObject;
 import org.onap.music.datastore.CassaLockStore;
+import org.onap.music.datastore.CassaLockStore.LockObject;
 import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
-import org.onap.music.main.MusicPureCassaCore;
+import org.onap.music.main.MusicCore;
 import org.onap.music.main.ResultType;
 import org.onap.music.main.ReturnType;
 
@@ -176,7 +177,7 @@ public class CassandraMixin implements MusicInterface {
                 "CREATE KEYSPACE " + this.music_ns + " WITH REPLICATION = " + replicationInfo.toString().replaceAll("=", ":"));
 
         try {
-            MusicPureCassaCore.nonKeyRelatedPut(queryObject, "eventual");
+            MusicCore.nonKeyRelatedPut(queryObject, "eventual");
         } catch (MusicServiceException e) {
             if (e.getMessage().equals("Keyspace "+this.music_ns+" already exists")) {
                 // ignore
@@ -416,7 +417,7 @@ public class CassandraMixin implements MusicInterface {
 		String cql = String.format("DELETE FROM %s.DIRTY_%s WHERE %s;", music_ns, tableName, cols.toString());
 		logger.debug(EELFLoggerDelegate.applicationLogger,"Executing MUSIC write:"+ cql);
 		pQueryObject.appendQueryString(cql);
-        ReturnType rt = MusicPureCassaCore.eventualPut(pQueryObject);
+        ReturnType rt = MusicCore.eventualPut(pQueryObject);
 		if(rt.getResult().getResult().toLowerCase().equals("failure")) {
 			System.out.println("Failure while cleanDirtyRow..."+rt.getMessage());
 		}
@@ -450,7 +451,7 @@ public class CassandraMixin implements MusicInterface {
 		PreparedQueryObject pQueryObject = new PreparedQueryObject();
 		pQueryObject.appendQueryString(cql);
 		try {
-			results = MusicPureCassaCore.get(pQueryObject);
+			results = MusicCore.get(pQueryObject);
 		} catch (MusicServiceException e) {
 			
 			e.printStackTrace();
@@ -564,7 +565,7 @@ public class CassandraMixin implements MusicInterface {
 		if(MusicMixin.criticalTables.contains(tableName)) {
 			ReturnType rt = null;
 			try {
-				rt = MusicPureCassaCore.atomicPut(music_ns, tableName, primaryKey, pQueryObject, null);
+				rt = MusicCore.atomicPut(music_ns, tableName, primaryKey, pQueryObject, null);
 			} catch (MusicLockingException e) {
 				e.printStackTrace();
 			} catch (MusicServiceException e) {
@@ -576,7 +577,7 @@ public class CassandraMixin implements MusicInterface {
 				System.out.println("Failure while critical put..."+rt.getMessage());
 			}
 		} else {
-			ReturnType rt = MusicPureCassaCore.eventualPut(pQueryObject);
+			ReturnType rt = MusicCore.eventualPut(pQueryObject);
 			if(rt.getResult().getResult().toLowerCase().equals("failure")) {
 				System.out.println("Failure while critical put..."+rt.getMessage());
 			}
@@ -627,7 +628,7 @@ public class CassandraMixin implements MusicInterface {
 			ResultSet dirtyRows = null;
 			try {
 				//\TODO Why is this an eventual put?, this should be an atomic
-				dirtyRows = MusicPureCassaCore.get(pQueryObject);
+				dirtyRows = MusicCore.get(pQueryObject);
 			} catch (MusicServiceException e) {
 				
 				e.printStackTrace();
@@ -890,7 +891,7 @@ public class CassandraMixin implements MusicInterface {
 		logger.debug(EELFLoggerDelegate.applicationLogger, "Executing MUSIC write:"+ cql);
 		PreparedQueryObject pQueryObject = new PreparedQueryObject();
 		pQueryObject.appendQueryString(cql);
-		ReturnType rt = MusicPureCassaCore.eventualPut(pQueryObject);
+		ReturnType rt = MusicCore.eventualPut(pQueryObject);
 		if(rt.getResult().getResult().toLowerCase().equals("failure")) {
 			logger.error(EELFLoggerDelegate.errorLogger, "Failure while eventualPut...: "+rt.getMessage());
 		}
@@ -913,7 +914,7 @@ public class CassandraMixin implements MusicInterface {
 		pQueryObject.appendQueryString(cql);
 		ResultSet results = null;
 		try {
-			results = MusicPureCassaCore.get(pQueryObject);
+			results = MusicCore.get(pQueryObject);
 		} catch (MusicServiceException e) {
 			
 			e.printStackTrace();
@@ -1005,7 +1006,7 @@ public class CassandraMixin implements MusicInterface {
 		if(MusicMixin.criticalTables.contains(tableName)) {
 			ReturnType rt = null;
 			try {
-				rt = MusicPureCassaCore.atomicPut(music_ns, tableName, primaryKey, pQObject, null);
+				rt = MusicCore.atomicPut(music_ns, tableName, primaryKey, pQObject, null);
 			} catch (MusicLockingException e) {
 				e.printStackTrace();
 			} catch (MusicServiceException e) {
@@ -1017,7 +1018,7 @@ public class CassandraMixin implements MusicInterface {
 				System.out.println("Failure while critical put..."+rt.getMessage());
 			}
 		} else {
-			ReturnType rt = MusicPureCassaCore.eventualPut(pQObject);
+			ReturnType rt = MusicCore.eventualPut(pQObject);
 			if(rt.getResult().getResult().toLowerCase().equals("failure")) {
 				System.out.println("Failure while critical put..."+rt.getMessage());
 			}
@@ -1045,10 +1046,10 @@ public class CassandraMixin implements MusicInterface {
 
     protected String createAndAssignLock(String fullyQualifiedKey, DatabasePartition partition, String keyspace, String table, String key) throws MDBCServiceException {
 	    String lockId;
-        lockId = MusicPureCassaCore.createLockReference(fullyQualifiedKey);
+        lockId = MusicCore.createLockReference(fullyQualifiedKey);
         ReturnType lockReturn;
         try {
-            lockReturn = MusicPureCassaCore.acquireLock(fullyQualifiedKey,lockId);
+            lockReturn = MusicCore.acquireLock(fullyQualifiedKey,lockId);
         } catch (MusicLockingException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Lock was not acquire correctly for key "+fullyQualifiedKey);
             throw new MDBCServiceException("Lock was not acquire correctly for key "+fullyQualifiedKey);
@@ -1062,22 +1063,20 @@ public class CassandraMixin implements MusicInterface {
         //\TODO this is wrong, we should have a better way to obtain a lock forcefully, clean the queue and obtain the lock
         if(lockReturn.getResult().compareTo(ResultType.SUCCESS) != 0 ) {
             try {
-                MusicPureCassaCore.releaseLock(fullyQualifiedKey,lockId,false);
-                CassaLockStore lockingServiceHandle = MusicPureCassaCore.getLockingServiceHandle();
-                UUID uuid = lockingServiceHandle.peekLockQueue(keyspace, table, key);
-                String uuidStr = uuid.toString();
-                while(uuidStr != lockId) {
-                    MusicPureCassaCore.releaseLock(fullyQualifiedKey, uuid.toString(), false);
-                    try {
-                        uuid = lockingServiceHandle.peekLockQueue(keyspace, table, key);
-                        uuidStr = uuid.toString();
+            	MusicCore.forciblyReleaseLock(fullyQualifiedKey,lockId);
+                CassaLockStore lockingServiceHandle = MusicCore.getLockingServiceHandle();
+                LockObject lockOwner = lockingServiceHandle.peekLockQueue(keyspace, table, key);
+                while(lockOwner.lockRef != lockId) {
+                	MusicCore.forciblyReleaseLock(fullyQualifiedKey, lockOwner.lockRef);
+                	try {
+                        lockOwner = lockingServiceHandle.peekLockQueue(keyspace, table, key);
                     } catch(NullPointerException e){
                        //Ignore null pointer exception
-                        lockId = MusicPureCassaCore.createLockReference(fullyQualifiedKey);
-                        uuidStr = lockId;
+                        lockId = MusicCore.createLockReference(fullyQualifiedKey);
+                        break;
                     }
                 }
-                lockReturn = MusicPureCassaCore.acquireLock(fullyQualifiedKey,lockId);
+                lockReturn = MusicCore.acquireLock(fullyQualifiedKey,lockId);
 
             } catch (MusicLockingException e) {
                 throw new MDBCServiceException("Could not lock the corresponding lock");
@@ -1117,7 +1116,7 @@ public class CassandraMixin implements MusicInterface {
 	    query.appendQueryString(cqlQuery.toString());
 		//\TODO check if I am not shooting on my own foot
         try {
-            MusicPureCassaCore.nonKeyRelatedPut(query,"critical");
+            MusicCore.nonKeyRelatedPut(query,"critical");
         } catch (MusicServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Transaction Digest serialization was invalid for commit "+commitId);
             throw new MDBCServiceException("Transaction Digest serialization for commit "+commitId);
@@ -1132,7 +1131,7 @@ public class CassandraMixin implements MusicInterface {
                 .append(commitId)
                 .append(")");
         PreparedQueryObject appendQuery = createAppendRRTIndexToTitQuery(transactionInformationTableName, TITIndex, redoRecordTableName, redoUuidBuilder.toString());
-        ReturnType returnType = MusicPureCassaCore.criticalPut(music_ns, transactionInformationTableName, TITIndex, appendQuery, lockId, null);
+        ReturnType returnType = MusicCore.criticalPut(music_ns, transactionInformationTableName, TITIndex, appendQuery, lockId, null);
         if(returnType.getResult().compareTo(ResultType.SUCCESS) != 0 ){
             logger.error(EELFLoggerDelegate.errorLogger, "Error when executing append operation with return type: "+returnType.getMessage());
             throw new MDBCServiceException("Error when executing append operation with return type: "+returnType.getMessage());
