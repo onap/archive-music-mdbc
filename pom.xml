@@ -75,11 +75,6 @@
             <version>1.1</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-lang3</artifactId>
-            <version>3.1</version>
-        </dependency>
-        <dependency>
             <groupId>com.att.eelf</groupId>
             <artifactId>eelf-core</artifactId>
             <version>1.0.0</version>
@@ -91,12 +86,6 @@
             <artifactId>servlet-api</artifactId>
             <version>2.5</version>
             <scope>provided</scope>
-        </dependency>
-        <!-- Music jar from onap -->
-        <dependency>
-            <groupId>org.onap.music</groupId>
-            <artifactId>MUSIC</artifactId>
-            <version>3.2.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.calcite.avatica/avatica-server -->
         <dependency>
@@ -124,6 +113,11 @@
             <groupId>org.mariadb.jdbc</groupId>
             <artifactId>mariadb-java-client</artifactId>
             <version>1.1.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.onap.music</groupId>
+            <artifactId>MUSIC</artifactId>
+            <version>3.2.0</version>
         </dependency>
     </dependencies>
 

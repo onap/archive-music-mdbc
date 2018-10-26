@@ -1,12 +1,7 @@
 package com.att.research.mdbc;
 
 import java.sql.Connection;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 import org.json.JSONObject;
 
@@ -296,4 +291,18 @@ public class MusicSqlManager {
 		*/
 		return musicKeys;
 	}
+
+	public void own(List<Range> ranges) {
+		throw new java.lang.UnsupportedOperationException("function not implemented yet");
+	}
+
+	public void appendRange(String rangeId, List<Range> ranges) {
+		throw new java.lang.UnsupportedOperationException("function not implemented yet");
+	}
+
+	public void relinquish(String ownerId, String rangeId) {
+		throw new java.lang.UnsupportedOperationException("function not implemented yet");
+	}
+
+
 }

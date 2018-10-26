@@ -53,18 +53,22 @@ public class StateManager {
 	private DatabasePartition ranges;
     
     public StateManager(String url, Properties info, DatabasePartition ranges, String sqlDatabase) throws MDBCServiceException {
-        this.sqlDatabase=sqlDatabase;
-    	this.ranges=ranges;
-    	this.url = url;
-    	this.info = info;
-    	this.transactionInfo = new TxCommitProgress();
-    	//\fixme this is not really used, delete!
-        String cassandraUrl  = info.getProperty(Configuration.KEY_CASSANDRA_URL, Configuration.CASSANDRA_URL_DEFAULT);
-        String mixin  = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
+        this.sqlDatabase = sqlDatabase;
+        this.ranges = ranges;
+        this.url = url;
+        this.info = info;
+        this.transactionInfo = new TxCommitProgress();
+        //\fixme this is not really used, delete!
+        String cassandraUrl = info.getProperty(Configuration.KEY_CASSANDRA_URL, Configuration.CASSANDRA_URL_DEFAULT);
+        String mixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
+        init(mixin, cassandraUrl);
+    }
+
+    protected void init(String mixin, String cassandraUrl) throws MDBCServiceException {
         this.musicManager = MixinFactory.createMusicInterface(mixin, cassandraUrl, info,ranges);
         this.musicManager.createKeyspace();
         try {
-            this.musicManager.initializeMdbcDataStructures();
+            this.musicManager.initializeMetricDataStructures();
         } catch (MDBCServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
             throw(e);
