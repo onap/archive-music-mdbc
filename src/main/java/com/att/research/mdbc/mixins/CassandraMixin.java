@@ -17,12 +17,10 @@ import java.util.UUID;
 
 import com.att.research.mdbc.*;
 import com.att.research.mdbc.tables.PartitionInformation;
-import com.att.research.mdbc.tables.RedoHistoryElement;
-import com.att.research.mdbc.tables.RedoRecordId;
+import com.att.research.mdbc.tables.MusixTxDigestId;
 import com.att.research.mdbc.tables.StagingTable;
-import com.att.research.mdbc.tables.TablePartitionInformation;
-import com.att.research.mdbc.tables.TitReference;
-import com.att.research.mdbc.tables.TransactionInformationElement;
+import com.att.research.mdbc.tables.MriReference;
+import com.att.research.mdbc.tables.MusicRangeInformationRow;
 import com.att.research.mdbc.tables.TxCommitProgress;
 
 import org.json.JSONObject;
@@ -1025,13 +1023,13 @@ public class CassandraMixin implements MusicInterface {
 	}
 
 
-	private PreparedQueryObject createAppendMtxdIndexToMriQuery(String titTable, String uuid, String table, String redoUuid){
+	private PreparedQueryObject createAppendMtxdIndexToMriQuery(String mriTable, String uuid, String table, UUID redoUuid){
         PreparedQueryObject query = new PreparedQueryObject();
         StringBuilder appendBuilder = new StringBuilder();
         appendBuilder.append("UPDATE ")
                 .append(music_ns)
                 .append(".")
-                .append(titTable)
+                .append(mriTable)
                 .append(" SET redo = redo +[('")
                 .append(table)
                 .append("',")
@@ -1095,15 +1093,14 @@ public class CassandraMixin implements MusicInterface {
         return lockId;
     }
 
-    protected void pushRowToMtxd(String lockId, String commitId, HashMap<Range,StagingTable> transactionDigest) throws MDBCServiceException{
+    protected void pushRowToMtxd(UUID commitId, HashMap<Range,StagingTable> transactionDigest) throws MDBCServiceException{
 		PreparedQueryObject query = new PreparedQueryObject();
 	    StringBuilder cqlQuery = new StringBuilder("INSERT INTO ")
                   .append(music_ns)
                   .append('.')
 	    	      .append(musicTxDigestTableName)
-	    	      .append(" (leaseid,leasecounter,transactiondigest) ")
+	    	      .append(" (txid,transactiondigest) ")
 	    	      .append("VALUES ('")
-	    	      .append( lockId ).append("',")
 	    	      .append( commitId ).append(",'");
         try {
             cqlQuery.append( MDBCUtils.toString(transactionDigest) );
@@ -1122,14 +1119,8 @@ public class CassandraMixin implements MusicInterface {
         }
     }
 
-    protected void appendIndexToMri(String lockId, String commitId, String MriIndex) throws MDBCServiceException{
-        StringBuilder redoUuidBuilder  = new StringBuilder();
-        redoUuidBuilder.append("('")
-                .append(lockId)
-                .append("',")
-                .append(commitId)
-                .append(")");
-        PreparedQueryObject appendQuery = createAppendMtxdIndexToMriQuery(musicRangeInformationTableName, MriIndex, musicTxDigestTableName, redoUuidBuilder.toString());
+    protected void appendIndexToMri(String lockId, UUID commitId, String MriIndex) throws MDBCServiceException{
+        PreparedQueryObject appendQuery = createAppendMtxdIndexToMriQuery(musicRangeInformationTableName, MriIndex, musicTxDigestTableName, commitId);
         ReturnType returnType = MusicCore.criticalPut(music_ns, musicRangeInformationTableName, MriIndex, appendQuery, lockId, null);
         if(returnType.getResult().compareTo(ResultType.SUCCESS) != 0 ){
             logger.error(EELFLoggerDelegate.errorLogger, "Error when executing append operation with return type: "+returnType.getMessage());
@@ -1151,10 +1142,10 @@ public class CassandraMixin implements MusicInterface {
             lockId = createAndAssignLock(fullyQualifiedTitKey,partition,music_ns, musicRangeInformationTableName,MriIndex);
 		}
 
-		String commitId;
+		UUID commitId;
 		//Generate a local commit id
         if(progressKeeper.containsTx(txId)) {
-            commitId = progressKeeper.getCommitId(txId).toString();
+            commitId = progressKeeper.getCommitId(txId);
         }
         else{
             logger.error(EELFLoggerDelegate.errorLogger, "Tx with id "+txId+" was not created in the TxCommitProgress ");
@@ -1163,11 +1154,11 @@ public class CassandraMixin implements MusicInterface {
         //Add creation type of transaction digest
 
 		//1. Push new row to RRT and obtain its index
-        pushRowToMtxd(lockId, commitId, transactionDigest);
+        pushRowToMtxd(commitId, transactionDigest);
 
         //2. Save RRT index to RQ
 		if(progressKeeper!= null) {
-			progressKeeper.setRecordId(txId,new RedoRecordId(lockId, commitId));
+			progressKeeper.setRecordId(txId,new MusixTxDigestId(commitId));
 		}
 		//3. Append RRT index into the corresponding TIT row array
         appendIndexToMri(lockId,commitId,MriIndex);
@@ -1223,57 +1214,23 @@ public class CassandraMixin implements MusicInterface {
 	}
 
     @Override
-    public TransactionInformationElement getTransactionInformation(String id){
+
+    public MusicRangeInformationRow getMusicRangeInformation(UUID id){
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public TitReference createTransactionInformationRow(TransactionInformationElement info){
+    public MriReference createMusicRangeInformation(MusicRangeInformationRow info){
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void appendToRedoLog(TitReference titRow, DatabasePartition partition, RedoRecordId newRecord){
+    public void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusixTxDigestId newRecord){
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void appendRedoRecord(String redoRecordTable, RedoRecordId newRecord, String transactionDigest){
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void updateTablePartition(String table, DatabasePartition partition){
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public TitReference createPartition(List<String> tables, int replicationFactor, String currentOwner){
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void updatePartitionOwner(String partition, String owner){
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void updateTitReference(String partition, TitReference tit){
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void updatePartitionReplicationFactor(String partition, int replicationFactor){
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void addRedoHistory(DatabasePartition partition, TitReference newTit, List<TitReference> old){
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<RedoHistoryElement> getHistory(DatabasePartition partition){
+    public void addTxDigest(String musicTxDigestTable, MusixTxDigestId newId, String transactionDigest){
         throw new UnsupportedOperationException();
     }
 
@@ -1283,13 +1240,22 @@ public class CassandraMixin implements MusicInterface {
     }
 
     @Override
-    public TablePartitionInformation getTablePartitionInformation(String table){
+    public HashMap<Range,StagingTable> getTransactionDigest(MusixTxDigestId id){
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public HashMap<Range,StagingTable> getTransactionDigest(RedoRecordId id){
+    public void own(List<Range> ranges){
         throw new UnsupportedOperationException();
     }
 
-        }
+    @Override
+    public void appendRange(String rangeId, List<Range> ranges){
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void relinquish(String ownerId, String rangeId){
+        throw new UnsupportedOperationException();
+    }
+}

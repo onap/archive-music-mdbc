@@ -3,6 +3,7 @@ package com.att.research.mdbc.mixins;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.json.JSONObject;
 
@@ -11,15 +12,11 @@ import com.att.research.mdbc.DatabasePartition;
 import com.att.research.mdbc.Range;
 import com.att.research.mdbc.TableInfo;
 import com.att.research.mdbc.tables.PartitionInformation;
-import com.att.research.mdbc.tables.RedoHistoryElement;
-import com.att.research.mdbc.tables.RedoRecordId;
+import com.att.research.mdbc.tables.MusixTxDigestId;
 import com.att.research.mdbc.tables.StagingTable;
-import com.att.research.mdbc.tables.TablePartitionInformation;
-import com.att.research.mdbc.tables.TitReference;
-import com.att.research.mdbc.tables.TransactionInformationElement;
+import com.att.research.mdbc.tables.MriReference;
+import com.att.research.mdbc.tables.MusicRangeInformationRow;
 import com.att.research.mdbc.tables.TxCommitProgress;
-
-import org.onap.music.exceptions.MusicLockingException;
 
 /**
  * This Interface defines the methods that MDBC needs for a class to provide access to the persistence layer of MUSIC.
@@ -154,34 +151,23 @@ public interface MusicInterface {
 	 */
 	void commitLog(DBInterface dbi, DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
-	TransactionInformationElement getTransactionInformation(String id);
+	MusicRangeInformationRow getMusicRangeInformation(UUID id);
 
-	TitReference createTransactionInformationRow(TransactionInformationElement info);
+	MriReference createMusicRangeInformation(MusicRangeInformationRow info);
 	
-	void appendToRedoLog(TitReference titRow, DatabasePartition partition, RedoRecordId newRecord);
+	void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusixTxDigestId newRecord);
 	
-	void appendRedoRecord(String redoRecordTable, RedoRecordId newRecord, String transactionDigest); 
-
-	void updateTablePartition(String table, DatabasePartition partition);
-	
-	TitReference createPartition(List<String> tables, int replicationFactor, String currentOwner);
-	
-	void updatePartitionOwner(String partition, String owner);
-
-	void updateTitReference(String partition, TitReference tit);
-	
-	void updatePartitionReplicationFactor(String partition, int replicationFactor);
-	
-	void addRedoHistory(DatabasePartition partition, TitReference newTit, List<TitReference> old);
-	
-	List<RedoHistoryElement> getHistory(DatabasePartition partition);
+	void addTxDigest(String musicTxDigestTable, MusixTxDigestId newId, String transactionDigest);
 
 	List<PartitionInformation> getPartitionInformation(DatabasePartition partition);
 	
-	TablePartitionInformation getTablePartitionInformation(String table);
-	
-	HashMap<Range,StagingTable> getTransactionDigest(RedoRecordId id);
+	HashMap<Range,StagingTable> getTransactionDigest(MusixTxDigestId id);
 
+	void own(List<Range> ranges);
+
+	void appendRange(String rangeId, List<Range> ranges);
+
+	void relinquish(String ownerId, String rangeId);
 
 }
 

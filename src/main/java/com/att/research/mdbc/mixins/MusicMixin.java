@@ -2,13 +2,7 @@ package com.att.research.mdbc.mixins;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 
 import com.att.research.mdbc.LockId;
 import org.json.JSONObject;
@@ -19,12 +13,10 @@ import com.att.research.mdbc.DatabasePartition;
 import com.att.research.mdbc.Range;
 import com.att.research.mdbc.TableInfo;
 import com.att.research.mdbc.tables.PartitionInformation;
-import com.att.research.mdbc.tables.RedoHistoryElement;
-import com.att.research.mdbc.tables.RedoRecordId;
+import com.att.research.mdbc.tables.MusixTxDigestId;
 import com.att.research.mdbc.tables.StagingTable;
-import com.att.research.mdbc.tables.TablePartitionInformation;
-import com.att.research.mdbc.tables.TitReference;
-import com.att.research.mdbc.tables.TransactionInformationElement;
+import com.att.research.mdbc.tables.MriReference;
+import com.att.research.mdbc.tables.MusicRangeInformationRow;
 import com.att.research.mdbc.tables.TxCommitProgress;
 
 import org.onap.music.main.MusicCore;
@@ -36,7 +28,7 @@ import org.onap.music.main.MusicCore;
 public class MusicMixin implements MusicInterface {
 
 	public static Map<Integer, Set<String>> currentLockMap = new HashMap<>();
-    public static List<String> criticalTables = new ArrayList<>();
+	public static List<String> criticalTables = new ArrayList<>();
 
 	@Override
 	public String getMixinName() {
@@ -65,49 +57,49 @@ public class MusicMixin implements MusicInterface {
 	@Override
 	public void close() {
 		// 
-		
+
 	}
 
 	@Override
 	public void createKeyspace() {
 		// 
-		
+
 	}
 
 	@Override
 	public void initializeMusicForTable(TableInfo ti, String tableName) {
 		// 
-		
+
 	}
 
 	@Override
 	public void createDirtyRowTable(TableInfo ti, String tableName) {
 		// 
-		
+
 	}
 
 	@Override
 	public void dropDirtyRowTable(String tableName) {
 		// 
-		
+
 	}
 
 	@Override
 	public void clearMusicForTable(String tableName) {
 		// 
-		
+
 	}
 
 	@Override
-	public void markDirtyRow(TableInfo ti, String tableName,  JSONObject keys) {
+	public void markDirtyRow(TableInfo ti, String tableName, JSONObject keys) {
 		// 
-		
+
 	}
 
 	@Override
 	public void cleanDirtyRow(TableInfo ti, String tableName, JSONObject keys) {
 		// 
-		
+
 	}
 
 	@Override
@@ -119,55 +111,54 @@ public class MusicMixin implements MusicInterface {
 	@Override
 	public void deleteFromEntityTableInMusic(TableInfo ti, String tableName, JSONObject oldRow) {
 		// 
-		
+
 	}
 
 	@Override
 	public void readDirtyRowsAndUpdateDb(DBInterface dbi, String tableName) {
 		// 
-		
+
 	}
 
 	@Override
 	public void updateDirtyRowAndEntityTableInMusic(TableInfo ti, String tableName, JSONObject changedRow) {
 		updateDirtyRowAndEntityTableInMusic(tableName, changedRow, false);
-		
+
 	}
-	
-	public void updateDirtyRowAndEntityTableInMusic(String tableName, JSONObject changedRow, boolean isCritical) { }
-	
+
+	public void updateDirtyRowAndEntityTableInMusic(String tableName, JSONObject changedRow, boolean isCritical) {
+	}
+
 
 	public static void loadProperties() {
-	    Properties prop = new Properties();
-	    InputStream input = null;
-	    try {
-	      input = MusicMixin.class.getClassLoader().getResourceAsStream("mdbc.properties");
-	      prop.load(input);
-	      String crTable = prop.getProperty("critical.tables");
-	      String[] tableArr = crTable.split(",");
-	      criticalTables = Arrays.asList(tableArr);
-	      
-	    }
-	    catch (Exception ex) {
-	      ex.printStackTrace();
-	    }
-	    finally {
-	      if (input != null) {
-	        try {
-	          input.close();
-	        } catch (IOException e) {
-	          e.printStackTrace();
-	        }
-	      }
-	    }
-	  }
-	
+		Properties prop = new Properties();
+		InputStream input = null;
+		try {
+			input = MusicMixin.class.getClassLoader().getResourceAsStream("mdbc.properties");
+			prop.load(input);
+			String crTable = prop.getProperty("critical.tables");
+			String[] tableArr = crTable.split(",");
+			criticalTables = Arrays.asList(tableArr);
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} finally {
+			if (input != null) {
+				try {
+					input.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
 	public static void releaseZKLocks(Set<LockId> lockIds) {
-		for(LockId lockId: lockIds) {
-			System.out.println("Releasing lock: "+lockId);
+		for (LockId lockId : lockIds) {
+			System.out.println("Releasing lock: " + lockId);
 			try {
-				MusicCore.voluntaryReleaseLock(lockId.getFullyQualifiedLockKey(),lockId.getLockReference());
-				MusicCore.destroyLockRef(lockId.getFullyQualifiedLockKey(),lockId.getLockReference());
+				MusicCore.voluntaryReleaseLock(lockId.getFullyQualifiedLockKey(), lockId.getLockReference());
+				MusicCore.destroyLockRef(lockId.getFullyQualifiedLockKey(), lockId.getLockReference());
 			} catch (MusicLockingException e) {
 				e.printStackTrace();
 			}
@@ -183,7 +174,7 @@ public class MusicMixin implements MusicInterface {
 	@Override
 	public void initializeMetricDataStructures() {
 		// 
-		
+
 	}
 
 	@Override
@@ -192,67 +183,51 @@ public class MusicMixin implements MusicInterface {
 	}
 
 	@Override
-	public void commitLog(DBInterface dbi, DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId,TxCommitProgress progressKeeper) 
-			throws MDBCServiceException{
+	public void commitLog(DBInterface dbi, DatabasePartition partition, HashMap<Range, StagingTable> transactionDigest, String txId, TxCommitProgress progressKeeper)
+			throws MDBCServiceException {
 		// TODO Auto-generated method stub
 	}
 
 	@Override
-    public TablePartitionInformation getTablePartitionInformation(String table){
-	    return null;
-    }
-
-    @Override
-    public HashMap<Range,StagingTable> getTransactionDigest(RedoRecordId id){
-	    return null;
-    }
-
-    @Override
-    public 	TransactionInformationElement getTransactionInformation(String id){
-	    return null;
-    }
-
-    @Override
-    public 	void updateTitReference(String partition, TitReference tit){}
-
-    @Override
-    public 	List<RedoHistoryElement> getHistory(DatabasePartition partition){
-	   return null;
-    }
-
-    @Override
-    public 	void addRedoHistory(DatabasePartition partition, TitReference newTit, List<TitReference> old){
-    }
-
-    @Override
-    public 	TitReference createPartition(List<String> tables, int replicationFactor, String currentOwner){
-	   return null;
-    }
-
-    @Override
-    public 	List<PartitionInformation> getPartitionInformation(DatabasePartition partition){
-	   return null;
-    }
-
-    @Override
-	public TitReference createTransactionInformationRow(TransactionInformationElement info){
-	   return null;
-    }
-
-    @Override
-	public void appendToRedoLog(TitReference titRow, DatabasePartition partition, RedoRecordId newRecord){
-    }
-
-    @Override
-	public void appendRedoRecord(String redoRecordTable, RedoRecordId newRecord, String transactionDigest){
-    }
-
-    @Override
-	public void updateTablePartition(String table, DatabasePartition partition){}
+	public HashMap<Range, StagingTable> getTransactionDigest(MusixTxDigestId id) {
+		return null;
+	}
 
 	@Override
-	public void updatePartitionOwner(String partition, String owner){}
+	public List<PartitionInformation> getPartitionInformation(DatabasePartition partition) {
+		return null;
+	}
 
 	@Override
-	public void updatePartitionReplicationFactor(String partition, int replicationFactor){}
+	public MriReference createMusicRangeInformation(MusicRangeInformationRow info) {
+		return null;
+	}
+
+	@Override
+	public void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusixTxDigestId newRecord) {
+	}
+
+	@Override
+	public void addTxDigest(String musicTxDigestTable, MusixTxDigestId newId, String transactionDigest) {
+	}
+
+	@Override
+	public void own(List<Range> ranges) {
+		throw new java.lang.UnsupportedOperationException("function not implemented yet");
+	}
+
+	@Override
+	public void appendRange(String rangeId, List<Range> ranges) {
+		throw new java.lang.UnsupportedOperationException("function not implemented yet");
+	}
+
+	@Override
+	public void relinquish(String ownerId, String rangeId) {
+		throw new java.lang.UnsupportedOperationException("function not implemented yet");
+	}
+
+	@Override
+	public MusicRangeInformationRow getMusicRangeInformation(UUID id){
+		return null;
+	}
 }

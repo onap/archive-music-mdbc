@@ -2,8 +2,10 @@ package com.att.research.mdbc.tables;
 
 import java.math.BigInteger;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
+import com.datastax.driver.core.utils.UUIDs;
+
 import com.att.research.logging.EELFLoggerDelegate;
 
 import java.sql.Connection;
@@ -13,11 +15,9 @@ import java.util.concurrent.atomic.AtomicReference;
 public class TxCommitProgress{
 	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(TxCommitProgress.class);
 
-	private AtomicReference<BigInteger> nextCommitId;
 	private Map<String, CommitProgress> transactionInfo;
 
 	public TxCommitProgress(){
-		nextCommitId=new AtomicReference<>(BigInteger.ZERO);
 		transactionInfo = new ConcurrentHashMap<>();
 	}
 	
@@ -25,12 +25,12 @@ public class TxCommitProgress{
 		return transactionInfo.containsKey(txId);
 	}
 	
-	public BigInteger getCommitId(String txId) {
+	public UUID getCommitId(String txId) {
 		CommitProgress prog = transactionInfo.get(txId);
 		if(prog.isCommitIdAssigned()) {
 			return prog.getCommitId();
 		}
-		BigInteger commitId = nextCommitId.getAndUpdate((a)-> a.add(BigInteger.ONE));
+		UUID commitId = UUIDs.random();
 		prog.setCommitId(commitId);
 		return commitId;
 	}
@@ -71,7 +71,7 @@ public class TxCommitProgress{
 		return prog.getConnection();
 	}
 	
-	public void setRecordId(String txId, RedoRecordId recordId){
+	public void setRecordId(String txId, MusixTxDigestId recordId){
 		CommitProgress prog = transactionInfo.get(txId);
 		if(prog == null){
 			logger.error(EELFLoggerDelegate.errorLogger, "Transaction doesn't exist: [%l], failure when setting record Id",txId);
@@ -79,7 +79,7 @@ public class TxCommitProgress{
 		prog.setRecordId(recordId);
 	}
 	
-	public RedoRecordId getRecordId(String txId) {
+	public MusixTxDigestId getRecordId(String txId) {
 		CommitProgress prog = transactionInfo.get(txId);
 		if(prog == null){
 			logger.error(EELFLoggerDelegate.errorLogger, "Transaction doesn't exist: [%l], failure when getting record Id",txId);
@@ -118,16 +118,16 @@ public class TxCommitProgress{
 
 final class CommitProgress{
 	private String lTxId; // local transaction id  
-	private BigInteger commitId; // commit id
+	private UUID commitId; // commit id
 	private boolean commitRequested; //indicates if the user tried to commit the request already.
 	private boolean SQLDone; // indicates if SQL was already committed 
 	private boolean MusicDone; // indicates if music commit was already performed, atomic bool
 	private Connection connection;// reference to a connection object. This is used to complete a commit if it failed in the original thread.
 	private Long timestamp; // last time this data structure was updated
-	private RedoRecordId redoRecordId;// record id for each partition
+	private MusixTxDigestId musixTxDigestId;// record id for each partition
 
 	public CommitProgress(String id,Connection conn){
-		redoRecordId=null;
+		musixTxDigestId =null;
 		lTxId = id;
 		commitRequested = false;
 		SQLDone = false;
@@ -141,14 +141,14 @@ final class CommitProgress{
 		return commitRequested && SQLDone && MusicDone;
 	}
 	
-	public synchronized void setCommitId(BigInteger commitId) {
+	public synchronized void setCommitId(UUID commitId) {
 		this.commitId = commitId;
 		timestamp = System.currentTimeMillis();
 	}
 	
 	public synchronized void reinitialize() {
 		commitId = null;
-		redoRecordId=null;
+		musixTxDigestId =null;
 		commitRequested = false;
 		SQLDone = false;
 		MusicDone = false;
@@ -179,20 +179,20 @@ final class CommitProgress{
 		return timestamp;
 	}
 
-	public synchronized void setRecordId(RedoRecordId id) {
-		redoRecordId =  id;
+	public synchronized void setRecordId(MusixTxDigestId id) {
+		musixTxDigestId =  id;
 		timestamp = System.currentTimeMillis();
 	}
 	
 	public synchronized boolean isRedoRecordAssigned() {
-		return this.redoRecordId!=null;
+		return this.musixTxDigestId !=null;
 	} 
 
-	public synchronized RedoRecordId getRecordId() {
-		return redoRecordId;
+	public synchronized MusixTxDigestId getRecordId() {
+		return musixTxDigestId;
 	} 
 	
-	public synchronized BigInteger getCommitId() {
+	public synchronized UUID getCommitId() {
 		return commitId;
 	}
 	

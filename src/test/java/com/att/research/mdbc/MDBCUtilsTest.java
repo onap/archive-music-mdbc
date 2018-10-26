@@ -17,7 +17,7 @@ public class MDBCUtilsTest {
         @Test
     public void toStringTest1() {
         StagingTable table = new StagingTable();
-        table.addOperation("test",OperationType.INSERT,(new JSONObject(new String[]{"test1", "test2"})).toString(),(new JSONObject(new String[]{"test3", "Test4"})).toString());
+        table.addOperation("test",OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString());
         String output=null;
         try {
             output = MDBCUtils.toString(table);
@@ -33,7 +33,7 @@ public class MDBCUtilsTest {
     public void toStringTest2() {
         HashMap<String,StagingTable> mapToSerialize = new HashMap<>();
         StagingTable table = new StagingTable();
-        table.addOperation("test",OperationType.INSERT,(new JSONObject(new String[]{"test1", "test2"})).toString(),(new JSONObject(new String[]{"test3", "Test4"})).toString());
+        table.addOperation("test",OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString());
         mapToSerialize.put("table",table);
         String output=null;
         try {

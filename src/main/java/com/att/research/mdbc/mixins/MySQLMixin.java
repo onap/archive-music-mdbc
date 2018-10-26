@@ -586,7 +586,7 @@ NEW.field refers to the new value
 				if(!transactionDigests.containsKey(range)) {
 					transactionDigests.put(range, new StagingTable());
 				}
-				transactionDigests.get(range).addOperation(musicKey, opType, keydataStr, newRow.toString());
+				transactionDigests.get(range).addOperation(musicKey, opType, newRow.toString());
 				rows.add(ix);
 			}
 			rs.getStatement().close();

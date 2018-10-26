@@ -23,11 +23,11 @@ public class StagingTable implements Serializable{
 		operations = new HashMap<>();
 	}
 	
-	synchronized public void addOperation(String key, OperationType type, String oldVal, String newVal) {
+	synchronized public void addOperation(String key, OperationType type, String newVal) {
 		if(!operations.containsKey(key)) {
 			operations.put(key, new LinkedList<>());
 		}
-		operations.get(key).add(new Operation(type,newVal,oldVal));
+		operations.get(key).add(new Operation(type,newVal));
 	}
 	
 	synchronized public Deque<Pair<String,Operation>> getIterableSnapshot() throws NoSuchFieldException{
