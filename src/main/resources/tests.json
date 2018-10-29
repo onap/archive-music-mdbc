@@ -1,8 +1,8 @@
 {
 	"tests": [
-		"com.att.research.mdbc.tests.Test_Insert",
-		"com.att.research.mdbc.tests.Test_Delete",
-		"com.att.research.mdbc.tests.Test_Transactions"
+		"org.onap.music.mdbc.tests.Test_Insert",
+		"org.onap.music.mdbc.tests.Test_Delete",
+		"org.onap.music.mdbc.tests.Test_Transactions"
 	],
 	"configs": [
 		{
