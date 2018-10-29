@@ -12,7 +12,7 @@ import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.PartitionInformation;
-import org.onap.music.mdbc.tables.MusixTxDigestId;
+import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
@@ -151,17 +151,17 @@ public interface MusicInterface {
 	 */
 	void commitLog(DBInterface dbi, DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
-	MusicRangeInformationRow getMusicRangeInformation(UUID id);
+	MusicRangeInformationRow getMusicRangeInformation(DatabasePartition partition) throws MDBCServiceException;
 
-	MriReference createMusicRangeInformation(MusicRangeInformationRow info);
+	DatabasePartition createMusicRangeInformation(MusicRangeInformationRow info) throws MDBCServiceException;
 	
-	void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusixTxDigestId newRecord);
+	void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException;
 	
-	void addTxDigest(String musicTxDigestTable, MusixTxDigestId newId, String transactionDigest);
+	void addTxDigest(String musicTxDigestTable, MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException;
 
-	List<PartitionInformation> getPartitionInformation(DatabasePartition partition);
+	PartitionInformation getPartitionInformation(DatabasePartition partition) throws MDBCServiceException;
 	
-	HashMap<Range,StagingTable> getTransactionDigest(MusixTxDigestId id);
+	HashMap<Range,StagingTable> getTransactionDigest(MusicTxDigestId id) throws MDBCServiceException;
 
 	void own(List<Range> ranges);
 

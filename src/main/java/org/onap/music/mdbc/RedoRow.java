@@ -1,12 +1,14 @@
 package org.onap.music.mdbc;
 
+import java.util.UUID;
+
 public class RedoRow {
     private String redoTableName;
-    private String redoRowIndex;
+    private UUID redoRowIndex;
 
     public RedoRow(){}
 
-    public RedoRow(String redoTableName, String redoRowIndex){
+    public RedoRow(String redoTableName, UUID redoRowIndex){
         this.redoRowIndex = redoRowIndex;
         this.redoTableName = redoTableName;
     }
@@ -19,11 +21,11 @@ public class RedoRow {
         this.redoTableName = redoTableName;
     }
 
-    public String getRedoRowIndex() {
+    public UUID getRedoRowIndex() {
         return redoRowIndex;
     }
 
-    public void setRedoRowIndex(String redoRowIndex) {
+    public void setRedoRowIndex(UUID redoRowIndex) {
         this.redoRowIndex = redoRowIndex;
     }
 }

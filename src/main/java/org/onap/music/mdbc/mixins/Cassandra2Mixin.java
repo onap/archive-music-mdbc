@@ -38,8 +38,8 @@ public class Cassandra2Mixin extends CassandraMixin {
 		super();
 	}
 
-	public Cassandra2Mixin(String url, Properties info, DatabasePartition ranges) throws MusicServiceException {
-		super(url, info,ranges);
+	public Cassandra2Mixin(String url, Properties info) throws MusicServiceException {
+		super(url, info);
 	}
 
 	/**

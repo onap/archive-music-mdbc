@@ -6,11 +6,17 @@ import java.util.UUID;
 public final class MusicRangeInformationRow {
 	public final UUID index;
 	public final PartitionInformation partition;
-	public final List<MusixTxDigestId> redoLog;
+	public final List<MusicTxDigestId> redoLog;
+	public final String ownerId;
+	public final String metricProcessId;
 
-	public MusicRangeInformationRow(UUID index, List<MusixTxDigestId> redoLog, PartitionInformation partition) {
+	public MusicRangeInformationRow(UUID index, List<MusicTxDigestId> redoLog, PartitionInformation partition,
+                                    String ownerId, String metricProcessId) {
 		this.index = index;
 		this.redoLog = redoLog;
 		this.partition = partition;
+		this.ownerId = ownerId;
+		this.metricProcessId = metricProcessId;
 	}
+
 }

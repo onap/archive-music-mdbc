@@ -2,10 +2,10 @@ package org.onap.music.mdbc.tables;
 
 import java.util.UUID;
 
-public final class MusixTxDigestId {
+public final class MusicTxDigestId {
 	public final UUID tablePrimaryKey;
 
-	public MusixTxDigestId(UUID primaryKey) {
+	public MusicTxDigestId(UUID primaryKey) {
 		this.tablePrimaryKey= primaryKey;
 	}
 

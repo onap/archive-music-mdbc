@@ -5,6 +5,7 @@ To enable edge computing in its full capacity, a crucial requirement is to manag
 
 ## Dependencies
 
+### Music installation
 Given that METRIC is still a project in development, we are using newer versions (aka not release) of MUSIC, such that once 
 it reaches production it matches the latest MUSIC version. So for now we cannot use maven repositories to pull MUSIC. Follow 
 the next steps to compile and add the right version of music locally:
@@ -14,6 +15,17 @@ git clone https://gerrit.onap.org/r/music
 cd music
 git checkout  dev-cassandra-only
 mvn install -Dfile=target/MUSIC.jar -DpomFile=./pom.xml -DskipTests
+```
+### Music properties
+We need to create a property for the music system, as follows
+```bash
+# Create directory where the configuration file needs to be
+sudo mkdir -p /opt/app/music/etc/ 
+# Modify the configuration file located in src/main/resources/music.properties
+# Add the local dev cassandra cluster and zookeeper information to this file
+vim src/main/resources/music.properties
+# copy the configuration file to the new location
+sudo cp src/main/resources/music.properties /opt/app/music/etc/ 
 ```
 
 ## Running METRIC
