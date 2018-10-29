@@ -1,11 +1,11 @@
-package com.att.research.mdbc.test;
+package org.onap.music.mdbc.test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
-import com.att.research.mdbc.mixins.CassandraMixin;
+import org.onap.music.mdbc.mixins.CassandraMixin;
 
 public class TestCommon {
 	public static final String DB_DRIVER   = "avatica.Driver";

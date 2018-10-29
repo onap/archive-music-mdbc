@@ -26,7 +26,7 @@ mvn install:install-file -Dfile=target/MUSIC.jar -DpomFile=./pom.xml
 
 
 1) Create a configuration file using as a template:
-src/main/java/com/att/research/mdbc/configurations/tableConfiguration.json
+src/main/java/org/onap/music/mdbc/configurations/tableConfiguration.json
 
 The meaning of the fields is as follows: 
 
@@ -45,11 +45,11 @@ o	replicationFactor: indicates the needs of replication for this partition (the 
 
 2) Create the configuration for each node using the command line program in the following location:
 
-src/main/java/com/att/research/mdbc/tools/CreateNodeConfiguration.java
+src/main/java/org/onap/music/mdbc/tools/CreateNodeConfiguration.java
 
 To run it, use the following parameters:
 
--t ../ETDB/src/main/java/com/att/research/mdbc/configurations/tableConfiguration.json -b base -o /Users/quique/Desktop/
+-t ../ETDB/src/main/java/org/onap/music/mdbc/configurations/tableConfiguration.json -b base -o /Users/quique/Desktop/
 
 This program is going to generate all the required configuration json for each ETDB node in the system and additionally initialize all the corresponding rows and tables for the system to correctly work. The meaning of the parameters is:
 •	-t: the tableConfiguration.json explained in the step 1
@@ -63,11 +63,11 @@ Some notes about the limitations of this command line program:
 
 3) Run each of the server in its corresponding node: The ETDB server can be found in the file:
  
-src/main/java/com/att/research/mdbc/MdbcServer.java
+src/main/java/org/onap/music/mdbc/MdbcServer.java
  
 It requires three parameters:
 
- -c ../ETDB/src/main/java/com/att/research/mdbc/configurations/config-0.json -u jdbc:mysql://localhost -p 30000
+ -c ../ETDB/src/main/java/org/onap/music/mdbc/configurations/config-0.json -u jdbc:mysql://localhost -p 30000
 
  -c is a json with the configuration created in step 2. 
 •	-u is where the local mysql database is located (without the database name, just the url, see example)
@@ -75,7 +75,7 @@ It requires three parameters:
 
 4) Run the clients. A client example can be found in this folder:
  
-src/main/java/com/att/research/mdbc/examples
+src/main/java/org/onap/music/mdbc/examples
 
 ## Building METRIC
 
@@ -113,7 +113,7 @@ Dirty rows will be copied, as needed back into the database from Cassandra befor
 3. If you supply properties to the DriverManager.getConnection(String, Properties) call,
  use the properties defined below to control behavior of the proxy.
 4. Load the driver using the following call:
-        Class.forName("com.att.research.mdbc.ProxyDriver");
+        Class.forName("org.onap.music.mdbc.ProxyDriver");
 
 The following properties can be passed to the JDBC DriverManager.getConnection(String, Properties)
 call to influence how METRIC works.
@@ -160,14 +160,14 @@ these tags.
     </security>
   </datasource>
   <drivers>
-    <driver name="mdbc" module="com.att.research.mdbc">
-      <driver-class>com.att.research.mdbc.ProxyDriver</driver-class>
+    <driver name="mdbc" module="org.onap.music.mdbc">
+      <driver-class>org.onap.music.mdbc.ProxyDriver</driver-class>
     </driver>
   </drivers>
 </datasources>
 ```
 
-Note: This assumes that you have built and installed the com.att.research.mdbc module within JBoss.
+Note: This assumes that you have built and installed the org.onap.music.mdbc module within JBoss.
 
 ### To Define a Tomcat DataSource Resource
 
@@ -181,7 +181,7 @@ probably need to make changes to the _connectionProperties_ attribute.
     type="javax.sql.DataSource"
     factory="org.apache.tomcat.jdbc.pool.DataSourceFactory"
     uniqueResourceName="process-engine"
-    driverClassName="com.att.research.mdbc.ProxyDriver"
+    driverClassName="org.onap.music.mdbc.ProxyDriver"
     url="jdbc:mdbc:./camunda-h2-dbs/process-engine;MVCC=TRUE;TRACE_LEVEL_FILE=0;DB_CLOSE_ON_EXIT=FALSE"
     connectionProperties="myid=0;replicas=0,1,2;music_keyspace=camunda;music_address=localhost"
     username="sa"
@@ -205,7 +205,7 @@ or local file based (`jdbc:h2:path_to_file`) database.
 
 ## Testing Mixin Combinations
 
-The files under `src/main/java/com/att/research/mdbc/tests` can be used to test various METRIC
+The files under `src/main/java/org/onap/music/mdbc/tests` can be used to test various METRIC
 operations with various combinations of Mixins.  The tests are controlled via the file
 `src/main/resources/tests.json`.  More details are available in the javadoc for this package.
 

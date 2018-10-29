@@ -1,4 +1,4 @@
-package com.att.research.mdbc.test;
+package org.onap.music.mdbc.test;
 
 import static org.junit.Assert.*;
 

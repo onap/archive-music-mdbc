@@ -1,7 +1,7 @@
-package com.att.research.mdbc;
+package org.onap.music.mdbc;
 
-import com.att.research.mdbc.tables.OperationType;
-import com.att.research.mdbc.tables.StagingTable;
+import org.onap.music.mdbc.tables.OperationType;
+import org.onap.music.mdbc.tables.StagingTable;
 
 import org.json.JSONArray;
 import org.json.JSONObject;

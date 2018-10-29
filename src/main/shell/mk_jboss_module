@@ -22,7 +22,7 @@ then
 fi
 
 T=/tmp/mk_jboss_module$$
-T2=$T/com/att/research/mdbc/main
+T2=$T/org/onap/music/mdbc/main
 MODULE=$T2/module.xml
 TARGET=`pwd`/target/mdbc-jboss-module.tar
 JARS=$( mvn dependency:build-classpath | grep -v INFO | tr : '\012' )
@@ -38,7 +38,7 @@ cat > $MODULE <<EOF
   Note: This module includes a copy of the H2 database, rather than depending on the
   com.h2database.h2 module included with JBoss, because I could not get that copy to work.
 -->
-<module xmlns="urn:jboss:module:1.1" name="com.att.research.mdbc">
+<module xmlns="urn:jboss:module:1.1" name="org.onap.music.mdbc">
   <resources>
 EOF
 for i in $JAR2; do echo "    <resource-root path=\"$i\"/>"; done >> $MODULE
