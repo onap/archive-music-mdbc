@@ -13,7 +13,7 @@ import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.PartitionInformation;
-import org.onap.music.mdbc.tables.MusixTxDigestId;
+import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
@@ -189,26 +189,26 @@ public class MusicMixin implements MusicInterface {
 	}
 
 	@Override
-	public HashMap<Range, StagingTable> getTransactionDigest(MusixTxDigestId id) {
+	public HashMap<Range, StagingTable> getTransactionDigest(MusicTxDigestId id) {
 		return null;
 	}
 
 	@Override
-	public List<PartitionInformation> getPartitionInformation(DatabasePartition partition) {
+	public PartitionInformation getPartitionInformation(DatabasePartition partition) {
 		return null;
 	}
 
 	@Override
-	public MriReference createMusicRangeInformation(MusicRangeInformationRow info) {
+	public DatabasePartition createMusicRangeInformation(MusicRangeInformationRow info) {
 		return null;
 	}
 
 	@Override
-	public void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusixTxDigestId newRecord) {
+	public void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusicTxDigestId newRecord) {
 	}
 
 	@Override
-	public void addTxDigest(String musicTxDigestTable, MusixTxDigestId newId, String transactionDigest) {
+	public void addTxDigest(String musicTxDigestTable, MusicTxDigestId newId, String transactionDigest) {
 	}
 
 	@Override
@@ -227,7 +227,7 @@ public class MusicMixin implements MusicInterface {
 	}
 
 	@Override
-	public MusicRangeInformationRow getMusicRangeInformation(UUID id){
+	public MusicRangeInformationRow getMusicRangeInformation(DatabasePartition partition){
 		return null;
 	}
 }

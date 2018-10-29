@@ -3,12 +3,12 @@ package org.onap.music.mdbc;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import org.onap.music.logging.EELFLoggerDelegate;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import org.onap.music.mdbc.tables.MriReference;
 
 /**
  * A database range contain information about what ranges should be hosted in the current MDBC instance
@@ -19,11 +19,10 @@ public class DatabasePartition {
 	private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(DatabasePartition.class);
 
 	private String musicRangeInformationTable;//Table that currently contains the REDO log for this partition
-	private String musicRangeInformationIndex;//Index that can be obtained either from
+	private UUID musicRangeInformationIndex;//Index that can be obtained either from
 	private String musicTxDigestTable;
-	private String partitionId;
 	private String lockId;
-	protected Set<Range> ranges;
+	protected List<Range> ranges;
 
 	/**
 	 * Each range represents a partition of the database, a database partition is a union of this partitions. 
@@ -31,15 +30,15 @@ public class DatabasePartition {
 	 */
 	
 	public DatabasePartition() {
-		ranges = new HashSet<>();
+		ranges = new ArrayList<>();
 	}
 	
-	public DatabasePartition(Set<Range> knownRanges, String mriIndex, String mriTable, String partitionId, String lockId, String musicTxDigestTable) {
+	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
 		if(knownRanges != null) {
 			ranges = knownRanges;
 		}
 		else {
-			ranges = new HashSet<>();
+			ranges = new ArrayList<>();
 		}
 
 		if(musicTxDigestTable != null) {
@@ -53,7 +52,7 @@ public class DatabasePartition {
 			this.setMusicRangeInformationIndex(mriIndex);
 		}
 		else {
-			this.setMusicRangeInformationIndex("");
+			this.setMusicRangeInformationIndex(null);
 		}
 		
 		if(mriTable != null) {
@@ -62,13 +61,6 @@ public class DatabasePartition {
 		else {
 			this.setMusicRangeInformationTable("");
 		}
-		
-		if(partitionId != null) {
-			this.setPartitionId(partitionId);
-		}
-		else {
-			this.setPartitionId("");
-		}	
 
 		if(lockId != null) {
 			this.setLockId(lockId);
@@ -86,11 +78,11 @@ public class DatabasePartition {
 		this.musicRangeInformationTable = musicRangeInformationTable;
 	}
 
-	public String getMusicRangeInformationIndex() {
-		return musicRangeInformationIndex;
+	public MriReference getMusicRangeInformationIndex() {
+		return new MriReference(musicRangeInformationTable,musicRangeInformationIndex);
 	}
 
-	public void setMusicRangeInformationIndex(String musicRangeInformationIndex) {
+	public void setMusicRangeInformationIndex(UUID musicRangeInformationIndex) {
 		this.musicRangeInformationIndex = musicRangeInformationIndex;
 	}
 
@@ -106,9 +98,7 @@ public class DatabasePartition {
 				throw new IllegalArgumentException("Range is already contain by a previous range");
 			}
 		}
-		if(!ranges.contains(newRange)) {
-			ranges.add(newRange);
-		}
+		ranges.add(newRange);
 	}
 	
 	/**
@@ -162,14 +152,6 @@ public class DatabasePartition {
     	DatabasePartition range = gson.fromJson(br, DatabasePartition.class);	
     	return range;
     }
-
-	public String getPartitionId() {
-		return partitionId;
-	}
-
-	public void setPartitionId(String partitionId) {
-		this.partitionId = partitionId;
-	}
 
 	public String getLockId() {
 		return lockId;

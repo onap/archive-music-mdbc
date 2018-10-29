@@ -65,7 +65,7 @@ public class StateManager {
     }
 
     protected void init(String mixin, String cassandraUrl) throws MDBCServiceException {
-        this.musicManager = MixinFactory.createMusicInterface(mixin, cassandraUrl, info,ranges);
+        this.musicManager = MixinFactory.createMusicInterface(mixin, cassandraUrl, info);
         this.musicManager.createKeyspace();
         try {
             this.musicManager.initializeMetricDataStructures();

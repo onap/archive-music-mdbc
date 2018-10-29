@@ -63,7 +63,7 @@ public class MixinFactory {
 	 * @param info the Properties to use as an argument to the constructor
 	 * @return the newly constructed MusicInterface, or null if one cannot be found.
 	 */
-	public static MusicInterface createMusicInterface(String name, String url, Properties info, DatabasePartition ranges) {
+	public static MusicInterface createMusicInterface(String name, String url, Properties info) {
 		for (Class<?> cl : Utils.getClassesImplementing(MusicInterface.class)) {
 			try {
 				Constructor<?> con = cl.getConstructor();
@@ -72,10 +72,10 @@ public class MixinFactory {
 					String miname = mi.getMixinName();
 					logger.info(EELFLoggerDelegate.applicationLogger, "Checking "+miname);
 					if (miname.equalsIgnoreCase(name)) {
-						con = cl.getConstructor(String.class, Properties.class, DatabasePartition.class);
+						con = cl.getConstructor(String.class, Properties.class);
 						if (con != null) {
 							logger.info(EELFLoggerDelegate.applicationLogger,"Found match: "+miname);
-							return (MusicInterface) con.newInstance(url, info, ranges);
+							return (MusicInterface) con.newInstance(url, info);
 						}
 					}
 				}

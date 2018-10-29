@@ -11,8 +11,7 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 public class NodeConfiguration {
 
@@ -22,14 +21,15 @@ public class NodeConfiguration {
     public DatabasePartition partition;
     public String nodeName;
 
-    public NodeConfiguration(String tables, String mriIndex, String mriTableName, String partitionId, String sqlDatabaseName, String node, String redoRecordsTable){
-        partition = new DatabasePartition(toRanges(tables), mriIndex,  mriTableName, partitionId, null, redoRecordsTable) ;
+    public NodeConfiguration(String tables, UUID mriIndex, String mriTableName, String sqlDatabaseName, String node, String redoRecordsTable){
+        //	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
+        partition = new DatabasePartition(toRanges(tables), mriIndex,  mriTableName, null, redoRecordsTable) ;
         this.sqlDatabaseName = sqlDatabaseName;
         this.nodeName = node;
     }
 
-    protected Set<Range> toRanges(String tables){
-        Set<Range> newRange = new HashSet<>();
+    protected List<Range> toRanges(String tables){
+        List<Range> newRange = new ArrayList<>();
         String[] tablesArray=tables.split(",");
         for(String table: tablesArray) {
             newRange.add(new Range(table));

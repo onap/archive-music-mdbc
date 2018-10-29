@@ -1,6 +1,5 @@
 package org.onap.music.mdbc.tables;
 
-import java.math.BigInteger;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,7 +8,6 @@ import com.datastax.driver.core.utils.UUIDs;
 import org.onap.music.logging.EELFLoggerDelegate;
 
 import java.sql.Connection;
-import java.util.concurrent.atomic.AtomicReference;
 
 
 public class TxCommitProgress{
@@ -71,7 +69,7 @@ public class TxCommitProgress{
 		return prog.getConnection();
 	}
 	
-	public void setRecordId(String txId, MusixTxDigestId recordId){
+	public void setRecordId(String txId, MusicTxDigestId recordId){
 		CommitProgress prog = transactionInfo.get(txId);
 		if(prog == null){
 			logger.error(EELFLoggerDelegate.errorLogger, "Transaction doesn't exist: [%l], failure when setting record Id",txId);
@@ -79,7 +77,7 @@ public class TxCommitProgress{
 		prog.setRecordId(recordId);
 	}
 	
-	public MusixTxDigestId getRecordId(String txId) {
+	public MusicTxDigestId getRecordId(String txId) {
 		CommitProgress prog = transactionInfo.get(txId);
 		if(prog == null){
 			logger.error(EELFLoggerDelegate.errorLogger, "Transaction doesn't exist: [%l], failure when getting record Id",txId);
@@ -124,10 +122,10 @@ final class CommitProgress{
 	private boolean MusicDone; // indicates if music commit was already performed, atomic bool
 	private Connection connection;// reference to a connection object. This is used to complete a commit if it failed in the original thread.
 	private Long timestamp; // last time this data structure was updated
-	private MusixTxDigestId musixTxDigestId;// record id for each partition
+	private MusicTxDigestId musicTxDigestId;// record id for each partition
 
 	public CommitProgress(String id,Connection conn){
-		musixTxDigestId =null;
+		musicTxDigestId =null;
 		lTxId = id;
 		commitRequested = false;
 		SQLDone = false;
@@ -148,7 +146,7 @@ final class CommitProgress{
 	
 	public synchronized void reinitialize() {
 		commitId = null;
-		musixTxDigestId =null;
+		musicTxDigestId =null;
 		commitRequested = false;
 		SQLDone = false;
 		MusicDone = false;
@@ -179,17 +177,17 @@ final class CommitProgress{
 		return timestamp;
 	}
 
-	public synchronized void setRecordId(MusixTxDigestId id) {
-		musixTxDigestId =  id;
+	public synchronized void setRecordId(MusicTxDigestId id) {
+		musicTxDigestId =  id;
 		timestamp = System.currentTimeMillis();
 	}
 	
 	public synchronized boolean isRedoRecordAssigned() {
-		return this.musixTxDigestId !=null;
+		return this.musicTxDigestId !=null;
 	} 
 
-	public synchronized MusixTxDigestId getRecordId() {
-		return musixTxDigestId;
+	public synchronized MusicTxDigestId getRecordId() {
+		return musicTxDigestId;
 	} 
 	
 	public synchronized UUID getCommitId() {

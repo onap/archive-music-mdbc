@@ -1,6 +1,7 @@
 package org.onap.music.mdbc;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 
 /**
@@ -19,13 +20,24 @@ public class Range implements Serializable {
 		this.table = table;
 	}
 
+	public String toString(){return table;}
+
 	/**
 	 * Compares to Range types
-	 * @param other the other range against which this is compared 
+	 * @param o the other range against which this is compared
 	 * @return the equality result
 	 */
-	public boolean equal(Range other) {
-		return (table == other.table);
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Range r = (Range) o;
+		return (table.equals(r.table));
+	}
+
+	@Override
+	public int hashCode(){
+		return Objects.hash(table);
 	}
 	
 	public boolean overlaps(Range other) {

@@ -25,4 +25,12 @@ public final class Operation implements Serializable{
     public OperationType getOperationType() {
     	return this.TYPE;
     }
+
+    @Override
+    public boolean equals(Object o){
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Operation r = (Operation) o;
+        return TYPE.equals(r.TYPE) && NEW_VAL.equals(r.NEW_VAL);
+    }
 }
