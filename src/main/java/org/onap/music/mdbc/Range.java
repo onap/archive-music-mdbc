@@ -19,6 +19,8 @@ public class Range implements Serializable {
 		this.table = table;
 	}
 
+	public String toString(){return table;}
+
 	/**
 	 * Compares to Range types
 	 * @param other the other range against which this is compared 

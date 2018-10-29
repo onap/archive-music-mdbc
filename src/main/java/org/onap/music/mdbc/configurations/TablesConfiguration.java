@@ -3,8 +3,10 @@ package org.onap.music.mdbc.configurations;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.DatabaseOperations;
+import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.RedoRow;
 import org.onap.music.mdbc.mixins.CassandraMixin;
+
 import com.google.gson.Gson;
 import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MusicServiceException;
@@ -15,6 +17,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class TablesConfiguration {
 
@@ -43,12 +46,6 @@ public class TablesConfiguration {
         initInternalNamespace();
         DatabaseOperations.createNamespace(musicNamespace, internalReplicationFactor);
         List<NodeConfiguration> nodeConfigs = new ArrayList<>();
-        String ttpName = (tableToPartitionName==null || tableToPartitionName.isEmpty())?CassandraMixin.TABLE_TO_PARTITION_TABLE_NAME:tableToPartitionName;
-        DatabaseOperations.CreateTableToPartitionTable(musicNamespace,ttpName);
-        String pitName = (partitionInformationTableName==null || partitionInformationTableName.isEmpty())?CassandraMixin.PARTITION_INFORMATION_TABLE_NAME:partitionInformationTableName;
-        DatabaseOperations.CreatePartitionInfoTable(musicNamespace,pitName);
-        String rhName = (redoHistoryTableName==null || redoHistoryTableName.isEmpty())?CassandraMixin.REDO_HISTORY_TABLE_NAME:redoHistoryTableName;
-        DatabaseOperations.CreateRedoHistoryTable(musicNamespace,rhName);
         if(partitions == null){
             logger.error("Partitions was not correctly initialized");
             throw new MDBCServiceException("Partition was not correctly initialized");
@@ -68,25 +65,29 @@ public class TablesConfiguration {
                     throw new MDBCServiceException("Replication factor and partition id are both empty, and this is an invalid configuration");
                 }
                 //1) Create a row in the partition info table
-                partitionId = DatabaseOperations.createPartitionInfoRow(musicNamespace,pitName,partitionInfo.replicationFactor,partitionInfo.tables,null);
+                //partitionId = DatabaseOperations.createPartitionInfoRow(musicNamespace,pitName,partitionInfo.replicationFactor,partitionInfo.tables,null);
 
             }
             else{
                 partitionId = partitionInfo.partitionId;
             }
             //2) Create a row in the transaction information table
-            String mriTableIndex = DatabaseOperations.CreateEmptyTitRow(musicNamespace,mriTableName,partitionId,null);
+            UUID mriTableIndex = DatabaseOperations.CreateEmptyMriRow(musicNamespace,mriTableName,"",null,partitionInfo.getTables());
             //3) Add owner and tit information to partition info table
             RedoRow newRedoRow = new RedoRow(mriTableName,mriTableIndex);
-            DatabaseOperations.updateRedoRow(musicNamespace,pitName,partitionId,newRedoRow,partitionInfo.owner,null);
+            //DatabaseOperations.updateRedoRow(musicNamespace,pitName,partitionId,newRedoRow,partitionInfo.owner,null);
             //4) Update ttp with the new partition
-            for(String table: partitionInfo.tables) {
-                DatabaseOperations.updateTableToPartition(musicNamespace, ttpName, table, partitionId, null);
-            }
+            //for(String table: partitionInfo.tables) {
+                //DatabaseOperations.updateTableToPartition(musicNamespace, ttpName, table, partitionId, null);
+            //}
             //5) Add it to the redo history table
-            DatabaseOperations.createRedoHistoryBeginRow(musicNamespace,rhName,newRedoRow,partitionId,null);
+            //DatabaseOperations.createRedoHistoryBeginRow(musicNamespace,rhName,newRedoRow,partitionId,null);
             //6) Create config for this node
-            nodeConfigs.add(new NodeConfiguration(String.join(",",partitionInfo.tables),mriTableIndex,mriTableName,partitionId,sqlDatabaseName,partitionInfo.owner,musicTxDigestTableName));
+            StringBuilder newStr = new StringBuilder();
+            for(Range r: partitionInfo.tables){
+                newStr.append(r.toString()).append(",");
+            }
+            nodeConfigs.add(new NodeConfiguration(newStr.toString(),mriTableIndex,mriTableName,sqlDatabaseName,partitionInfo.owner,musicTxDigestTableName));
         }
         return nodeConfigs;
     }
@@ -121,18 +122,18 @@ public class TablesConfiguration {
     }
 
     public class PartitionInformation{
-        private List<String> tables;
+        private List<Range> tables;
         private String owner;
         private String mriTableName;
         private String mtxdTableName;
         private String partitionId;
         private int replicationFactor;
 
-        public List<String> getTables() {
+        public List<Range> getTables() {
             return tables;
         }
 
-        public void setTables(List<String> tables) {
+        public void setTables(List<Range> tables) {
             this.tables = tables;
         }
 

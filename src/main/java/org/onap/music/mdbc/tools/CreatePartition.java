@@ -5,6 +5,8 @@ import org.onap.music.mdbc.configurations.NodeConfiguration;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
+import java.util.UUID;
+
 public class CreatePartition {
     public static final EELFLoggerDelegate LOG = EELFLoggerDelegate.getLogger(CreatePartition.class);
 
@@ -23,9 +25,6 @@ public class CreatePartition {
      @Parameter(names = { "-r", "--music-tx-digest-table-name" }, required = true,
                          description = "Music Transaction Digest Table name")
      private String mtxdTable;
-    @Parameter(names = { "-p", "--partition-id" }, required = true,
-            description = "Partition Id")
-    private String partitionId;
     @Parameter(names = { "-h", "-help", "--help" }, help = true,
             description = "Print the help message")
     private boolean help = false;
@@ -36,7 +35,7 @@ public class CreatePartition {
     }
 
     public void convert(){
-        config = new NodeConfiguration(tables, mriIndex,mriTable,partitionId,"test","", mtxdTable);
+        config = new NodeConfiguration(tables, UUID.fromString(mriIndex),mriTable,"test","", mtxdTable);
     }
 
     public void saveToFile(){
