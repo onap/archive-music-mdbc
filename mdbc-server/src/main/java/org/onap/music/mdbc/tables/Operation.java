@@ -24,6 +24,8 @@ import java.io.Serializable;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import static java.util.Objects.hash;
+
 public final class Operation implements Serializable{
 
 	private static final long serialVersionUID = -1215301985078183104L;
@@ -50,6 +52,11 @@ public final class Operation implements Serializable{
 	
     public OperationType getOperationType() {
     	return this.TYPE;
+    }
+
+    @Override
+    public int hashCode(){
+        return hash(TYPE,NEW_VAL);
     }
 
     @Override

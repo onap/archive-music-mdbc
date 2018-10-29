@@ -38,6 +38,7 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 
 import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.Operation;
@@ -49,6 +50,7 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.update.Update;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 /**
  * This class provides the methods that MDBC needs in order to mirror data to/from a
@@ -586,7 +588,7 @@ NEW.field refers to the new value
 						// the actual columns, otherwise performance when doing range queries are going 
 						// to be even worse (see the else bracket down)
                         //
-						String musicKey = mi.generateUniqueKey();
+						String musicKey = MDBCUtils.generateUniqueKey().toString();
 					/*} else {
 						//get key from data
 						musicKey = msm.getMusicKeyFromRowWithoutPrimaryIndexes(tbl,newRow);
@@ -647,7 +649,7 @@ NEW.field refers to the new value
 				 
 				JSONObject jo = new JSONObject();
 				if (!getTableInfo(tableName).hasKey()) {
-						String musicKey = mi.generateUniqueKey();
+						String musicKey = MDBCUtils.generateUniqueKey().toString();
 						jo.put(mi.getMusicDefaultPrimaryKeyName(), musicKey);	
 				}
 					
@@ -690,7 +692,12 @@ NEW.field refers to the new value
 		// 
 		return null;
 	}
-	
+
+
+	public String applyDigest(Map<Range, StagingTable> digest){
+		throw new NotImplementedException();
+	}
+
 	@SuppressWarnings("unused")
 	@Deprecated
 	private ArrayList<String> getMusicKey(String sql) {
@@ -807,7 +814,6 @@ NEW.field refers to the new value
 	/**
 	 * Parse the transaction digest into individual events
 	 * @param transaction - base 64 encoded, serialized digest
-	 * @param dbi 
 	 */
 	public void replayTransaction(HashMap<Range,StagingTable> transaction) throws SQLException {
 		boolean autocommit = jdbcConn.getAutoCommit();
@@ -840,7 +846,7 @@ NEW.field refers to the new value
 	
 	/**
 	 * Replays operation into database, usually from txDigest
-	 * @param stmt
+	 * @param jdbcStmt
 	 * @param r
 	 * @param op
 	 * @throws SQLException 

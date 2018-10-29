@@ -19,8 +19,9 @@
  */
 package org.onap.music.mdbc;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.onap.music.exceptions.MDBCServiceException;
-import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
@@ -71,16 +72,16 @@ public class StateManager {
     
     /** Identifier for this server instance */
     private String mdbcServerName;
+    private Map<String,DatabasePartition> connectionRanges;//Each connection owns its own database partition
     
-    @SuppressWarnings("unused")
-	private DatabasePartition ranges;
 
-	public StateManager(String sqlDBUrl, Properties info, DatabasePartition ranges, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
+	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
         this.sqlDBName = sqlDBName;
-        this.ranges = ranges;
         this.sqlDBUrl = sqlDBUrl;
         this.info = info;
         this.mdbcServerName = mdbcServerName;
+    
+        this.connectionRanges = new HashMap<>();
         this.transactionInfo = new TxCommitProgress();
         //\fixme this might not be used, delete?
         try {
@@ -102,9 +103,7 @@ public class StateManager {
     }
 
     /**
-     * Initialize the connections to music, set up any necessary tables in music
-     * @param mixin
-     * @param cassandraUrl
+     * Initialize all the  interfaces and datastructures
      * @throws MDBCServiceException
      */
     protected void initMusic() throws MDBCServiceException {
@@ -118,7 +117,8 @@ public class StateManager {
             Class.forName("org.mariadb.jdbc.Driver");
         }
         catch (ClassNotFoundException e) {
-            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
+            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
+                    ErrorTypes.GENERALSERVICEERROR);
             return;
         }
         try {
@@ -129,7 +129,8 @@ public class StateManager {
             Statement stmt = sqlConnection.createStatement();
             stmt.execute(sql.toString());
         } catch (SQLException e) {
-            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
+            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
+                    ErrorTypes.GENERALSERVICEERROR);
             throw new MDBCServiceException(e.getMessage());
         }
     }
@@ -138,15 +139,11 @@ public class StateManager {
     	return this.musicInterface;
     }
     
-    public DatabasePartition getRanges() {
-		return ranges;
+    public List<DatabasePartition> getRanges() {
+        return new ArrayList<>(connectionRanges.values());
 	}
 
-	public void setRanges(DatabasePartition ranges) {
-		this.ranges = ranges;
-	}
-    
-    
+
     public void closeConnection(String connectionId){
         //\TODO check if there is a race condition
         if(mdbcConnections.containsKey(connectionId)) {
@@ -156,9 +153,14 @@ public class StateManager {
                 if(conn!=null)
                     conn.close();
             } catch (SQLException e) {
-                logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
+                logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
+                        ErrorTypes.GENERALSERVICEERROR);
             }
             mdbcConnections.remove(connectionId);
+        }
+        if(connectionRanges.containsKey(connectionId)){
+            //TODO release lock?
+            connectionRanges.remove(connectionId);
         }
     }
 
@@ -179,20 +181,34 @@ public class StateManager {
            }
            catch (ClassNotFoundException e) {
                // TODO Auto-generated catch block
-               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
+               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
+                            ErrorTypes.GENERALSERVICEERROR);
                return;
            }
            try {
                sqlConnection = DriverManager.getConnection(this.sqlDBUrl+"/"+this.sqlDBName, this.info);
            } catch (SQLException e) {
-               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.QUERYERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
+               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.QUERYERROR, ErrorSeverity.CRITICAL,
+                       ErrorTypes.QUERYERROR);
                sqlConnection = null;
+           }
+           //check if a range was already created for this connection
+           //TODO: later we could try to match it to some more sticky client id
+           DatabasePartition ranges;
+           if(connectionRanges.containsKey(id)){
+              ranges=connectionRanges.get(id);
+           }
+           else{
+              ranges=new DatabasePartition();
+              connectionRanges.put(id,ranges);
            }
            //Create MDBC connection
            try {
-               newConnection = new MdbcConnection(id, this.sqlDBUrl+"/"+this.sqlDBName, sqlConnection, info, this.musicInterface, transactionInfo,ranges);
+               newConnection = new MdbcConnection(id, this.sqlDBUrl+"/"+this.sqlDBName, sqlConnection, info, this.musicInterface,
+                   transactionInfo,ranges);
            } catch (MDBCServiceException e) {
-               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
+               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
+                       ErrorTypes.QUERYERROR);
                newConnection = null;
                return;
            }
@@ -227,7 +243,8 @@ public class StateManager {
         }
         catch (ClassNotFoundException e) {
             // TODO Auto-generated catch block
-            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.QUERYERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
+            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.QUERYERROR, ErrorSeverity.CRITICAL,
+                    ErrorTypes.QUERYERROR);
         }
 
         //Create connection to local SQL DB
@@ -235,14 +252,27 @@ public class StateManager {
 			sqlConnection = DriverManager.getConnection(this.sqlDBUrl+"/"+this.sqlDBName, this.info);
 		} catch (SQLException e) {
 		    logger.error("sql connection was not created correctly");
-			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.QUERYERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
+			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.QUERYERROR, ErrorSeverity.CRITICAL,
+                    ErrorTypes.QUERYERROR);
 			sqlConnection = null;
 		}
+		//check if a range was already created for this connection
+        //TODO: later we could try to match it to some more sticky client id
+        DatabasePartition ranges;
+        if(connectionRanges.containsKey(id)){
+            ranges=connectionRanges.get(id);
+        }
+        else{
+            ranges=new DatabasePartition();
+            connectionRanges.put(id,ranges);
+        }
 		//Create MDBC connection
     	try {
-			newConnection = new MdbcConnection(id,this.sqlDBUrl+"/"+this.sqlDBName, sqlConnection, info, this.musicInterface, transactionInfo,ranges);
+			newConnection = new MdbcConnection(id,this.sqlDBUrl+"/"+this.sqlDBName, sqlConnection, info, this.musicInterface,
+                transactionInfo,ranges);
 		} catch (MDBCServiceException e) {
-			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
+			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
+                    ErrorTypes.QUERYERROR);
 			newConnection = null;
 		}
 		logger.info(EELFLoggerDelegate.applicationLogger,"Connection created for connection: "+id);

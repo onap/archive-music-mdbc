@@ -1,7 +1,8 @@
 .idea
 target
-mdbc.iml
+*.iml
 .project
 .settings
 .classpath
 .checkstyle
+catalina*

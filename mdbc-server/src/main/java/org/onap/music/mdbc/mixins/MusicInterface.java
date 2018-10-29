@@ -28,12 +28,12 @@ import org.json.JSONObject;
 
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicServiceException;
+import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
-import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
@@ -42,7 +42,26 @@ import org.onap.music.mdbc.tables.TxCommitProgress;
  *
  * @author Robert P. Eby
  */
-public interface MusicInterface {	
+public interface MusicInterface {
+	class OwnershipReturn{
+		private final String ownerId;
+		private final UUID rangeId;
+		private List<UUID> oldIds;
+		public OwnershipReturn(String ownerId, UUID rangeId, List<UUID> oldIds){
+			this.ownerId=ownerId;
+			this.rangeId=rangeId;
+			this.oldIds=oldIds;
+		}
+		public String getOwnerId(){
+		    return ownerId;
+        }
+        public UUID getRangeId(){
+		    return rangeId;
+        }
+        public List<UUID> getOldIRangeds(){
+            return oldIds;
+        }
+	}
 	/**
 	 * Get the name of this MusicInterface mixin object.
 	 * @return the name
@@ -57,7 +76,7 @@ public interface MusicInterface {
 	 * generates a key or placeholder for what is required for a primary key
 	 * @return a primary key
 	 */
-	String generateUniqueKey();
+	UUID generateUniqueKey();
 
 	/**
 	 * Find the key used with Music for a table that was created without a primary index
@@ -68,7 +87,8 @@ public interface MusicInterface {
 	 * @param dbRow row obtained from the SQL layer
 	 * @return key associated with the row
 	 */
-	String getMusicKeyFromRowWithoutPrimaryIndexes(TableInfo ti, String table, JSONObject dbRow);
+	String getMusicKeyFromRowWithoutPrimaryIndexes(TableInfo ti, String table, JSONObject dbRow)
+	;
 	/**
 	 * Do what is needed to close down the MUSIC connection.
 	 */
@@ -157,30 +177,98 @@ public interface MusicInterface {
 	/**
 	 * Commits the corresponding REDO-log into MUSIC
 	 *
-	 * @param partition
-	 * @param transactionDigest digest of the transaction that is being committed into the Redo log in music. It has to be a HashMap, because it is required to be serializable
+	 * @param partition information related to ownership of partitions, used to verify ownership when commiting the Tx
+	 * @param transactionDigest digest of the transaction that is being committed into the Redo log in music. It has to
+     * be a HashMap, because it is required to be serializable
 	 * @param txId id associated with the log being send
 	 * @param progressKeeper data structure that is used to handle to detect failures, and know what to do
 	 * @throws MDBCServiceException
 	 */
 	void commitLog(DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
+
+    /**
+     * This function is used to obtain the information related to a specific row in the MRI table
+     * @param partitionIndex index of the row that is going to be retrieved
+     * @return all the information related to the table
+     * @throws MDBCServiceException
+     */
 	MusicRangeInformationRow getMusicRangeInformation(UUID partitionIndex) throws MDBCServiceException;
 
+    /**
+     * This function is used to create a new row in the MRI table
+     * @param info the information used to create the row
+     * @return the new partition object that contain the new information used to create the row
+     * @throws MDBCServiceException
+     */
 	DatabasePartition createMusicRangeInformation(MusicRangeInformationRow info) throws MDBCServiceException;
-	
+
+    /**
+     * This function is used to append an index to the redo log in a MRI row
+     * @param mriRowId mri row index to which we are going to append the index to the redo log
+     * @param partition information related to ownership of partitions, used to verify ownership
+     * @param newRecord index of the new record to be appended to the redo log
+     * @throws MDBCServiceException
+     */
 	void appendToRedoLog(UUID mriRowId, DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException;
-	
+
+    /**
+     * This functions adds the tx digest to
+     * @param newId id used as index in the MTD table
+     * @param transactionDigest digest that contains all the changes performed in the transaction
+     * @throws MDBCServiceException
+     */
 	void addTxDigest(MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException;
 
+    /**
+     * Function used to retrieve a given transaction digest and deserialize it
+     * @param id of the transaction digest to be retrieved
+     * @return the deserialize transaction digest that can be applied to the local SQL database
+     * @throws MDBCServiceException
+     */
 	HashMap<Range,StagingTable> getTxDigest(MusicTxDigestId id) throws MDBCServiceException;
-	
-	void own(List<Range> ranges);
 
-	void appendRange(String rangeId, List<Range> ranges);
+    /**
+     * Use this functions to verify ownership, and own new ranges
+     * @param ranges the ranges that should be own after calling this function
+     * @param partition current information of the ownership in the system
+     * @return an object indicating the status of the own function result
+     * @throws MDBCServiceException
+     */
+	OwnershipReturn own(List<Range> ranges, DatabasePartition partition) throws MDBCServiceException;
 
-	void relinquish(String ownerId, String rangeId);
-	public List<UUID> getPartitionIndexes();
+    /**
+     * This function relinquish ownership, if it is time to do it, it should be used at the end of a commit operation
+     * @param partition information of the partition that is currently being owned
+     * @throws MDBCServiceException
+     */
+	void relinquishIfRequired(DatabasePartition partition) throws MDBCServiceException;
 
+    /**
+     * This function is in charge of owning all the ranges requested and creating a new row that show the ownership of all
+     * those ranges.
+     * @param rangeId new id to be used in the new row
+     * @param ranges ranges to be owned by the end of the function called
+     * @param partition current ownership status
+     * @return
+     * @throws MDBCServiceException
+     */
+	OwnershipReturn appendRange(String rangeId, List<Range> ranges, DatabasePartition partition) throws MDBCServiceException;
+
+    /**
+     * This functions relinquishes a range
+     * @param ownerId id of the current ownerh
+     * @param rangeId id of the range to be relinquished
+     * @throws MusicLockingException
+     */
+	void relinquish(String ownerId, String rangeId) throws MDBCServiceException;
+
+    /**
+     * This function return all the range indexes that are currently hold by any of the connections in the system
+     * @return list of ids of rows in MRI
+     */
+	List<UUID> getPartitionIndexes() throws MDBCServiceException;
+
+	void replayTransaction(HashMap<Range,StagingTable> digest) throws MDBCServiceException;
 }
 

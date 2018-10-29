@@ -71,25 +71,34 @@ public class MusicTxDigest {
 		DBInterface dbi = ((MdbcConnection) stateManager.getConnection("daemon")).getDBInterface();
 
 		while (true) {
+			Thread.sleep(TimeUnit.SECONDS.toMillis(daemonSleepTimeS));
 			//update
 			logger.info(String.format("[%s] Background MusicTxDigest daemon updating local db",
 					new Timestamp(System.currentTimeMillis())));
 			
 			//1) get all other partitions from musicrangeinformation
-			List<UUID> partitions = mi.getPartitionIndexes();
+			List<UUID> partitions = null;
+			try {
+				partitions = mi.getPartitionIndexes();
+			} catch (MDBCServiceException e) {
+			    logger.error("Error obtainting partition indexes, trying again next iteration");
+			    continue;
+			}
 			//2) for each partition I don't own
-			DatabasePartition myPartition = stateManager.getRanges();
-			for (UUID partition: partitions) {
-				if (!partition.equals(myPartition.getMusicRangeInformationIndex())){
-					try {
-						replayDigestForPartition(mi, partition, dbi);
-					} catch (MDBCServiceException e) {
-						logger.error("Unable to update for partition : " + partition + ". " + e.getMessage());
-						continue;
+			List<DatabasePartition> ranges = stateManager.getRanges();
+			if(ranges.size()!=0) {
+				DatabasePartition myPartition = ranges.get(0);
+				for (UUID partition : partitions) {
+					if (!partition.equals(myPartition.getMusicRangeInformationIndex())) {
+						try {
+							replayDigestForPartition(mi, partition, dbi);
+						} catch (MDBCServiceException e) {
+							logger.error("Unable to update for partition : " + partition + ". " + e.getMessage());
+							continue;
+						}
 					}
 				}
 			}
-			Thread.sleep(TimeUnit.SECONDS.toMillis(daemonSleepTimeS));
 		}
 	}
 	
@@ -100,7 +109,7 @@ public class MusicTxDigest {
 	 * @param dbi interface to the database that will replay the operations
 	 * @throws MDBCServiceException
 	 */
-	public void replayDigestForPartition(MusicInterface mi, UUID partitionId, DBInterface dbi) throws MDBCServiceException {
+	public static void replayDigestForPartition(MusicInterface mi, UUID partitionId, DBInterface dbi) throws MDBCServiceException {
 		List<MusicTxDigestId> partitionsRedoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
 		for (MusicTxDigestId txId: partitionsRedoLogTxIds) {
 			HashMap<Range, StagingTable> transaction = mi.getTxDigest(txId);

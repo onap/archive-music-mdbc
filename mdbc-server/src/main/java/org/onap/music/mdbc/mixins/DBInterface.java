@@ -111,11 +111,13 @@ public interface DBInterface {
 	List<String> getReservedTblNames();
 	
 	String getPrimaryKey(String sql, String tableName);
-	
+
+	String applyDigest(Map<Range,StagingTable> digest);
+
 	/**
 	 * Replay a given TxDigest into the local DB
 	 * @param digest
 	 * @throws SQLException if replay cannot occur correctly
 	 */
-	public void replayTransaction(HashMap<Range,StagingTable> digest) throws SQLException;
+	void replayTransaction(HashMap<Range,StagingTable> digest) throws SQLException;
 }

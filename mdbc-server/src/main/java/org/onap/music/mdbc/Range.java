@@ -29,11 +29,11 @@ import java.util.Objects;
  * In the future we may decide to partition ranges differently
  * @author Enrique Saurez 
  */
-public class Range implements Serializable {
+public class Range implements Serializable, Cloneable{
 
 	private static final long serialVersionUID = 1610744496930800088L;
 
-	final public String table;
+	public String table;
 
 	public Range(String table) {
 		this.table = table;
@@ -58,8 +58,22 @@ public class Range implements Serializable {
 	public int hashCode(){
 		return Objects.hash(table);
 	}
-	
+
+	@Override
+    protected Range clone() {
+	    Range newRange = null;
+	    try{
+            newRange = (Range) super.clone();
+            newRange.table = this.table;
+        }
+        catch(CloneNotSupportedException cns){
+	        //\TODO add logging
+        }
+        return newRange;
+
+    }
 	public boolean overlaps(Range other) {
-		return table == other.table;
+		return table.equals(other.table);
 	}
+
 }

@@ -25,6 +25,7 @@ import java.util.Base64;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -122,4 +123,12 @@ public class MDBCUtils {
 		}
 		return prop;
 	}
+
+	public static List<Range> getTables(Map<String,List<String>> queryParsed){
+	    List<Range> ranges = new ArrayList<>();
+	    for(String table: queryParsed.keySet()){
+	       ranges.add(new Range(table));
+        }
+	    return ranges;
+    }
 }

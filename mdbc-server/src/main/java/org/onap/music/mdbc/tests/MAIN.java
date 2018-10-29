@@ -25,10 +25,10 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.log4j.Logger;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.onap.music.logging.EELFLoggerDelegate;
 
 /**
  * Run all the tests against all the configurations specified in /tests.json.
@@ -86,7 +86,8 @@ public class MAIN {
 		}
 	}
 	public void run() {
-		Logger logger = Logger.getLogger(this.getClass());
+
+		EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(this.getClass());
 		for (int ix = 0; ix < configs.length(); ix++) {
 			JSONObject config = configs.getJSONObject(ix);
 			int succ = 0, fail = 0;
