@@ -1,3 +1,7 @@
 .idea
 target
 mdbc.iml
+.project
+.settings
+.classpath
+.checkstyle

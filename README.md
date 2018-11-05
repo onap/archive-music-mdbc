@@ -36,9 +36,8 @@ run mysql/mariadb (5.7+, 10.2.3+)
 Download and install MUSIC (branch dev-cassandra-only). Install the jar into your local maven repository (from MUSIC home run)
 mvn install:install-file -Dfile=target/MUSIC.jar -DpomFile=./pom.xml
 
-
 1) Create a configuration file using as a template:
-src/main/java/org/onap/music/mdbc/configurations/tableConfiguration.json
+mdbc-server/src/main/java/org/onap/music/mdbc/configurations/tableConfiguration.json
 
 The meaning of the fields is as follows: 
 
@@ -57,11 +56,11 @@ o	replicationFactor: indicates the needs of replication for this partition (the 
 
 2) Create the configuration for each node using the command line program in the following location:
 
-src/main/java/org/onap/music/mdbc/tools/CreateNodeConfiguration.java
+mdbc-server/src/main/java/org/onap/music/mdbc/tools/CreateNodeConfiguration.java
 
 To run it, use the following parameters:
 
--t ../ETDB/src/main/java/org/onap/music/mdbc/configurations/tableConfiguration.json -b base -o /Users/quique/Desktop/
+-t mdbc-server/src/main/java/org/onap/music/mdbc/configurations/tableConfiguration.json -b base -o /Users/quique/Desktop/
 
 This program is going to generate all the required configuration json for each ETDB node in the system and additionally initialize all the corresponding rows and tables for the system to correctly work. The meaning of the parameters is:
 •	-t: the tableConfiguration.json explained in the step 1
@@ -75,11 +74,11 @@ Some notes about the limitations of this command line program:
 
 3) Run each of the server in its corresponding node: The ETDB server can be found in the file:
  
-src/main/java/org/onap/music/mdbc/MdbcServer.java
+mdbc-server/src/main/java/org/onap/music/mdbc/MdbcServer.java
  
 It requires three parameters:
 
- -c ../ETDB/src/main/java/org/onap/music/mdbc/configurations/config-0.json -u jdbc:mysql://localhost -p 30000
+ -c mdbc-server/src/main/java/org/onap/music/mdbc/configurations/config-0.json -u jdbc:mysql://localhost -p 30000
 
  -c is a json with the configuration created in step 2. 
 •	-u is where the local mysql database is located (without the database name, just the url, see example)
@@ -87,7 +86,7 @@ It requires three parameters:
 
 4) Run the clients. A client example can be found in this folder:
  
-src/main/java/org/onap/music/mdbc/examples
+mdbc-server/src/main/java/org/onap/music/mdbc/examples
 
 ## Building METRIC
 
