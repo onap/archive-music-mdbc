@@ -21,88 +21,56 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.onap.music.mdbc</groupId>
-    <artifactId>mdbc</artifactId>
+    <artifactId>mdbc-server</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>mdbc</name>
-    <description>
-        A JDBC implementation that proxies between a primary database (defined by DBInterface.java)
-        and MUSIC (defined by MusicInterface.java).
-
-        The primary database is normally H2, and MUSIC is normally Cassandra.
-    </description>
-    <packaging>pom</packaging>
+    <name>mdbc-server</name>
+    <description>MDBC Server</description>
+    <packaging>jar</packaging>
 
     <parent>
-        <groupId>org.onap.oparent</groupId>
-        <artifactId>oparent</artifactId>
-        <version>1.2.1</version>
+        <groupId>org.onap.music.mdbc</groupId>
+        <artifactId>mdbc</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
     </parent>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.build.timestamp.format>yyyyMMdd'T'HHmm</maven.build.timestamp.format>
-    </properties>
-
-    <pluginRepositories>
-        <pluginRepository>
-            <id>central</id>
-            <url>http://repo1.maven.org/maven2</url>
-        </pluginRepository>
-        <pluginRepository>
-            <id>ecomp-public</id>
-            <url>${onap.nexus.url}/${publicNexusPath}</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </pluginRepository>
-        <pluginRepository>
-            <id>ecomp-release</id>
-            <url>${onap.nexus.url}/${releaseNexusPath}</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </pluginRepository>
-        <pluginRepository>
-            <id>ecomp-snapshots</id>
-            <url>${onap.nexus.url}/${snapshotNexusPath}</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-        </pluginRepository>
-    </pluginRepositories>
-    <repositories>
-        <repository>
-            <id>ecomp-public</id>
-            <url>${onap.nexus.url}/content/repositories/public/</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>ecomp-releases</id>
-            <url>${onap.nexus.url}/content/repositories/releases/</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>ecomp-snapshots</id>
-            <url>${onap.nexus.url}/content/repositories/snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-        </repository>
-    </repositories>
-
-    <modules>
-        <module>mdbc-server</module>
-    </modules>
 
     <dependencies>
         <dependency>
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
             <version>3.3.0</version>
+        </dependency>
+        <dependency>
+          <!-- The oparent dependency managed version 26.0-jre will not work -->
+          <!-- 19.0 is needed by cassandra-driver-core 3.3.0 -->
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+          <version>19.0</version>
+        </dependency>
+        <dependency>
+          <!-- The oparent dependency managed version 9.4.12.v20180830 will not work -->
+          <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
+          <groupId>org.eclipse.jetty</groupId>
+          <artifactId>jetty-http</artifactId>
+          <version>9.2.19.v20160908</version>
+        </dependency>
+        <dependency>
+          <!-- The oparent dependency managed version 9.4.12.v20180830 will not work -->
+          <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
+          <groupId>org.eclipse.jetty</groupId>
+          <artifactId>jetty-server</artifactId>
+          <version>9.2.19.v20160908</version>
+        </dependency>
+        <dependency>
+          <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
+          <groupId>org.eclipse.jetty</groupId>
+          <artifactId>jetty-security</artifactId>
+          <version>9.2.19.v20160908</version>
+        </dependency>
+        <dependency>
+          <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
+          <groupId>org.eclipse.jetty</groupId>
+          <artifactId>jetty-util</artifactId>
+          <version>9.2.19.v20160908</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
@@ -208,41 +176,23 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.6.1</version>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.1.0</version>
                 <configuration>
-                    <debug>true</debug>
-                    <compilerArgument>-Xlint</compilerArgument>
-                    <verbose>true</verbose>
-                    <showDeprecation>true</showDeprecation>
-                    <showWarnings>true</showWarnings>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <compilerArgs>
-                        <arg>-parameters</arg>
-                    </compilerArgs>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
                 </configuration>
+                <executions>
+                    <execution>
+                      <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                      <phase>package</phase> <!-- bind to the packaging phase -->
+                      <goals>
+                          <goal>single</goal>
+                      </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
-
-    <reporting>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.10.3</version>
-                <configuration>
-                    <author>true</author>
-                    <breakiterator>true</breakiterator>
-                    <version>true</version>
-                    <links>
-                        <link>https://docs.oracle.com/javase/8/docs/api/</link>
-                        <link>https://docs.oracle.com/javaee/8/api/</link>
-                    </links>
-                </configuration>
-            </plugin>
-        </plugins>
-    </reporting>
 </project>
