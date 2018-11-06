@@ -19,7 +19,6 @@
  */
 package org.onap.music.mdbc;
 
-import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicUtil;
 
 import java.util.ArrayList;
@@ -27,7 +26,6 @@ import java.util.Arrays;
 import java.util.Properties;
 
 public class TestUtils {
-    private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(TestUtils.class);
 
     public static void populateMusicUtilsWithProperties(Properties prop){
         //TODO: Learn how to do this properly within music
@@ -36,9 +34,6 @@ public class TestUtils {
             String key = propKeys[k];
             if (prop.containsKey(key) && prop.get(key) != null) {
                 switch (key) {
-                    case "zookeeper.host":
-                        MusicUtil.setMyZkHost(prop.getProperty(key));
-                        break;
                     case "cassandra.host":
                         MusicUtil.setMyCassaHost(prop.getProperty(key));
                         break;
@@ -91,8 +86,7 @@ public class TestUtils {
                         MusicUtil.setAafEndpointUrl(prop.getProperty(key));
                         break;
                     default:
-                        logger.error(EELFLoggerDelegate.errorLogger,
-                                "No case found for " + key);
+                        System.out.println("No case found for " + key);
                 }
             }
         }
