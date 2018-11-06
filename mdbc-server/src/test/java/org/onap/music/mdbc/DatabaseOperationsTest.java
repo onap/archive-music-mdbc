@@ -23,21 +23,25 @@ import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.exceptions.SyntaxError;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.zookeeper.ZooKeeper;
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.onap.music.datastore.CassaDataStore;
+import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
-import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicCore;
 import org.onap.music.main.MusicUtil;
 import org.onap.music.main.ResultType;
 import org.onap.music.main.ReturnType;
 import org.onap.music.mdbc.tables.*;
+
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -52,64 +56,60 @@ import java.util.concurrent.locks.ReentrantLock;
 import static org.junit.Assert.*;
 
 public class DatabaseOperationsTest {
-    private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(DatabaseOperationsTest.class);
 
     final private String keyspace="metricmusictest";
     final private String mriTableName = "musicrangeinformation";
     final private String mtdTableName = "musictxdigest";
 
-
-    // Lock and cojndition variable used to test connection to zookeeper
-    final private Lock lock = new ReentrantLock();
-    final private Condition ready = lock.newCondition();
-    //Flag used to detect connection failures before running any tests in metric
-    private boolean first=true;
     //Properties used to connect to music
-    private Properties prop= new Properties();
-    private Cluster cluster;
-    private Session session;
+    private static Cluster cluster;
+    private static Session session;
+    private static String cassaHost = "localhost";
+    
+    @BeforeClass
+    public static void init() throws MusicServiceException {
+    	try {
+    		EmbeddedCassandraServerHelper.startEmbeddedCassandra();
+    	} catch (Exception e) {
+    		System.out.println(e);
+    	}
+        
+    	cluster = new Cluster.Builder().addContactPoint(cassaHost).withPort(9142).build();
+        cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(20000);
+        session = cluster.connect();
+        
+        assertNotNull("Invalid configuration for cassandra", cluster);
+        session = cluster.connect();
+        assertNotNull("Invalid configuration for cassandra", session);
+//        TestUtils.populateMusicUtilsWithProperties(prop);
+        CassaDataStore store = new CassaDataStore(cluster, session);
+        assertNotNull("Invalid configuration for music", store);
+        MusicCore.mDstoreHandle = store;
+
+    }
+    
+    @AfterClass
+    public static void close() throws MusicServiceException, MusicQueryException {
+ 
+        //TODO: shutdown cassandra
+
+    }
+    
     @Before
     public void setUp() throws Exception {
         //		System.out.println("TEST 1: Getting ready for testing connection to Cassandra");
-//
-        if(first) {
-            //Read properties file to access cassandra and zookeeper
-            readPropertiesFile();
-            //Test cassandra is correctly running
-            String cassaHost = prop.getProperty("cassandra.host",MusicUtil.getMyCassaHost());
-            String cassaUser = prop.getProperty("cassandra.user",MusicUtil.getCassName());
-            String cassaPwd = prop.getProperty("cassandra.password",MusicUtil.getCassPwd());
-            cluster = Cluster.builder().addContactPoints(cassaHost)
-                    .withCredentials(cassaUser,cassaPwd).build();
-            assertNotNull("Invalid configuration for cassandra", cluster);
-            session = cluster.connect();
-            assertNotNull("Invalid configuration for cassandra", session);
-            TestUtils.populateMusicUtilsWithProperties(prop);
-            //Test zookeeper is correctly running
-            String zookeeperHost = MusicUtil.getMyZkHost();
-            assertTrue(!zookeeperHost.isEmpty());
-            ZooKeeper zk = new ZooKeeper(zookeeperHost+":2181",3000,
-                    we -> {
-                        lock.lock();
-                        ready.signalAll();
-                        lock.unlock();
-                    });
-            lock.lock();
-            ready.await(10, TimeUnit.SECONDS);
-            assertEquals(zk.getState(), ZooKeeper.States.CONNECTED);
-            assertNotNull("Invalid configuration for zookeper", zk);
-            long sessionId = zk.getSessionId();
-            assertNotEquals(sessionId,0);
-            zk.close();
-            CassaDataStore store = MusicCore.getDSHandle();
-            assertNotNull("Invalid configuration for music", store);
-            first = false;
-        }
         //Create keyspace
+
+    	
         createKeyspace();
         useKeyspace();
     }
 
+    @After
+    public void tearDown() {
+        deleteKeyspace();
+    }
+    
     private void createKeyspace() {
         String queryOp = "CREATE KEYSPACE " +
                 keyspace +
@@ -141,26 +141,6 @@ public class DatabaseOperationsTest {
                 ";";
         ResultSet res = session.execute(queryBuilder);
         assertTrue("Keyspace "+keyspace+" doesn't exist and it should",res.wasApplied());
-    }
-
-    private void readPropertiesFile() {
-        try {
-            String fileLocation = MusicUtil.getMusicPropertiesFilePath();
-            InputStream fstream = new FileInputStream(fileLocation);
-            prop.load(fstream);
-            fstream.close();
-        } catch (FileNotFoundException e) {
-            logger.error("Configuration file not found");
-
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            logger.error("Exception when reading file: "+e.toString());
-        }
-    }
-
-    @After
-    public void tearDown() {
-        deleteKeyspace();
     }
 
     private void CreateMTD(){
