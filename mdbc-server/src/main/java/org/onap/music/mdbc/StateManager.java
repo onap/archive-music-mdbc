@@ -29,6 +29,7 @@ import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -78,6 +79,11 @@ public class StateManager {
         this.info = info;
         this.transactionInfo = new TxCommitProgress();
         //\fixme this is not really used, delete!
+        try {
+			info.load(this.getClass().getClassLoader().getResourceAsStream("music.properties"));
+		} catch (IOException e) {
+			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage());
+		}
         String cassandraUrl = info.getProperty(Configuration.KEY_CASSANDRA_URL, Configuration.CASSANDRA_URL_DEFAULT);
         String mixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
         init(mixin, cassandraUrl);

@@ -21,7 +21,7 @@ package org.onap.music.mdbc;
 
 public class Configuration {
     /** The property name to use to connect to cassandra*/
-    public static final String KEY_CASSANDRA_URL = "CASSANDRA_URL";
+    public static final String KEY_CASSANDRA_URL = "cassandra.host";
     /** The property name to use to enable/disable the MusicSqlManager entirely. */
     public static final String KEY_DISABLED         = "disabled";
     /** The property name to use to select the DB 'mixin'. */

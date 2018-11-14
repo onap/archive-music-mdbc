@@ -126,6 +126,11 @@
             <artifactId>eelf-core</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>1.2.3</version>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/javax.servlet/servlet-api -->
         <dependency>

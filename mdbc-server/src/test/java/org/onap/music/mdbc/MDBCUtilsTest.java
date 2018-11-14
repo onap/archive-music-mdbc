@@ -19,18 +19,19 @@
  */
 package org.onap.music.mdbc;
 
-import org.onap.music.mdbc.tables.OperationType;
-import org.onap.music.mdbc.tables.StagingTable;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.HashMap;
 
-import static org.junit.Assert.*;
+import org.json.JSONObject;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.onap.music.mdbc.tables.OperationType;
+import org.onap.music.mdbc.tables.StagingTable;
 
+@Ignore
 public class MDBCUtilsTest {
 
         @Test

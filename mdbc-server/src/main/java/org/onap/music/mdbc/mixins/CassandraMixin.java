@@ -88,7 +88,7 @@ public class CassandraMixin implements MusicInterface {
 	/** The property name to use for the comma-separated list of replica IDs. */
 	public static final String KEY_REPLICAS           = "replica_ids";
 	/** The property name to use to identify the IP address for Cassandra. */
-	public static final String KEY_MUSIC_ADDRESS      = "music_address";
+	public static final String KEY_MUSIC_ADDRESS      = "cassandra.host";
 	/** The property name to use to provide the replication factor for Cassandra. */
 	public static final String KEY_MUSIC_RFACTOR      = "music_rfactor";
 	/** The property name to use to provide the replication factor for Cassandra. */

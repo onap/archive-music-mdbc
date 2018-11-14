@@ -142,6 +142,7 @@ public class MusicSqlManager {
 			logger.debug(EELFLoggerDelegate.applicationLogger, "synchronizing tables:" + set1);
 			for (String tableName : set1) {
 				// This map will be filled in if this table was previously discovered
+				tableName = tableName.toUpperCase();
 				if (!table_set.contains(tableName) && !dbi.getReservedTblNames().contains(tableName)) {
 					logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+tableName);
 					try {
