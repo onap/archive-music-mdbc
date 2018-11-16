@@ -21,9 +21,11 @@ package org.onap.music.mdbc.configurations;
 
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
-import org.onap.music.mdbc.DatabaseOperations;
+import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.RedoRow;
+import org.onap.music.mdbc.mixins.CassandraMixin;
+import org.onap.music.mdbc.tables.MusicTxDigest;
 
 import com.google.gson.Gson;
 import org.onap.music.datastore.PreparedQueryObject;
@@ -51,6 +53,7 @@ public class TablesConfiguration {
     private String partitionInformationTableName;
     private String redoHistoryTableName;
     private String sqlDatabaseName;
+    private int musicTxDigestTimeoutS;
 
     public TablesConfiguration(){}
 
@@ -62,7 +65,7 @@ public class TablesConfiguration {
      */
     public List<NodeConfiguration> initializeAndCreateNodeConfigurations() throws MDBCServiceException {
         initInternalNamespace();
-        DatabaseOperations.createNamespace(musicNamespace, internalReplicationFactor);
+
         List<NodeConfiguration> nodeConfigs = new ArrayList<>();
         if(partitions == null){
             logger.error("Partitions was not correctly initialized");
@@ -70,12 +73,8 @@ public class TablesConfiguration {
         }
         for(PartitionInformation partitionInfo : partitions){
             String mriTableName = partitionInfo.mriTableName;
-            mriTableName = (mriTableName==null || mriTableName.isEmpty())?TIT_TABLE_NAME:mriTableName;
             //0) Create the corresponding Music Range Information table
-            DatabaseOperations.createMusicRangeInformationTable(musicNamespace,mriTableName);
-            String musicTxDigestTableName = partitionInfo.mtxdTableName;
-            musicTxDigestTableName = (musicTxDigestTableName==null || musicTxDigestTableName.isEmpty())? MUSIC_TX_DIGEST_TABLE_NAME :musicTxDigestTableName;
-            DatabaseOperations.createMusicTxDigest(musicNamespace,musicTxDigestTableName);
+
             String partitionId;
             if(partitionInfo.partitionId==null || partitionInfo.partitionId.isEmpty()){
                 if(partitionInfo.replicationFactor==0){
@@ -90,7 +89,7 @@ public class TablesConfiguration {
                 partitionId = partitionInfo.partitionId;
             }
             //2) Create a row in the transaction information table
-            UUID mriTableIndex = DatabaseOperations.createEmptyMriRow(musicNamespace,mriTableName,"",null,partitionInfo.getTables());
+            UUID mriTableIndex = MDBCUtils.generateUniqueKey();
             //3) Add owner and tit information to partition info table
             RedoRow newRedoRow = new RedoRow(mriTableName,mriTableIndex);
             //DatabaseOperations.updateRedoRow(musicNamespace,pitName,partitionId,newRedoRow,partitionInfo.owner,null);
@@ -105,13 +104,13 @@ public class TablesConfiguration {
             for(Range r: partitionInfo.tables){
                 newStr.append(r.toString()).append(",");
             }
-            nodeConfigs.add(new NodeConfiguration(newStr.toString(),mriTableIndex,mriTableName,sqlDatabaseName,partitionInfo.owner,musicTxDigestTableName));
+            nodeConfigs.add(new NodeConfiguration(newStr.toString(),mriTableIndex,sqlDatabaseName,
+            		partitionInfo.owner,musicTxDigestTimeoutS));
         }
         return nodeConfigs;
     }
 
     private void initInternalNamespace() throws MDBCServiceException {
-        DatabaseOperations.createNamespace(internalNamespace,internalReplicationFactor);
         StringBuilder createKeysTableCql = new StringBuilder("CREATE TABLE IF NOT EXISTS ")
         .append(internalNamespace)
         .append(".unsynced_keys (key text PRIMARY KEY);");

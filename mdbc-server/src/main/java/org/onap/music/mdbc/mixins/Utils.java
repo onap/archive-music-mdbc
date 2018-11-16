@@ -20,7 +20,6 @@
 package org.onap.music.mdbc.mixins;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.sql.ResultSet;
@@ -44,7 +43,7 @@ import com.datastax.driver.core.utils.Bytes;
  * @author Robert P. Eby
  */
 public class Utils {
-	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Utils.class);
+	public static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Utils.class);
 	
 	/**
 	 * Transforms and JsonObject into an array of objects
@@ -196,7 +195,7 @@ public class Utils {
 		Properties pr = null;
 		try {
 			pr = new Properties();
-			pr.load(Utils.class.getResourceAsStream("/mdbc_driver.properties"));
+			pr.load(Utils.class.getResourceAsStream("/mdbc.properties"));
 		}
 		catch (IOException e) {
 			logger.error("Could not load property file > " + e.getMessage());
@@ -214,26 +213,5 @@ public class Utils {
 				logger.error(EELFLoggerDelegate.errorLogger,"Driver class "+driver+" not found.");
 			}
 		}		
-	}
-
-	public static Properties getMdbcProperties() {
-		Properties prop = new Properties();
-		InputStream input = null;
-		try {
-			input = Utils.class.getClassLoader().getResourceAsStream("/mdbc.properties");
-			prop.load(input);
-		} catch (Exception e) {
-			logger.warn(EELFLoggerDelegate.applicationLogger, "Could load mdbc.properties."
-					+ "Proceeding with defaults " + e.getMessage());
-		} finally {
-			if (input != null) {
-				try {
-					input.close();
-				} catch (IOException e) {
-					logger.error(EELFLoggerDelegate.errorLogger, e.getMessage());
-				}
-			}
-		}
-		return prop;
 	}
 }

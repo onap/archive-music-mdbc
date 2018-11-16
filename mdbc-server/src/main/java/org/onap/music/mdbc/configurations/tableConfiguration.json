@@ -19,5 +19,6 @@
   "redoHistoryTableName": "redohistory",
   "sqlDatabaseName": "test",
   "internalNamespace": "music_internal",
-  "internalReplicationFactor": 1
+  "internalReplicationFactor": 1,
+  "musicTxDigestTimeoutS": 10 
 }

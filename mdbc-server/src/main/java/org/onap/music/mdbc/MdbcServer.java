@@ -20,6 +20,7 @@
 package org.onap.music.mdbc;
 
 import org.onap.music.mdbc.configurations.NodeConfiguration;
+import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.apache.calcite.avatica.remote.Driver.Serialization;
 import org.apache.calcite.avatica.remote.LocalService;
 import org.apache.calcite.avatica.server.HttpServer;
@@ -34,7 +35,7 @@ import java.util.Locale;
 import java.util.Properties;
 
 public class MdbcServer {
-  public static final EELFLoggerDelegate LOG = EELFLoggerDelegate.getLogger(MdbcStatement.class);
+  private static final EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MdbcStatement.class);
 
   @Parameter(names = { "-c", "--configuration" }, required = true,
       description = "This is the file that contains the ranges that are assigned to this MDBC server")
@@ -64,10 +65,11 @@ public class MdbcServer {
 
   private NodeConfiguration config;
   private HttpServer server;
+  private MdbcServerLogic meta;
 
   public void start() {
     if (null != server) {
-      LOG.error("The server was already started");
+      logger.error("The server was already started");
       Unsafe.systemExit(ExitCodes.ALREADY_STARTED.ordinal());
       return;
     }
@@ -78,7 +80,7 @@ public class MdbcServer {
     	Properties connectionProps = new Properties();
     	connectionProps.put("user", user);
     	connectionProps.put("password", password);
-    	MdbcServerLogic meta = new MdbcServerLogic(url,connectionProps,config);
+    	meta = new MdbcServerLogic(url,connectionProps,config);
     	LocalService service = new LocalService(meta);
 
     	// Construct the server
@@ -89,13 +91,14 @@ public class MdbcServer {
 
     	// Then start it
     	server.start();
-
-    	LOG.info("Started Avatica server on port {} with serialization {}", server.getPort(),
+  	  
+    	logger.info("Started Avatica server on port {} with serialization {}", server.getPort(),
     			serialization);
     } catch (Exception e) {
-    	LOG.error("Failed to start Avatica server", e);
+    	logger.error("Failed to start Avatica server", e);
     	Unsafe.systemExit(ExitCodes.START_FAILED.ordinal());
-    }
+    }  
+    
   }
 
   public void stop() {
@@ -125,9 +128,9 @@ public class MdbcServer {
 	  Runtime.getRuntime().addShutdownHook(
 			  new Thread(new Runnable() {
 				  @Override public void run() {
-					  LOG.info("Stopping server");
+					  logger.info("Stopping server");
 					  server.stop();
-					  LOG.info("Server stopped");
+					  logger.info("Server stopped");
 				  }
 			  }));
 

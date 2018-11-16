@@ -27,10 +27,10 @@ import java.util.UUID;
 import org.json.JSONObject;
 
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
-import org.onap.music.mdbc.tables.PartitionInformation;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.MriReference;
@@ -81,8 +81,9 @@ public interface MusicInterface {
 	/**
 	 * This method creates a keyspace in Music/Cassandra to store the data corresponding to the SQL tables.
 	 * The keyspace name comes from the initialization properties passed to the JDBC driver.
+	 * @throws MusicServiceException 
 	 */
-	void createKeyspace();
+	void createKeyspace() throws MDBCServiceException;
 	/**
 	 * This method performs all necessary initialization in Music/Cassandra to store the table <i>tableName</i>.
 	 * @param tableName the table to initialize MUSIC for
@@ -170,23 +171,22 @@ public interface MusicInterface {
 	 */
 	void commitLog(DBInterface dbi, DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
-	MusicRangeInformationRow getMusicRangeInformation(DatabasePartition partition) throws MDBCServiceException;
+	MusicRangeInformationRow getMusicRangeInformation(UUID partitionIndex) throws MDBCServiceException;
 
 	DatabasePartition createMusicRangeInformation(MusicRangeInformationRow info) throws MDBCServiceException;
 	
-	void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException;
+	void appendToRedoLog(UUID mriRowId, DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException;
 	
-	void addTxDigest(String musicTxDigestTable, MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException;
+	void addTxDigest(MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException;
 
-	PartitionInformation getPartitionInformation(DatabasePartition partition) throws MDBCServiceException;
+	HashMap<Range,StagingTable> getTxDigest(MusicTxDigestId id) throws MDBCServiceException;
 	
-	HashMap<Range,StagingTable> getTransactionDigest(MusicTxDigestId id) throws MDBCServiceException;
-
 	void own(List<Range> ranges);
 
 	void appendRange(String rangeId, List<Range> ranges);
 
 	void relinquish(String ownerId, String rangeId);
+	public List<UUID> getPartitionIndexes();
 
 }
 

@@ -22,13 +22,13 @@ package org.onap.music.mdbc.tables;
 import java.util.UUID;
 
 public final class MusicTxDigestId {
-	public final UUID tablePrimaryKey;
+	public final UUID txId;
 
 	public MusicTxDigestId(UUID primaryKey) {
-		this.tablePrimaryKey= primaryKey;
+		this.txId= primaryKey;
 	}
 
 	public boolean isEmpty() {
-		return (this.tablePrimaryKey==null);
+		return (this.txId==null);
 	}
 }
