@@ -35,12 +35,11 @@ import java.util.TreeSet;
 import java.util.UUID;
 
 import org.onap.music.mdbc.*;
-import org.onap.music.mdbc.DatabaseOperations;
-import org.onap.music.mdbc.tables.PartitionInformation;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
+import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
 import org.json.JSONObject;
@@ -50,6 +49,7 @@ import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.main.MusicCore;
+import org.onap.music.main.MusicCore.Condition;
 import org.onap.music.main.ResultType;
 import org.onap.music.main.ReturnType;
 
@@ -62,6 +62,7 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.TupleValue;
 
 /**
  * This class provides the methods that MDBC needs to access Cassandra directly in order to provide persistence
@@ -93,8 +94,8 @@ public class CassandraMixin implements MusicInterface {
 	public static final String KEY_MUSIC_RFACTOR      = "music_rfactor";
 	/** The property name to use to provide the replication factor for Cassandra. */
 	public static final String KEY_MUSIC_NAMESPACE = "music_namespace";
-	/** The default property value to use for the Cassandra keyspace. */
-	public static final String DEFAULT_MUSIC_KEYSPACE = "mdbc";
+	/** Namespace for the tables in MUSIC (Cassandra) */
+	public static final String DEFAULT_MUSIC_NAMESPACE = "namespace";
 	/** The default property value to use for the Cassandra IP address. */
 	public static final String DEFAULT_MUSIC_ADDRESS  = "localhost";
 	/** The default property value to use for the Cassandra replication factor. */
@@ -103,8 +104,7 @@ public class CassandraMixin implements MusicInterface {
 	public static final String MDBC_PRIMARYKEY_NAME = "mdbc_cuid";
 	/** Type of the primary key, if none is defined by the user */
 	public static final String MDBC_PRIMARYKEY_TYPE = "uuid";
-	/** Namespace for the tables in MUSIC (Cassandra) */
-	public static final String DEFAULT_MUSIC_NAMESPACE = "namespace";
+	
 	
 	//\TODO Add logic to change the names when required and create the tables when necessary
     private String musicTxDigestTableName = "musictxdigest";
@@ -155,7 +155,7 @@ public class CassandraMixin implements MusicInterface {
 		this.allReplicaIds  = null;
     }
 
-	public CassandraMixin(String url, Properties info) throws MusicServiceException {
+	public CassandraMixin(String url, Properties info) throws MDBCServiceException {
 		// Default values -- should be overridden in the Properties
 		// Default to using the host_ids of the various peers as the replica IDs (this is probably preferred)
 		this.musicAddress   = info.getProperty(KEY_MUSIC_ADDRESS, DEFAULT_MUSIC_ADDRESS);
@@ -173,11 +173,15 @@ public class CassandraMixin implements MusicInterface {
 
 		this.music_ns       = info.getProperty(KEY_MUSIC_NAMESPACE,DEFAULT_MUSIC_NAMESPACE);
 		logger.info(EELFLoggerDelegate.applicationLogger,"MusicSqlManager: music_ns="+music_ns);
-        musicRangeInformationTableName = "musicrangeinformation";
-        createMusicKeyspace();
+        createKeyspace();
     }
 
-    private void createMusicKeyspace() throws MusicServiceException {
+	/**
+	 * This method creates a keyspace in Music/Cassandra to store the data corresponding to the SQL tables.
+	 * The keyspace name comes from the initialization properties passed to the JDBC driver.
+	 */
+	@Override
+    public void createKeyspace() throws MDBCServiceException {
 
         Map<String,Object> replicationInfo = new HashMap<>();
         replicationInfo.put("'class'", "'SimpleStrategy'");
@@ -185,15 +189,14 @@ public class CassandraMixin implements MusicInterface {
 
         PreparedQueryObject queryObject = new PreparedQueryObject();
         queryObject.appendQueryString(
-                "CREATE KEYSPACE " + this.music_ns + " WITH REPLICATION = " + replicationInfo.toString().replaceAll("=", ":"));
+                "CREATE KEYSPACE IF NOT EXISTS " + this.music_ns + 
+                " WITH REPLICATION = " + replicationInfo.toString().replaceAll("=", ":"));
 
         try {
             MusicCore.nonKeyRelatedPut(queryObject, "eventual");
-        } catch (MusicServiceException e) {
-            if (e.getMessage().equals("Keyspace "+this.music_ns+" already exists")) {
-                // ignore
-            } else {
-                throw(e);
+        } catch (MusicServiceException e) {       	
+            if (!e.getMessage().equals("Keyspace "+music_ns+" already exists")) {
+            	throw new MDBCServiceException("Error creating namespace: "+music_ns+". Internal error:"+e.getErrorMessage());
             }
         }
     }
@@ -234,25 +237,12 @@ public class CassandraMixin implements MusicInterface {
 	@Override
 	public void initializeMetricDataStructures() throws MDBCServiceException {
 	    try {
-            DatabaseOperations.createMusicTxDigest(music_ns, musicTxDigestTableName);//\TODO If we start partitioning the data base, we would need to use the redotable number
- 			DatabaseOperations.createMusicRangeInformationTable(music_ns, musicRangeInformationTableName);
+            createMusicTxDigest();//\TODO If we start partitioning the data base, we would need to use the redotable number
+ 			createMusicRangeInformationTable();
 		}
 		catch(MDBCServiceException e){
             logger.error(EELFLoggerDelegate.errorLogger,"Error creating tables in MUSIC");
         }
-	}
-	
-	/**
-	 * This method creates a keyspace in Music/Cassandra to store the data corresponding to the SQL tables.
-	 * The keyspace name comes from the initialization properties passed to the JDBC driver.
-	 */
-	@Override
-	public void createKeyspace() {
-		if (keyspace_created == false) {
-			String cql = String.format("CREATE KEYSPACE IF NOT EXISTS %s WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : %d };", music_ns, music_rfactor);
-			executeMusicWriteQuery(cql);
-			keyspace_created = true;
-		}
 	}
 
 	/**
@@ -286,7 +276,7 @@ public class CassandraMixin implements MusicInterface {
 			fields.append(pfx).append(MDBC_PRIMARYKEY_NAME)
 								.append(" ")
 								.append(MDBC_PRIMARYKEY_TYPE);
-			prikey.append("mdbc_cuid");
+			prikey.append(MDBC_PRIMARYKEY_NAME);
 		}
 		String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", music_ns, tableName, fields.toString(), prikey.toString());
 		executeMusicWriteQuery(cql);
@@ -928,7 +918,7 @@ public class CassandraMixin implements MusicInterface {
 	 * Return the function for cassandra's primary key generation
 	 */
 	public String generateUniqueKey() {
-		return DatabaseOperations.generateUniqueKey().toString();
+		return MDBCUtils.generateUniqueKey().toString();
 	}
 	
 	@Override
@@ -986,7 +976,7 @@ public class CassandraMixin implements MusicInterface {
 		String pfx = "";
 		for(String keyCol: keyCols) {
 			key.append(pfx);
-			key.append(row.getString(keyCol));
+			key.append(row.get(keyCol));
 			pfx = ",";
 		}
 		String keyStr = key.toString();
@@ -1036,7 +1026,7 @@ public class CassandraMixin implements MusicInterface {
     }
 
     protected String createAndAssignLock(String fullyQualifiedKey, DatabasePartition partition) throws MDBCServiceException {
-        MriReference mriIndex = partition.getMusicRangeInformationIndex();
+        UUID mriIndex = partition.getMusicRangeInformationIndex();
 	    String lockId;
         lockId = MusicCore.createLockReference(fullyQualifiedKey);
         //\TODO Handle better failures to acquire locks
@@ -1058,11 +1048,13 @@ public class CassandraMixin implements MusicInterface {
             try {
             	MusicCore.forciblyReleaseLock(fullyQualifiedKey,lockId);
                 CassaLockStore lockingServiceHandle = MusicCore.getLockingServiceHandle();
-                CassaLockStore.LockObject lockOwner = lockingServiceHandle.peekLockQueue(music_ns, partition.getMusicRangeInformationTable(), mriIndex.index.toString());
+                CassaLockStore.LockObject lockOwner = lockingServiceHandle.peekLockQueue(music_ns,
+                		this.musicRangeInformationTableName, mriIndex.toString());
                 while(lockOwner.lockRef != lockId) {
                 	MusicCore.forciblyReleaseLock(fullyQualifiedKey, lockOwner.lockRef);
                 	try {
-                        lockOwner = lockingServiceHandle.peekLockQueue(music_ns, partition.getMusicRangeInformationTable(), mriIndex.index.toString());
+                        lockOwner = lockingServiceHandle.peekLockQueue(music_ns,
+                        		this.musicRangeInformationTableName, mriIndex.toString());
                     } catch(NullPointerException e){
                        //Ignore null pointer exception
                         lockId = MusicCore.createLockReference(fullyQualifiedKey);
@@ -1102,12 +1094,12 @@ public class CassandraMixin implements MusicInterface {
 
 	@Override
 	public void commitLog(DBInterface dbi, DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException{
-		MriReference mriIndex = partition.getMusicRangeInformationIndex();
+		UUID mriIndex = partition.getMusicRangeInformationIndex();
 		if(mriIndex==null) {
 			//\TODO Fetch MriIndex from the Range Information Table
 			throw new MDBCServiceException("TIT Index retrieval not yet implemented");
 		}
-        String fullyQualifiedMriKey = music_ns+"."+ mriIndex.table+"."+mriIndex.index.toString();
+        String fullyQualifiedMriKey = music_ns+"."+ this.musicRangeInformationTableName+"."+mriIndex.toString();
 		//0. See if reference to lock was already created
 		String lockId = partition.getLockId();
 		if(lockId == null || lockId.isEmpty()) {
@@ -1133,7 +1125,7 @@ public class CassandraMixin implements MusicInterface {
             throw new MDBCServiceException("Failed to serialized transaction digest with error "+e.toString());
         }
         MusicTxDigestId digestId = new MusicTxDigestId(commitId);
-        addTxDigest(musicTxDigestTableName, digestId, serializedTransactionDigest);
+        addTxDigest(digestId, serializedTransactionDigest);
         //2. Save RRT index to RQ
 		if(progressKeeper!= null) {
 			progressKeeper.setRecordId(txId,digestId);
@@ -1188,49 +1180,234 @@ public class CassandraMixin implements MusicInterface {
 		}
 		return objects;
 	}
-
-    @Override
-    public MusicRangeInformationRow getMusicRangeInformation(DatabasePartition partition) throws MDBCServiceException {
-	    //TODO: verify that lock id is valid before calling the database operations function
-        MriReference reference = partition.getMusicRangeInformationIndex();
-        return DatabaseOperations.getMriRow(music_ns,reference.table,reference.index,partition.getLockId());
+	
+	@Override
+    public List<UUID> getPartitionIndexes() {
+    	ArrayList<UUID> partitions = new ArrayList<UUID>();
+    	String cql = String.format("SELECT rangeid FROM %s.%s", music_ns, musicRangeInformationTableName);
+    	ResultSet rs = executeMusicRead(cql);
+    	for (Row r: rs) {
+    		partitions.add(r.getUUID("rangeid"));
+    	}
+    	return partitions;
     }
+	
+    @Override
+    public MusicRangeInformationRow getMusicRangeInformation(UUID partitionIndex) throws MDBCServiceException {
+	    //TODO: verify that lock id is valid before calling the database operations function
+        //UUID id = partition.getMusicRangeInformationIndex();
 
+        String cql = String.format("SELECT * FROM %s.%s WHERE rangeid = ?;", music_ns, musicRangeInformationTableName);
+    	PreparedQueryObject pQueryObject = new PreparedQueryObject();
+    	pQueryObject.appendQueryString(cql);
+    	pQueryObject.addValue(partitionIndex);
+    	Row newRow;
+    	try {
+    		newRow = executeMusicUnlockedQuorumGet(pQueryObject);
+    	} catch (MDBCServiceException e) {
+    		logger.error("Get operationt error: Failure to get row from MRI "+musicRangeInformationTableName);
+    		throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information");
+    	}
+
+    	List<TupleValue> log = newRow.getList("txredolog",TupleValue.class);
+    	List<MusicTxDigestId> digestIds = new ArrayList<>();
+    	for(TupleValue t: log){
+    		//final String tableName = t.getString(0);
+    		final UUID index = t.getUUID(1);
+    		digestIds.add(new MusicTxDigestId(index));
+    	}
+    	List<Range> partitions = new ArrayList<>();
+    	Set<String> tables = newRow.getSet("keys",String.class);
+    	for (String table:tables){
+    		partitions.add(new Range(table));
+    	}
+    	return new MusicRangeInformationRow(partitionIndex,digestIds,newRow.getString("ownerid"),newRow.getString("metricprocessid"));
+    }
+    
+
+    /**
+     * This function creates the TransactionInformation table. It contain information related
+     * to the transactions happening in a given partition.
+     * 	 * The schema of the table is
+     * 		* Id, uiid.
+     * 		* Partition, uuid id of the partition
+     * 		* LatestApplied, int indicates which values from the redologtable wast the last to be applied to the data tables
+     *		* Applied: boolean, indicates if all the values in this redo log table where already applied to data tables
+     *		* Redo: list of uiids associated to the Redo Records Table
+     *
+     */
+    private void createMusicRangeInformationTable() throws MDBCServiceException {
+        String tableName = this.musicRangeInformationTableName;
+        String priKey = "rangeid";
+        StringBuilder fields = new StringBuilder();
+        fields.append("rangeid uuid, ");
+        fields.append("keys set<text>, ");
+        fields.append("ownerid text, ");
+        fields.append("metricprocessid text, ");
+        //TODO: Frozen is only needed for old versions of cassandra, please update correspondingly
+        fields.append("txredolog list<frozen<tuple<text,uuid>>> ");
+        String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));",
+        		this.music_ns, tableName, fields, priKey);
+        try {
+            executeMusicWriteQuery(this.music_ns,tableName,cql);
+        } catch (MDBCServiceException e) {
+            logger.error("Initialization error: Failure to create transaction information table");
+            throw(e);
+        }
+    }
+    
+    
     @Override
     public DatabasePartition createMusicRangeInformation(MusicRangeInformationRow info) throws MDBCServiceException {
-	    DatabasePartition newPartition = new DatabasePartition(info.partition.ranges,info.index,
-                musicRangeInformationTableName,null,musicTxDigestTableName);
-        String fullyQualifiedMriKey = music_ns+"."+ musicRangeInformationTableName+"."+info.index.toString();
+	    DatabasePartition newPartition = new DatabasePartition(info.getPartitionIndex());
+        String fullyQualifiedMriKey = music_ns+"."+ musicRangeInformationTableName+"."+info.getPartitionIndex().toString();
         String lockId = createAndAssignLock(fullyQualifiedMriKey,newPartition);
-        DatabaseOperations.createEmptyMriRow(music_ns,musicRangeInformationTableName,info.metricProcessId,lockId,info.partition.ranges);
+        createEmptyMriRow(info.getMetricProcessId(),lockId,new ArrayList<Range>());
         throw new UnsupportedOperationException();
+    }
+    
+    /**
+     * Creates a new empty MRI row
+     * @param processId id of the process that is going to own initially this.
+     * @return uuid associated to the new row
+     */
+    private UUID createEmptyMriRow(String processId, String lockId, List<Range> ranges)
+    		throws MDBCServiceException {
+        UUID id = MDBCUtils.generateUniqueKey();
+        return createEmptyMriRow(id,processId,lockId,ranges);
+    }
+    
+    /**
+     * Creates a new empty MRI row
+     * @param processId id of the process that is going to own initially this.
+     * @return uuid associated to the new row
+     */
+    private UUID createEmptyMriRow(UUID id, String processId, String lockId, List<Range> ranges)
+    		throws MDBCServiceException{
+    	StringBuilder insert = new StringBuilder("INSERT INTO ")
+    			.append(this.music_ns)
+    			.append('.')
+    			.append(this.musicRangeInformationTableName)
+    			.append(" (rangeid,keys,ownerid,metricprocessid,txredolog) VALUES ")
+    			.append("(")
+    			.append(id)
+    			.append(",{");
+    	boolean first=true;
+    	for(Range r: ranges){
+    		if(first){ first=false; }
+    		else {
+    			insert.append(',');
+    		}
+    		insert.append("'").append(r.toString()).append("'");
+    	}
+    	insert.append("},'")
+    	.append((lockId==null)?"":lockId)
+    	.append("','")
+    	.append(processId)
+    	.append("',[]);");
+    	PreparedQueryObject query = new PreparedQueryObject();
+    	query.appendQueryString(insert.toString());
+    	try {
+    		executeMusicLockedPut(this.music_ns,this.musicRangeInformationTableName,id.toString(),query,lockId,null);
+    	} catch (MDBCServiceException e) {
+    		logger.error("Initialization error: Failure to add new row to transaction information");
+    		throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information");
+    	}
+    	return id;
     }
 
     @Override
-    public void appendToRedoLog(MriReference mriRowId, DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException {
-		PreparedQueryObject appendQuery = createAppendMtxdIndexToMriQuery(musicRangeInformationTableName, mriRowId.index, musicTxDigestTableName, newRecord.tablePrimaryKey);
-		ReturnType returnType = MusicCore.criticalPut(music_ns, musicRangeInformationTableName, mriRowId.index.toString(), appendQuery, partition.getLockId(), null);
+    public void appendToRedoLog(UUID mriRowId, DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException {
+		PreparedQueryObject appendQuery = createAppendMtxdIndexToMriQuery(musicRangeInformationTableName, mriRowId, musicTxDigestTableName, newRecord.txId);
+		ReturnType returnType = MusicCore.criticalPut(music_ns, musicRangeInformationTableName, mriRowId.toString(), appendQuery, partition.getLockId(), null);
 		if(returnType.getResult().compareTo(ResultType.SUCCESS) != 0 ){
 			logger.error(EELFLoggerDelegate.errorLogger, "Error when executing append operation with return type: "+returnType.getMessage());
 			throw new MDBCServiceException("Error when executing append operation with return type: "+returnType.getMessage());
 		}
     }
-
+    
+    public void createMusicTxDigest() throws MDBCServiceException {
+	    createMusicTxDigest(-1);
+	}
+    
+    
+	/**
+	 * This function creates the MusicTxDigest table. It contain information related to each transaction committed
+	 * 	* LeaseId: id associated with the lease, text
+	 * 	* LeaseCounter: transaction number under this lease, bigint \TODO this may need to be a varint later
+	 *  * TransactionDigest: text that contains all the changes in the transaction
+	 */
+	private void createMusicTxDigest(int musicTxDigestTableNumber) throws MDBCServiceException {
+	    String tableName = this.musicTxDigestTableName;
+	    if(musicTxDigestTableNumber >= 0) {
+	        tableName = tableName +
+	                "-" +
+	                Integer.toString(musicTxDigestTableNumber);
+	    }
+	    String priKey = "txid";
+	    StringBuilder fields = new StringBuilder();
+	    fields.append("txid uuid, ");
+	    fields.append("transactiondigest text ");//notice lack of ','
+	    String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", this.music_ns, tableName, fields, priKey);
+	    try {
+	        executeMusicWriteQuery(this.music_ns,tableName,cql);
+	    } catch (MDBCServiceException e) {
+	        logger.error("Initialization error: Failure to create redo records table");
+	        throw(e);
+	    }
+	}
+    
+    
     @Override
-    public void addTxDigest(String musicTxDigestTable, MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException {
-	    DatabaseOperations.createTxDigestRow(music_ns,musicTxDigestTable,newId,transactionDigest);
+    public void addTxDigest(MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException {
+	    //createTxDigestRow(music_ns,musicTxDigestTable,newId,transactionDigest);
+	    PreparedQueryObject query = new PreparedQueryObject();
+	    String cqlQuery = "INSERT INTO " +
+	            this.music_ns +
+	            '.' +
+	            this.musicTxDigestTableName +
+	            " (txid,transactiondigest) " +
+	            "VALUES (" +
+	            newId.txId + ",'" +
+	            transactionDigest +
+	            "');";
+	    query.appendQueryString(cqlQuery);
+	    //\TODO check if I am not shooting on my own foot
+	    try {
+	        MusicCore.nonKeyRelatedPut(query,"critical");
+	    } catch (MusicServiceException e) {
+	        logger.error(EELFLoggerDelegate.errorLogger, "Transaction Digest serialization was invalid for commit "+newId.txId.toString()+ "with error "+e.getErrorMessage());
+	        throw new MDBCServiceException("Transaction Digest serialization for commit "+newId.txId.toString());
+	    }
     }
+    
+
 
     @Override
-    public PartitionInformation getPartitionInformation(DatabasePartition partition) throws MDBCServiceException {
-	    //\TODO We may want to cache this information to avoid going to the database to obtain this simple information
-        MusicRangeInformationRow row = getMusicRangeInformation(partition);
-        return row.partition;
-    }
-
-    @Override
-    public HashMap<Range,StagingTable> getTransactionDigest(MusicTxDigestId id) throws MDBCServiceException {
-	    return DatabaseOperations.getTransactionDigest(music_ns, musicTxDigestTableName, id);
+    public HashMap<Range,StagingTable> getTxDigest(MusicTxDigestId id) throws MDBCServiceException {    
+	    String cql = String.format("SELECT * FROM %s.%s WHERE txid = ?;", music_ns, musicTxDigestTableName);
+		PreparedQueryObject pQueryObject = new PreparedQueryObject();
+		pQueryObject.appendQueryString(cql);
+		pQueryObject.addValue(id.txId);
+		Row newRow;
+	    try {
+	        newRow = executeMusicUnlockedQuorumGet(pQueryObject);
+	    } catch (MDBCServiceException e) {
+	        logger.error("Get operation error: Failure to get row from txdigesttable with id:"+id.txId);
+	        throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information");
+	    }
+	    String digest = newRow.getString("transactiondigest");
+	    HashMap<Range,StagingTable> changes;
+	    try {
+	        changes = (HashMap<Range, StagingTable>) MDBCUtils.fromString(digest);
+	    } catch (IOException e) {
+	        logger.error("IOException when deserializing digest failed with an invalid class for id:"+id.txId);
+	        throw new MDBCServiceException("Deserializng digest failed with ioexception");
+	    } catch (ClassNotFoundException e) {
+	        logger.error("Deserializng digest failed with an invalid class for id:"+id.txId);
+	        throw new MDBCServiceException("Deserializng digest failed with an invalid class");
+	    }
+	    return changes;
     }
 
     @Override
@@ -1247,4 +1424,78 @@ public class CassandraMixin implements MusicInterface {
     public void relinquish(String ownerId, String rangeId){
         throw new UnsupportedOperationException();
     }
+
+	/**
+	 * This method executes a write query in Music
+	 * @param cql the CQL to be sent to Cassandra
+	 */
+	private static void executeMusicWriteQuery(String keyspace, String table, String cql)
+			throws MDBCServiceException {
+	    PreparedQueryObject pQueryObject = new PreparedQueryObject();
+	    pQueryObject.appendQueryString(cql);
+	    ResultType rt = null;
+	    try {
+	        rt = MusicCore.createTable(keyspace,table,pQueryObject,"critical");
+	    } catch (MusicServiceException e) {
+	        //\TODO: handle better, at least transform into an MDBCServiceException
+	        e.printStackTrace();
+	    }
+	    String result = rt.getResult();
+	    if (result==null || result.toLowerCase().equals("failure")) {
+	        throw new MDBCServiceException("Music eventual put failed");
+	    }
+	}
+
+	private static Row executeMusicLockedGet(String keyspace, String table, PreparedQueryObject cqlObject, String primaryKey,
+	                                       String lock)
+	    throws MDBCServiceException{
+	    ResultSet result;
+	    try {
+	        result = MusicCore.criticalGet(keyspace,table,primaryKey,cqlObject,lock);
+	    } catch(MusicServiceException e){
+	        //\TODO: handle better, at least transform into an MDBCServiceException
+	        e.printStackTrace();
+	        throw new MDBCServiceException("Error executing critical get");
+	    }
+	    if(result.isExhausted()){
+	        throw new MDBCServiceException("There is not a row that matches the id "+primaryKey);
+	    }
+	    return result.one();
+	}
+
+	private static Row executeMusicUnlockedQuorumGet(PreparedQueryObject cqlObject)
+	    throws MDBCServiceException{
+	    ResultSet result = MusicCore.quorumGet(cqlObject);
+	        //\TODO: handle better, at least transform into an MDBCServiceException
+	    if(result.isExhausted()){
+	        throw new MDBCServiceException("There is not a row that matches the query: ["+cqlObject.getQuery()+"]");
+	    }
+	    return result.one();
+	}
+
+	private void executeMusicLockedPut(String namespace, String tableName,
+	                                       String primaryKeyWithoutDomain, PreparedQueryObject queryObject, String lockId,
+	                                       MusicCore.Condition conditionInfo) throws MDBCServiceException {
+	    ReturnType rt ;
+	    if(lockId==null) {
+	        try {
+	            rt = MusicCore.atomicPut(namespace, tableName, primaryKeyWithoutDomain, queryObject, conditionInfo);
+	        } catch (MusicLockingException e) {
+	            logger.error("Music locked put failed");
+	            throw new MDBCServiceException("Music locked put failed");
+	        } catch (MusicServiceException e) {
+	            logger.error("Music service fail: Music locked put failed");
+	            throw new MDBCServiceException("Music service fail: Music locked put failed");
+	        } catch (MusicQueryException e) {
+	            logger.error("Music query fail: locked put failed");
+	            throw new MDBCServiceException("Music query fail: Music locked put failed");
+	        }
+	    }
+	    else {
+	        rt = MusicCore.criticalPut(namespace, tableName, primaryKeyWithoutDomain, queryObject, lockId, conditionInfo);
+	    }
+	    if (rt.getResult().getResult().toLowerCase().equals("failure")) {
+	        throw new MDBCServiceException("Music locked put failed");
+	    }
+	}
 }

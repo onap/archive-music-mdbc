@@ -48,9 +48,8 @@ public class MdbcServerLogic extends JdbcMeta{
 	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MdbcServerLogic.class);
 
 	StateManager manager;
-	DatabasePartition ranges;
+	private DatabasePartition ranges;
 	String name;
-	String sqlDatabase;
 
 	//TODO: Delete this properties after debugging
 	private final Properties info;
@@ -58,10 +57,9 @@ public class MdbcServerLogic extends JdbcMeta{
 
 	public MdbcServerLogic(String Url, Properties info,NodeConfiguration config) throws SQLException, MDBCServiceException {
 		super(Url,info);
-		this.ranges = config.partition;
+		this.setRanges(config.partition);
 		this.name = config.nodeName;
-		this.sqlDatabase = config.sqlDatabaseName;
-		this.manager = new StateManager(Url,info,this.ranges,this.sqlDatabase);
+		this.manager = new StateManager(Url,info,this.getRanges(),"test"); //FIXME: db name should not be passed in ahead of time
 		this.info = info;
         int concurrencyLevel = Integer.parseInt(
                 info.getProperty(ConnectionCacheSettings.CONCURRENCY_LEVEL.key(),
@@ -85,6 +83,10 @@ public class MdbcServerLogic extends JdbcMeta{
                 .expireAfterAccess(connectionExpiryDuration, connectionExpiryUnit)
                 .removalListener(new ConnectionExpiryHandler())
                 .build();
+	}
+	
+	public StateManager getStateManager() {
+		return this.manager;
 	}
 	
 	@Override
@@ -308,6 +310,14 @@ public class MdbcServerLogic extends JdbcMeta{
 			logger.error(EELFLoggerDelegate.errorLogger, err.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
 			throw(err);
 		}				
+	}
+
+	public DatabasePartition getRanges() {
+		return ranges;
+	}
+
+	public void setRanges(DatabasePartition ranges) {
+		this.ranges = ranges;
 	}
 
 	private class ConnectionExpiryHandler

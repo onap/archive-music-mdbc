@@ -20,6 +20,7 @@
 package org.onap.music.mdbc;
 
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
@@ -53,20 +54,16 @@ public class StateManager {
 	 * that are created by the MDBC Server 
 	 * @see MusicInterface 
      */
-    private MusicInterface musicManager;
+    private MusicInterface musicInterface;
     /**
      * This is the Running Queries information table.
      * It mainly contains information about the entities 
      * that have being committed so far.
      */
     private TxCommitProgress transactionInfo;
-    
     private Map<String,MdbcConnection> mdbcConnections;
-
     private String sqlDatabase;
-
-    private String url;
-    
+    private String url;    
     private Properties info;
     
     @SuppressWarnings("unused")
@@ -90,10 +87,10 @@ public class StateManager {
     }
 
     protected void init(String mixin, String cassandraUrl) throws MDBCServiceException {
-        this.musicManager = MixinFactory.createMusicInterface(mixin, cassandraUrl, info);
-        this.musicManager.createKeyspace();
+        this.musicInterface = MixinFactory.createMusicInterface(mixin, cassandraUrl, info);
+        this.musicInterface.createKeyspace();
         try {
-            this.musicManager.initializeMetricDataStructures();
+            this.musicInterface.initializeMetricDataStructures();
         } catch (MDBCServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
             throw(e);
@@ -103,6 +100,10 @@ public class StateManager {
         initSqlDatabase();
     }
 
+    public MusicInterface getMusicInterface() {
+    	return this.musicInterface;
+    }
+    
     protected void initSqlDatabase() throws MDBCServiceException {
         try {
             //\TODO: pass the driver as a variable
@@ -163,7 +164,7 @@ public class StateManager {
            }
            //Create MDBC connection
            try {
-               newConnection = new MdbcConnection(id, this.url+"/"+this.sqlDatabase, sqlConnection, info, this.musicManager, transactionInfo,ranges);
+               newConnection = new MdbcConnection(id, this.url+"/"+this.sqlDatabase, sqlConnection, info, this.musicInterface, transactionInfo,ranges);
            } catch (MDBCServiceException e) {
                logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
                newConnection = null;
@@ -213,7 +214,7 @@ public class StateManager {
 		}
 		//Create MDBC connection
     	try {
-			newConnection = new MdbcConnection(id,this.url+"/"+this.sqlDatabase, sqlConnection, info, this.musicManager, transactionInfo,ranges);
+			newConnection = new MdbcConnection(id,this.url+"/"+this.sqlDatabase, sqlConnection, info, this.musicInterface, transactionInfo,ranges);
 		} catch (MDBCServiceException e) {
 			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
 			newConnection = null;

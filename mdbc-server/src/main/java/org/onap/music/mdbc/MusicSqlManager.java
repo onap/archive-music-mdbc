@@ -254,6 +254,7 @@ public class MusicSqlManager {
 		return mi.getMusicKeyFromRowWithoutPrimaryIndexes(ti,table, dbRow);
 	}
 	
+	@Deprecated
 	public String getMusicKeyFromRow(String table, JSONObject dbRow) {
 		TableInfo ti = dbi.getTableInfo(table);
 		return mi.getMusicKeyFromRow(ti,table, dbRow);

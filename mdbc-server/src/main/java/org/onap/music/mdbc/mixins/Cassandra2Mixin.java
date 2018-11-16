@@ -30,6 +30,7 @@ import java.util.Properties;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.onap.music.datastore.PreparedQueryObject;
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.main.MusicCore;
 import org.onap.music.main.ReturnType;
@@ -57,7 +58,7 @@ public class Cassandra2Mixin extends CassandraMixin {
 		super();
 	}
 
-	public Cassandra2Mixin(String url, Properties info) throws MusicServiceException {
+	public Cassandra2Mixin(String url, Properties info) throws MDBCServiceException {
 		super(url, info);
 	}
 
@@ -80,9 +81,10 @@ public class Cassandra2Mixin extends CassandraMixin {
 	/**
 	 * This method creates a keyspace in Music/Cassandra to store the data corresponding to the SQL tables.
 	 * The keyspace name comes from the initialization properties passed to the JDBC driver.
+	 * @throws MusicServiceException 
 	 */
 	@Override
-	public void createKeyspace() {
+	public void createKeyspace() throws MDBCServiceException {
 		super.createKeyspace();
 	}
 

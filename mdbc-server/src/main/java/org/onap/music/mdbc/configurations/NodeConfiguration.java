@@ -36,15 +36,16 @@ public class NodeConfiguration {
 
     private static transient final EELFLoggerDelegate LOG = EELFLoggerDelegate.getLogger(NodeConfiguration.class);
 
-    public String sqlDatabaseName;
     public DatabasePartition partition;
     public String nodeName;
+    private int musicTxDigestTimeoutS;
 
-    public NodeConfiguration(String tables, UUID mriIndex, String mriTableName, String sqlDatabaseName, String node, String redoRecordsTable){
+    public NodeConfiguration(String tables, UUID mriIndex, String mriTableName,
+    		String node, int musicTxDigestTimeoutS){
         //	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
-        partition = new DatabasePartition(toRanges(tables), mriIndex,  mriTableName, null, redoRecordsTable) ;
-        this.sqlDatabaseName = sqlDatabaseName;
+        partition = new DatabasePartition(toRanges(tables), mriIndex, null) ;
         this.nodeName = node;
+        this.musicTxDigestTimeoutS = musicTxDigestTimeoutS;
     }
 
     protected List<Range> toRanges(String tables){
@@ -86,5 +87,13 @@ public class NodeConfiguration {
         Gson gson = new Gson();
         NodeConfiguration config = gson.fromJson(br, NodeConfiguration.class);
         return config;
+    }
+    
+    /**
+     * Returns the sleep timeout, in seconds, of the background musicTransaction daemon
+     * @return
+     */
+    public int getMusicTxDigestTimeout() {
+    	return this.musicTxDigestTimeoutS;
     }
 }
