@@ -20,6 +20,7 @@
 package org.onap.music.mdbc;
 
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
@@ -27,6 +28,7 @@ import org.onap.music.logging.format.ErrorTypes;
 import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicMixin;
+import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
 import java.io.IOException;
@@ -53,26 +55,25 @@ public class StateManager {
 	 * that are created by the MDBC Server 
 	 * @see MusicInterface 
      */
-    private MusicInterface musicManager;
+    private MusicInterface musicInterface;
     /**
      * This is the Running Queries information table.
      * It mainly contains information about the entities 
      * that have being committed so far.
      */
     private TxCommitProgress transactionInfo;
-    
     private Map<String,MdbcConnection> mdbcConnections;
-
     private String sqlDatabase;
-
     private String url;
     
+    String musicmixin;
+    String cassandraUrl;
     private Properties info;
     
     @SuppressWarnings("unused")
 	private DatabasePartition ranges;
-    
-    public StateManager(String url, Properties info, DatabasePartition ranges, String sqlDatabase) throws MDBCServiceException {
+
+	public StateManager(String url, Properties info, DatabasePartition ranges, String sqlDatabase) throws MDBCServiceException {
         this.sqlDatabase = sqlDatabase;
         this.ranges = ranges;
         this.url = url;
@@ -81,28 +82,40 @@ public class StateManager {
         //\fixme this is not really used, delete!
         try {
 			info.load(this.getClass().getClassLoader().getResourceAsStream("music.properties"));
+			info.putAll(MDBCUtils.getMdbcProperties());
 		} catch (IOException e) {
 			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage());
 		}
-        String cassandraUrl = info.getProperty(Configuration.KEY_CASSANDRA_URL, Configuration.CASSANDRA_URL_DEFAULT);
-        String mixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
-        init(mixin, cassandraUrl);
+        cassandraUrl = info.getProperty(Configuration.KEY_CASSANDRA_URL, Configuration.CASSANDRA_URL_DEFAULT);
+        musicmixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
+        
+        initMusic();
+        initSqlDatabase(); 
+
+        
+        MusicTxDigest txDaemon = new MusicTxDigest(this);
+        txDaemon.startBackgroundDaemon(Integer.parseInt(
+        		info.getProperty(Configuration.TX_DAEMON_SLEEPTIME_S, Configuration.TX_DAEMON_SLEEPTIME_S_DEFAULT))); 
     }
 
-    protected void init(String mixin, String cassandraUrl) throws MDBCServiceException {
-        this.musicManager = MixinFactory.createMusicInterface(mixin, cassandraUrl, info);
-        this.musicManager.createKeyspace();
+    /**
+     * Initialize the 
+     * @param mixin
+     * @param cassandraUrl
+     * @throws MDBCServiceException
+     */
+    protected void initMusic() throws MDBCServiceException {
+        this.musicInterface = MixinFactory.createMusicInterface(musicmixin, cassandraUrl, info);
+        this.musicInterface.createKeyspace();
         try {
-            this.musicManager.initializeMetricDataStructures();
+            this.musicInterface.initializeMetricDataStructures();
         } catch (MDBCServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.GENERALSERVICEERROR);
             throw(e);
         }
-        MusicMixin.loadProperties();
         this.mdbcConnections = new HashMap<>();
-        initSqlDatabase();
     }
-
+    
     protected void initSqlDatabase() throws MDBCServiceException {
         try {
             //\TODO: pass the driver as a variable
@@ -125,6 +138,19 @@ public class StateManager {
         }
     }
 
+    public MusicInterface getMusicInterface() {
+    	return this.musicInterface;
+    }
+    
+    public DatabasePartition getRanges() {
+		return ranges;
+	}
+
+	public void setRanges(DatabasePartition ranges) {
+		this.ranges = ranges;
+	}
+    
+    
     public void CloseConnection(String connectionId){
         //\TODO check if there is a race condition
         if(mdbcConnections.containsKey(connectionId)) {
@@ -163,7 +189,7 @@ public class StateManager {
            }
            //Create MDBC connection
            try {
-               newConnection = new MdbcConnection(id, this.url+"/"+this.sqlDatabase, sqlConnection, info, this.musicManager, transactionInfo,ranges);
+               newConnection = new MdbcConnection(id, this.url+"/"+this.sqlDatabase, sqlConnection, info, this.musicInterface, transactionInfo,ranges);
            } catch (MDBCServiceException e) {
                logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
                newConnection = null;
@@ -213,7 +239,7 @@ public class StateManager {
 		}
 		//Create MDBC connection
     	try {
-			newConnection = new MdbcConnection(id,this.url+"/"+this.sqlDatabase, sqlConnection, info, this.musicManager, transactionInfo,ranges);
+			newConnection = new MdbcConnection(id,this.url+"/"+this.sqlDatabase, sqlConnection, info, this.musicInterface, transactionInfo,ranges);
 		} catch (MDBCServiceException e) {
 			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
 			newConnection = null;

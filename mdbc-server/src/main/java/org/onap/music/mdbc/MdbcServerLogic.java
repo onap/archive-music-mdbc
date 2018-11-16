@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.configurations.NodeConfiguration;
+import org.onap.music.mdbc.tables.MusicTxDigest;
+
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalListener;
@@ -48,20 +50,16 @@ public class MdbcServerLogic extends JdbcMeta{
 	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MdbcServerLogic.class);
 
 	StateManager manager;
-	DatabasePartition ranges;
 	String name;
-	String sqlDatabase;
 
 	//TODO: Delete this properties after debugging
 	private final Properties info;
 	private final Cache<String, Connection> connectionCache;
 
-	public MdbcServerLogic(String Url, Properties info,NodeConfiguration config) throws SQLException, MDBCServiceException {
+	public MdbcServerLogic(String Url, Properties info, NodeConfiguration config) throws SQLException, MDBCServiceException {
 		super(Url,info);
-		this.ranges = config.partition;
 		this.name = config.nodeName;
-		this.sqlDatabase = config.sqlDatabaseName;
-		this.manager = new StateManager(Url,info,this.ranges,this.sqlDatabase);
+		this.manager = new StateManager(Url,info,config.partition,"test"); //FIXME: db name should not be passed in ahead of time
 		this.info = info;
         int concurrencyLevel = Integer.parseInt(
                 info.getProperty(ConnectionCacheSettings.CONCURRENCY_LEVEL.key(),
@@ -85,6 +83,10 @@ public class MdbcServerLogic extends JdbcMeta{
                 .expireAfterAccess(connectionExpiryDuration, connectionExpiryUnit)
                 .removalListener(new ConnectionExpiryHandler())
                 .build();
+	}
+	
+	public StateManager getStateManager() {
+		return this.manager;
 	}
 	
 	@Override

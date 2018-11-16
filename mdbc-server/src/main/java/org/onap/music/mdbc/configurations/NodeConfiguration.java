@@ -36,14 +36,12 @@ public class NodeConfiguration {
 
     private static transient final EELFLoggerDelegate LOG = EELFLoggerDelegate.getLogger(NodeConfiguration.class);
 
-    public String sqlDatabaseName;
     public DatabasePartition partition;
     public String nodeName;
 
-    public NodeConfiguration(String tables, UUID mriIndex, String mriTableName, String sqlDatabaseName, String node, String redoRecordsTable){
+    public NodeConfiguration(String tables, UUID mriIndex, String mriTableName, String node){
         //	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
-        partition = new DatabasePartition(toRanges(tables), mriIndex,  mriTableName, null, redoRecordsTable) ;
-        this.sqlDatabaseName = sqlDatabaseName;
+        partition = new DatabasePartition(toRanges(tables), mriIndex, null) ;
         this.nodeName = node;
     }
 

@@ -37,9 +37,7 @@ import org.onap.music.mdbc.tables.MriReference;
 public class DatabasePartition {
 	private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(DatabasePartition.class);
 
-	private String musicRangeInformationTable;//Table that currently contains the REDO log for this partition
 	private UUID musicRangeInformationIndex;//Index that can be obtained either from
-	private String musicTxDigestTable;
 	private String lockId;
 	protected List<Range> ranges;
 
@@ -48,57 +46,25 @@ public class DatabasePartition {
 	 * The only requirement is that the ranges are not overlapping.
 	 */
 	
-	public DatabasePartition() {
-		ranges = new ArrayList<>();
+	public DatabasePartition(UUID mriIndex) {
+		this(new ArrayList<Range>(), mriIndex,"");
 	}
 	
-	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
-		if(knownRanges != null) {
-			ranges = knownRanges;
-		}
-		else {
-			ranges = new ArrayList<>();
-		}
-
-		if(musicTxDigestTable != null) {
-            this.setMusicTxDigestTable(musicTxDigestTable);
-        }
-        else{
-            this.setMusicTxDigestTable("");
-        }
-
+	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String lockId) {
+		ranges = knownRanges;
+		
 		if(mriIndex != null) {
 			this.setMusicRangeInformationIndex(mriIndex);
 		}
 		else {
 			this.setMusicRangeInformationIndex(null);
 		}
+		this.setLockId(lockId);
 		
-		if(mriTable != null) {
-			this.setMusicRangeInformationTable(mriTable);
-		}
-		else {
-			this.setMusicRangeInformationTable("");
-		}
-
-		if(lockId != null) {
-			this.setLockId(lockId);
-		}
-		else {
-			this.setLockId("");
-		}	
 	}
 
-	public String getMusicRangeInformationTable() {
-		return musicRangeInformationTable;
-	}
-
-	public void setMusicRangeInformationTable(String musicRangeInformationTable) {
-		this.musicRangeInformationTable = musicRangeInformationTable;
-	}
-
-	public MriReference getMusicRangeInformationIndex() {
-		return new MriReference(musicRangeInformationTable,musicRangeInformationIndex);
+	public UUID getMusicRangeInformationIndex() {
+		return musicRangeInformationIndex;
 	}
 
 	public void setMusicRangeInformationIndex(UUID musicRangeInformationIndex) {
@@ -180,11 +146,4 @@ public class DatabasePartition {
 		this.lockId = lockId;
 	}
 
-    public String getMusicTxDigestTable() {
-        return musicTxDigestTable;
-    }
-
-    public void setMusicTxDigestTable(String musicTxDigestTable) {
-        this.musicTxDigestTable = musicTxDigestTable;
-    }
 }

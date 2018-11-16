@@ -573,10 +573,9 @@ NEW.field refers to the new value
 				String op   = rs.getString("OP");
 				OperationType opType = toOpEnum(op);
 				String tbl  = rs.getString("TABLENAME");
-				String keydataStr = rs.getString("KEYDATA");
+				JSONObject keydataStr = new JSONObject(new JSONTokener(rs.getString("KEYDATA")));
 				String newRowStr = rs.getString("NEWROWDATA");
 				JSONObject newRow  = new JSONObject(new JSONTokener(newRowStr));
-				String musicKey;
 				TableInfo ti = getTableInfo(tbl);
 				if (!ti.hasKey()) {
 					//create music key
@@ -586,26 +585,27 @@ NEW.field refers to the new value
 						// the actual columns, otherwise performance when doing range queries are going 
 						// to be even worse (see the else bracket down)
                         //
-						musicKey = msm.generateUniqueKey();
+						String musicKey = msm.generateUniqueKey();
 					/*} else {
 						//get key from data
 						musicKey = msm.getMusicKeyFromRowWithoutPrimaryIndexes(tbl,newRow);
 					}*/
 					newRow.put(msm.getMusicDefaultPrimaryKeyName(), musicKey);
+					keydataStr.put(msm.getMusicDefaultPrimaryKeyName(), musicKey);
 				}
-				else {
+				/*else {
 					//Use the keys 
 					musicKey = msm.getMusicKeyFromRow(tbl, newRow);
 					if(musicKey.isEmpty()) {
 						logger.error(EELFLoggerDelegate.errorLogger,"Primary key is invalid: ["+tbl+","+op+"]");
 						throw new NoSuchFieldException("Invalid operation enum");
 					}
-				}
+				}*/
 				Range range = new Range(tbl);
 				if(!transactionDigests.containsKey(range)) {
 					transactionDigests.put(range, new StagingTable());
 				}
-				transactionDigests.get(range).addOperation(musicKey, opType, newRow.toString());
+				transactionDigests.get(range).addOperation(opType, newRow.toString(), keydataStr.toString());
 				rows.add(ix);
 			}
 			rs.getStatement().close();

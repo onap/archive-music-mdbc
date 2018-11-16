@@ -79,7 +79,7 @@ public class MusicSqlManager {
 	 */
 	 public MusicSqlManager(String url, Connection conn, Properties info, MusicInterface mi) throws MDBCServiceException {
 		try {
-			info.putAll(Utils.getMdbcProperties());
+			info.putAll(MDBCUtils.getMdbcProperties());
 			String mixinDb  = info.getProperty(Configuration.KEY_DB_MIXIN_NAME, Configuration.DB_MIXIN_DEFAULT);
 			this.dbi       = MixinFactory.createDBInterface(mixinDb, this, url, conn, info);
 			this.mi = mi;
@@ -254,6 +254,7 @@ public class MusicSqlManager {
 		return mi.getMusicKeyFromRowWithoutPrimaryIndexes(ti,table, dbRow);
 	}
 	
+	@Deprecated
 	public String getMusicKeyFromRow(String table, JSONObject dbRow) {
 		TableInfo ti = dbi.getTableInfo(table);
 		return mi.getMusicKeyFromRow(ti,table, dbRow);

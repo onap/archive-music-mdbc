@@ -40,12 +40,6 @@ public class CreatePartition {
     private String mriIndex;
     @Parameter(names = { "-m", "--mri-table-name" }, required = true,
             description = "Mri Table name")
-    private String mriTable;
-     @Parameter(names = { "-r", "--music-tx-digest-table-name" }, required = true,
-                         description = "Music Transaction Digest Table name")
-     private String mtxdTable;
-    @Parameter(names = { "-h", "-help", "--help" }, help = true,
-            description = "Print the help message")
     private boolean help = false;
 
     NodeConfiguration config;
@@ -54,7 +48,7 @@ public class CreatePartition {
     }
 
     public void convert(){
-        config = new NodeConfiguration(tables, UUID.fromString(mriIndex),mriTable,"test","", mtxdTable);
+        config = new NodeConfiguration(tables, UUID.fromString(mriIndex),"test","");
     }
 
     public void saveToFile(){

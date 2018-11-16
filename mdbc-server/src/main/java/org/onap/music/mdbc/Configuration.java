@@ -34,4 +34,8 @@ public class Configuration {
     public static final String MUSIC_MIXIN_DEFAULT  = "cassandra2";//"cassandra2";
     /** Default cassandra ulr*/
     public static final String CASSANDRA_URL_DEFAULT = "localhost";//"cassandra2";
+    /** Name of Tx Digest Update Daemon sleep time */
+	public static final String TX_DAEMON_SLEEPTIME_S = "txdaemonsleeps";
+	/** Default txDigest Daemon sleep time */
+	public static final String TX_DAEMON_SLEEPTIME_S_DEFAULT = "10";
 }
