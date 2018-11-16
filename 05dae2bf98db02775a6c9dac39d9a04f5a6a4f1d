@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9adffdf1_dccadea0",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicRangeInformationRow.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2018-11-16T16:00:10Z",
+      "side": 1,
+      "message": "Music range information row needs the information of the tables that are associated with it, which was also part of the partition information object",
+      "range": {
+        "startLine": 27,
+        "startChar": 19,
+        "endLine": 27,
+        "endChar": 43
+      },
+      "revId": "05dae2bf98db02775a6c9dac39d9a04f5a6a4f1d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9adffdf1_fccfa2ae",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 184,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2018-11-16T16:00:10Z",
+      "side": 1,
+      "message": "I guess we will move this to a test case later.",
+      "range": {
+        "startLine": 184,
+        "startChar": 20,
+        "endLine": 184,
+        "endChar": 24
+      },
+      "revId": "05dae2bf98db02775a6c9dac39d9a04f5a6a4f1d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
