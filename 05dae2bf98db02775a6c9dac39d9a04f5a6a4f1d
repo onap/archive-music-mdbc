@@ -49,6 +49,30 @@
     },
     {
       "key": {
+        "uuid": "9adffdf1_3c644ab8",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicRangeInformationRow.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2018-11-16T16:24:47Z",
+      "side": 1,
+      "message": "Perhaps this table should actually have a DBPartition (UUID/range), instead of a partitionIndex field?",
+      "parentUuid": "9adffdf1_5c558ec4",
+      "range": {
+        "startLine": 27,
+        "startChar": 19,
+        "endLine": 27,
+        "endChar": 43
+      },
+      "revId": "05dae2bf98db02775a6c9dac39d9a04f5a6a4f1d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9adffdf1_fccfa2ae",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigest.java",
         "patchSetId": 1
