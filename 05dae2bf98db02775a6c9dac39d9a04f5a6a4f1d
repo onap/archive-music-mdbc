@@ -73,6 +73,30 @@
     },
     {
       "key": {
+        "uuid": "9adffdf1_fc5d62ea",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicRangeInformationRow.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2018-11-16T20:53:58Z",
+      "side": 1,
+      "message": "The original index in this object was the UUID for the MRI row. It is a one-to-one mapping to the MRI schema. But we need at least of range List\u003cRange\u003e",
+      "parentUuid": "9adffdf1_3c644ab8",
+      "range": {
+        "startLine": 27,
+        "startChar": 19,
+        "endLine": 27,
+        "endChar": 43
+      },
+      "revId": "05dae2bf98db02775a6c9dac39d9a04f5a6a4f1d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9adffdf1_fccfa2ae",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigest.java",
         "patchSetId": 1
