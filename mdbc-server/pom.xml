@@ -34,6 +34,12 @@
     </parent>
 
     <dependencies>
+    	<dependency>
+		    <groupId>org.apache.calcite</groupId>
+		    <artifactId>calcite</artifactId>
+		    <version>1.11.0</version>
+		    <type>pom</type>
+		</dependency>
         <dependency>
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
