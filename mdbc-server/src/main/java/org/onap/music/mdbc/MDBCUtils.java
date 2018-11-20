@@ -20,18 +20,26 @@
 package org.onap.music.mdbc;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
 
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
+import org.onap.music.mdbc.mixins.CassandraMixin;
+import org.onap.music.mdbc.mixins.Utils;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;
 
-import javassist.bytecode.Descriptor.Iterator;
+import com.datastax.driver.core.utils.UUIDs;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
@@ -86,4 +94,32 @@ public class MDBCUtils {
         }
     }
 
+	/**
+	 * This functions is used to generate cassandra uuid
+	 * @return a random UUID that can be used for fields of type uuid
+	 */
+	public static UUID generateUniqueKey() {
+		return UUIDs.random();
+	}
+
+	public static Properties getMdbcProperties() {
+		Properties prop = new Properties();
+		InputStream input = null;
+		try {
+			input = Utils.class.getClassLoader().getResourceAsStream("mdbc.properties");
+			prop.load(input);
+		} catch (Exception e) {
+			Utils.logger.warn(EELFLoggerDelegate.applicationLogger, "Could not load mdbc.properties."
+					+ "Proceeding with defaults " + e.getMessage());
+		} finally {
+			if (input != null) {
+				try {
+					input.close();
+				} catch (IOException e) {
+					Utils.logger.error(EELFLoggerDelegate.errorLogger, e.getMessage());
+				}
+			}
+		}
+		return prop;
+	}
 }

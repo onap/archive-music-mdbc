@@ -30,10 +30,12 @@ public final class Operation implements Serializable{
 
 	final OperationType TYPE;
 	final String NEW_VAL;
+	final String KEY;
 
-	public Operation(OperationType type, String newVal) {
+	public Operation(OperationType type, String newVal, String key) {
 		TYPE = type;
 		NEW_VAL = newVal;
+		KEY = key;
 	}
 
 	public JSONObject getNewVal(){
@@ -41,6 +43,11 @@ public final class Operation implements Serializable{
         return newRow;
     }
 
+	public JSONObject getKey() {
+		JSONObject key  = new JSONObject(new JSONTokener(KEY));
+		return key;
+	}
+	
     public OperationType getOperationType() {
     	return this.TYPE;
     }

@@ -51,7 +51,7 @@ public class EtdbTestClient {
         }
         Connection connection;
         try {
-            connection = DriverManager.getConnection("jdbc:avatica:remote:url=http://localhost:30000;serialization=protobuf");
+            connection = DriverManager.getConnection("jdbc:avatica:remote:url=http://localhost:30000/test;serialization=protobuf");
         } catch (SQLException e) {
             e.printStackTrace();
             return;
@@ -70,7 +70,8 @@ public class EtdbTestClient {
                 "    LastName varchar(255),\n" +
                 "    FirstName varchar(255),\n" +
                 "    Address varchar(255),\n" +
-                "    City varchar(255)\n" +
+                "    City varchar(255),\n" +
+                "    PRIMARY KEY (PersonID,LastName)" +
                 ");";
         Statement stmt;
         try {
@@ -103,6 +104,12 @@ public class EtdbTestClient {
         }
 
         final String insertSQL = "INSERT INTO Persons VALUES (1, 'Martinez', 'Juan', 'KACB', 'ATLANTA');";
+        final String insertSQL1 = "DELETE FROM Persons WHERE PersonID=1;";
+        final String insertSQL2 = "INSERT INTO Persons VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
+        final String insertSQL3 = "UPDATE Persons SET FirstName='JOSH' WHERE LastName='Smith';";
+        final String insertSQL4 = "UPDATE Persons SET FirstName='JOHN' WHERE LastName='Smith';";
+
+
         Statement insertStmt;
         try {
             insertStmt = connection.createStatement();
@@ -113,6 +120,11 @@ public class EtdbTestClient {
 
         try {
             execute = insertStmt.execute(insertSQL);
+            execute = insertStmt.execute(insertSQL1);
+            execute = insertStmt.execute(insertSQL2);
+            execute = insertStmt.execute(insertSQL3);
+            execute = insertStmt.execute(insertSQL4);
+
         } catch (SQLException e) {
             e.printStackTrace();
             return;

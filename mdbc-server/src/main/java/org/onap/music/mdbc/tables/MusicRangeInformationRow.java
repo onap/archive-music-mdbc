@@ -22,20 +22,41 @@ package org.onap.music.mdbc.tables;
 import java.util.List;
 import java.util.UUID;
 
-public final class MusicRangeInformationRow {
-	public final UUID index;
-	public final PartitionInformation partition;
-	public final List<MusicTxDigestId> redoLog;
-	public final String ownerId;
-	public final String metricProcessId;
+import org.onap.music.mdbc.DatabasePartition;
 
-	public MusicRangeInformationRow(UUID index, List<MusicTxDigestId> redoLog, PartitionInformation partition,
-                                    String ownerId, String metricProcessId) {
-		this.index = index;
+public final class MusicRangeInformationRow {
+	private final DatabasePartition dbPartition;
+	//private final UUID partitionIndex;
+	private final List<MusicTxDigestId> redoLog;
+	private final String ownerId;
+	private final String metricProcessId;
+
+	public MusicRangeInformationRow (DatabasePartition dbPartition, List<MusicTxDigestId> redoLog, 
+									String ownerId, String metricProcessId) {
+		this.dbPartition = dbPartition;
 		this.redoLog = redoLog;
-		this.partition = partition;
 		this.ownerId = ownerId;
 		this.metricProcessId = metricProcessId;
 	}
 
+	/*public UUID getPartitionIndex() {
+		return dbPartition.getMusicRangeInformationIndex();
+	} */
+	
+	public DatabasePartition getDBPartition() {
+		return this.dbPartition;
+	}
+
+	public List<MusicTxDigestId> getRedoLog() {
+		return redoLog;
+	}
+
+	public String getOwnerId() {
+		return ownerId;
+	}
+
+	public String getMetricProcessId() {
+		return metricProcessId;
+	}
+	
 }
