@@ -165,7 +165,13 @@ public class StateManager {
         }
     }
 
+    /**
+     * Opens a connection into database, setting up all necessary triggers, etc
+     * @param id UUID of a connection
+     * @param information
+     */
     public void openConnection(String id, Properties information){
+    	logger.error("Opening a new connection with id: " + id);
        if(!mdbcConnections.containsKey(id)){
            Connection sqlConnection;
            MdbcConnection newConnection;

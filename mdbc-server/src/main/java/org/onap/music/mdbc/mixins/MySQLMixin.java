@@ -27,6 +27,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -39,6 +40,7 @@ import org.json.JSONTokener;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.OperationType;
 import org.onap.music.mdbc.tables.StagingTable;
 
@@ -73,7 +75,7 @@ public class MySQLMixin implements DBInterface {
 	private final MusicInterface mi;
 	private final int connId;
 	private final String dbName;
-	private final Connection dbConnection;
+	private final Connection jdbcConn;
 	private final Map<String, TableInfo> tables;
 	private boolean server_tbl_created = false;
 
@@ -81,14 +83,14 @@ public class MySQLMixin implements DBInterface {
 		this.mi = null;
 		this.connId = 0;
 		this.dbName = null;
-		this.dbConnection = null;
+		this.jdbcConn = null;
 		this.tables = null;
 	}
 	public MySQLMixin(MusicInterface mi, String url, Connection conn, Properties info) {
 		this.mi = mi;
 		this.connId = generateConnID(conn);
 		this.dbName = getDBName(conn);
-		this.dbConnection = conn;
+		this.jdbcConn = conn;
 		this.tables = new HashMap<String, TableInfo>();
 	}
 	// This is used to generate a unique connId for this connection to the DB.
@@ -154,7 +156,7 @@ public class MySQLMixin implements DBInterface {
 		Set<String> set = new TreeSet<String>();
 		String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'";
 		try {
-			Statement stmt = dbConnection.createStatement();
+			Statement stmt = jdbcConn.createStatement();
 			ResultSet rs = stmt.executeQuery(sql);
 			while (rs.next()) {
 				String s = rs.getString("TABLE_NAME");
@@ -267,7 +269,7 @@ mysql> describe tables;
 		try {
 			if (!server_tbl_created) {
 				try {
-					Statement stmt = dbConnection.createStatement();
+					Statement stmt = jdbcConn.createStatement();
 					stmt.execute(CREATE_TBL_SQL);
 					stmt.close();
 					logger.info(EELFLoggerDelegate.applicationLogger,"createSQLTriggers: Server side dirty table created.");
@@ -473,7 +475,7 @@ NEW.field refers to the new value
 		logger.debug("Executing SQL read:"+ sql);
 		ResultSet rs = null;
 		try {
-			Statement stmt = dbConnection.createStatement();
+			Statement stmt = jdbcConn.createStatement();
 			rs = stmt.executeQuery(sql);
 		} catch (SQLException e) {
 			logger.error(EELFLoggerDelegate.errorLogger,"executeSQLRead"+e);
@@ -489,7 +491,7 @@ NEW.field refers to the new value
 	protected void executeSQLWrite(String sql) throws SQLException {
 		logger.debug(EELFLoggerDelegate.applicationLogger, "Executing SQL write:"+ sql);
 		
-		Statement stmt = dbConnection.createStatement();
+		Statement stmt = jdbcConn.createStatement();
 		stmt.execute(sql);
 		stmt.close();
 	}
@@ -610,7 +612,7 @@ NEW.field refers to the new value
 			rs.getStatement().close();
 			if (rows.size() > 0) {
 				sql2 = "DELETE FROM "+TRANS_TBL+" WHERE IX = ?";
-				PreparedStatement ps = dbConnection.prepareStatement(sql2);
+				PreparedStatement ps = jdbcConn.prepareStatement(sql2);
 				logger.debug("Executing: "+sql2);
 				logger.debug("  For ix = "+rows);
 				for (int ix : rows) {
@@ -800,5 +802,141 @@ NEW.field refers to the new value
 				logger.error(EELFLoggerDelegate.errorLogger,"executeSQLWrite"+e1);
 			}
 		}
+	}
+	
+	/**
+	 * Parse the transaction digest into individual events
+	 * @param transaction - base 64 encoded, serialized digest
+	 * @param dbi 
+	 */
+	public void replayTransaction(HashMap<Range,StagingTable> transaction) throws SQLException {
+		boolean autocommit = jdbcConn.getAutoCommit();
+		jdbcConn.setAutoCommit(false);
+		Statement jdbcStmt = jdbcConn.createStatement();
+		for (Map.Entry<Range,StagingTable> entry: transaction.entrySet()) {
+    		Range r = entry.getKey();
+    		StagingTable st = entry.getValue();
+    		ArrayList<Operation> opList = st.getOperationList();
+
+    		for (Operation op: opList) {
+    			try {
+    				replayOperationIntoDB(jdbcStmt, r, op);
+    			} catch (SQLException e) {
+    				//rollback transaction
+    				logger.error("Unable to replay: " + op.getOperationType() + "->" + op.getNewVal() + "."
+    						+ "Rolling back the entire digest replay.");
+    				jdbcConn.rollback();
+    				throw new SQLException(e);
+    			}
+    		}
+    	}
+		
+		clearReplayedOperations(jdbcStmt);
+		jdbcConn.commit();
+		jdbcStmt.close();
+		
+		jdbcConn.setAutoCommit(autocommit);
+    }
+	
+	/**
+	 * Replays operation into database, usually from txDigest
+	 * @param stmt
+	 * @param r
+	 * @param op
+	 * @throws SQLException 
+	 */
+	private void replayOperationIntoDB(Statement jdbcStmt, Range r, Operation op) throws SQLException {
+		logger.info("Replaying Operation: " + op.getOperationType() + "->" + op.getNewVal());
+		JSONObject jsonOp = op.getNewVal();
+		JSONObject key = op.getKey();
+		
+		ArrayList<String> cols = new ArrayList<String>();
+		ArrayList<Object> vals = new ArrayList<Object>();
+		Iterator<String> colIterator = jsonOp.keys();
+		while(colIterator.hasNext()) {
+			String col = colIterator.next();
+			//FIXME: should not explicitly refer to cassandramixin
+			if (col.equals(MusicMixin.MDBC_PRIMARYKEY_NAME)) {
+				//reserved name
+				continue;
+			}
+			cols.add(col);
+			vals.add(jsonOp.get(col));
+		}
+		
+		//build the queries
+		StringBuilder sql = new StringBuilder();
+		String sep = "";
+		switch (op.getOperationType()) {
+		case INSERT:
+			sql.append(op.getOperationType() + " INTO ");
+			sql.append(r.table + " (") ;
+			sep = "";
+			for (String col: cols) {
+				sql.append(sep + col);
+				sep = ", ";
+			}	
+			sql.append(") VALUES (");
+			sep = "";
+			for (Object val: vals) {
+				sql.append(sep + "\"" + val + "\"");
+				sep = ", ";
+			}
+			sql.append(");");
+			break;
+		case UPDATE:
+			sql.append(op.getOperationType() + " ");
+			sql.append(r.table + " SET ");
+			sep="";
+			for (int i=0; i<cols.size(); i++) {
+				sql.append(sep + cols.get(i) + "=\"" + vals.get(i) +"\"");
+				sep = ", ";
+			}
+			sql.append(" WHERE ");
+			sql.append(getPrimaryKeyConditional(op.getKey()));
+			sql.append(";");
+			break;
+		case DELETE:
+			sql.append(op.getOperationType() + " FROM ");
+			sql.append(r.table + " WHERE ");
+			sql.append(getPrimaryKeyConditional(op.getKey()));
+			sql.append(";");
+			break;
+		case SELECT:
+			//no update happened, do nothing
+			return;
+		default:
+			logger.error(op.getOperationType() + "not implemented for replay");
+		}
+		logger.info("Replaying operation: " + sql.toString());
+		
+		jdbcStmt.executeQuery(sql.toString());
+	}
+	
+	/**
+	 * Create an SQL string for AND'ing all of the primary keys
+	 * @param primaryKeys Json of primary keys and their values
+	 * @return string in the form of PK1=Val1 AND PK2=Val2 AND PK3=Val3
+	 */
+    private String getPrimaryKeyConditional(JSONObject primaryKeys) {
+    	StringBuilder keyCondStmt = new StringBuilder();
+    	String and = "";
+    	for (String key: primaryKeys.keySet()) {
+    		Object val = primaryKeys.get(key);
+    		keyCondStmt.append(and + key + "=\"" + val + "\"");
+    		and = " AND ";
+    	}
+		return keyCondStmt.toString();
+	}
+    
+	/**
+	 * Cleans out the transaction table, removing the replayed operations
+	 * @param jdbcStmt
+	 * @throws SQLException
+	 */
+	private void clearReplayedOperations(Statement jdbcStmt) throws SQLException {
+		logger.info("Clearing replayed operations");
+		String sql = "DELETE FROM " + TRANS_TBL + " WHERE CONNECTION_ID = " + this.connId; 
+		jdbcStmt.executeQuery(sql);
 	}
 }

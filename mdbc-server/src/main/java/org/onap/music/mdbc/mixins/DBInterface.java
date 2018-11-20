@@ -20,12 +20,15 @@
 package org.onap.music.mdbc.mixins;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;
 
 /**
@@ -108,4 +111,11 @@ public interface DBInterface {
 	List<String> getReservedTblNames();
 	
 	String getPrimaryKey(String sql, String tableName);
+	
+	/**
+	 * Replay a given TxDigest into the local DB
+	 * @param digest
+	 * @throws SQLException if replay cannot occur correctly
+	 */
+	public void replayTransaction(HashMap<Range,StagingTable> digest) throws SQLException;
 }
