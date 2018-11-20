@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9adffdf1_f0181e77",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/query/Operation.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 21,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2018-11-20T02:11:34Z",
+      "side": 1,
+      "message": "There is already an Operation and OperationType class in org.onap.music.mdbc.tables,\n\nCan you expand upon that class to keep everything together?",
+      "revId": "14186ff595b31035d401b71111dc75da1c80a807",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
