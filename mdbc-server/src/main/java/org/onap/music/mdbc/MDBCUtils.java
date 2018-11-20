@@ -34,7 +34,7 @@ import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
-import org.onap.music.mdbc.mixins.CassandraMixin;
+import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.Utils;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;

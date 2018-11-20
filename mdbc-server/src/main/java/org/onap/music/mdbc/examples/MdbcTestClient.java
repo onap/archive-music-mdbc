@@ -22,7 +22,7 @@ package org.onap.music.mdbc.examples;
 import java.sql.*;
 import org.apache.calcite.avatica.remote.Driver;
 
-public class EtdbTestClient {
+public class MdbcTestClient {
 
     public static class Hr {
         public final Employee[] emps = {
@@ -145,7 +145,6 @@ public class EtdbTestClient {
         }
 
         try {
-            connection.commit();
             connection.close();
         } catch (SQLException e) {
             e.printStackTrace();

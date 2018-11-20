@@ -37,7 +37,6 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 
 import org.onap.music.logging.EELFLoggerDelegate;
-import org.onap.music.mdbc.MusicSqlManager;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.OperationType;
@@ -71,7 +70,7 @@ public class MySQLMixin implements DBInterface {
 		"CREATE TABLE IF NOT EXISTS "+TRANS_TBL+
 		" (IX INT AUTO_INCREMENT, OP CHAR(1), TABLENAME VARCHAR(255), NEWROWDATA VARCHAR(1024), KEYDATA VARCHAR(1024), CONNECTION_ID INT,PRIMARY KEY (IX))";
 
-	private final MusicSqlManager msm;
+	private final MusicInterface mi;
 	private final int connId;
 	private final String dbName;
 	private final Connection dbConnection;
@@ -79,14 +78,14 @@ public class MySQLMixin implements DBInterface {
 	private boolean server_tbl_created = false;
 
 	public MySQLMixin() {
-		this.msm = null;
+		this.mi = null;
 		this.connId = 0;
 		this.dbName = null;
 		this.dbConnection = null;
 		this.tables = null;
 	}
-	public MySQLMixin(MusicSqlManager msm, String url, Connection conn, Properties info) {
-		this.msm = msm;
+	public MySQLMixin(MusicInterface mi, String url, Connection conn, Properties info) {
+		this.mi = mi;
 		this.connId = generateConnID(conn);
 		this.dbName = getDBName(conn);
 		this.dbConnection = conn;
@@ -585,13 +584,13 @@ NEW.field refers to the new value
 						// the actual columns, otherwise performance when doing range queries are going 
 						// to be even worse (see the else bracket down)
                         //
-						String musicKey = msm.generateUniqueKey();
+						String musicKey = mi.generateUniqueKey();
 					/*} else {
 						//get key from data
 						musicKey = msm.getMusicKeyFromRowWithoutPrimaryIndexes(tbl,newRow);
 					}*/
-					newRow.put(msm.getMusicDefaultPrimaryKeyName(), musicKey);
-					keydataStr.put(msm.getMusicDefaultPrimaryKeyName(), musicKey);
+					newRow.put(mi.getMusicDefaultPrimaryKeyName(), musicKey);
+					keydataStr.put(mi.getMusicDefaultPrimaryKeyName(), musicKey);
 				}
 				/*else {
 					//Use the keys 
@@ -646,8 +645,8 @@ NEW.field refers to the new value
 				 
 				JSONObject jo = new JSONObject();
 				if (!getTableInfo(tableName).hasKey()) {
-						String musicKey = msm.generateUniqueKey();
-						jo.put(msm.getMusicDefaultPrimaryKeyName(), musicKey);	
+						String musicKey = mi.generateUniqueKey();
+						jo.put(mi.getMusicDefaultPrimaryKeyName(), musicKey);	
 				}
 					
 				for (String col : ti.columns) {
@@ -655,7 +654,7 @@ NEW.field refers to the new value
 				}
 					
 				@SuppressWarnings("unused")
-				Object[] row = Utils.jsonToRow(ti,tableName, jo,msm.getMusicDefaultPrimaryKeyName());
+				Object[] row = Utils.jsonToRow(ti,tableName, jo, mi.getMusicDefaultPrimaryKeyName());
 				//\FIXME this is wrong now, update of the dirty row and entity is now handled by the archival process 
 				//msm.updateDirtyRowAndEntityTableInMusic(ti,tableName, jo);
 			 }

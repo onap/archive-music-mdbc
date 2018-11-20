@@ -40,7 +40,7 @@ import org.onap.music.mdbc.MdbcServerLogic;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.configurations.NodeConfiguration;
-import org.onap.music.mdbc.mixins.CassandraMixin;
+import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.MusicInterface;
 
 import com.datastax.driver.core.Row;
@@ -88,7 +88,7 @@ public class MusicTxDigest {
 		while(colIterator.hasNext()) {
 			String col = colIterator.next();
 			//FIXME: should not explicitly refer to cassandramixin
-			if (col.equals(CassandraMixin.MDBC_PRIMARYKEY_NAME)) {
+			if (col.equals(MusicMixin.MDBC_PRIMARYKEY_NAME)) {
 				//reserved name
 				continue;
 			}
@@ -140,6 +140,8 @@ public class MusicTxDigest {
 		case SELECT:
 			//no update happened, do nothing
 			break;
+		default:
+			logger.error(op.getOperationType() + "not implemented for replay");
 		}
     }
     
