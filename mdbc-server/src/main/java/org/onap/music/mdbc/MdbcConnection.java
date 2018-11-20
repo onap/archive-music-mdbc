@@ -34,8 +34,12 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 import org.onap.music.exceptions.MDBCServiceException;
@@ -44,7 +48,10 @@ import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
+import org.onap.music.mdbc.mixins.DBInterface;
+import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
+import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
 
@@ -61,25 +68,28 @@ public class MdbcConnection implements Connection {
 	
 	private final String id;			// This is the transaction id, assigned to this connection. There is no need to change the id, if connection is reused
 	private final Connection conn;		// the JDBC Connection to the actual underlying database
-	private final MusicSqlManager mgr;	// there should be one MusicSqlManager in use per Connection
+	private final MusicInterface mi;
 	private final TxCommitProgress progressKeeper;
 	private final DatabasePartition partition;
+	private final DBInterface dbi;
+	private final HashMap<Range,StagingTable> transactionDigest;
+	private final Set<String> table_set;
 
 	public MdbcConnection(String id, String url, Connection c, Properties info, MusicInterface mi, TxCommitProgress progressKeeper, DatabasePartition partition) throws MDBCServiceException {
 		this.id = id;
+		this.table_set = Collections.synchronizedSet(new HashSet<String>());
+		this.transactionDigest = new HashMap<Range,StagingTable>();
+		
 		if (c == null) {
 			throw new MDBCServiceException("Connection is null");
 		}
 		this.conn = c;
+		info.putAll(MDBCUtils.getMdbcProperties());
+		String mixinDb  = info.getProperty(Configuration.KEY_DB_MIXIN_NAME, Configuration.DB_MIXIN_DEFAULT);
+		this.dbi       = MixinFactory.createDBInterface(mixinDb, mi, url, conn, info);
+		this.mi        = mi;
 		try {
-			this.mgr = new MusicSqlManager(url, c, info, mi);
-		} catch (MDBCServiceException e) {
-		    logger.error("Failure in creating Music SQL Manager");
-			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
-			throw e;
-		}
-		try {
-			this.mgr.setAutoCommit(c.getAutoCommit(),null,null,null);
+			this.setAutoCommit(c.getAutoCommit());
 		} catch (SQLException e) {
             logger.error("Failure in autocommit");
 			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
@@ -87,19 +97,15 @@ public class MdbcConnection implements Connection {
 
 		// Verify the tables in MUSIC match the tables in the database
 		// and create triggers on any tables that need them
-		//mgr.synchronizeTableData();
-		if ( mgr != null ) try {
-			mgr.synchronizeTables();
+		try {
+			this.synchronizeTables();
 		} catch (QueryException e) {
 		    logger.error("Error syncrhonizing tables");
 			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
 		}
-		else {
-			logger.error(EELFLoggerDelegate.errorLogger, "MusicSqlManager was not correctly created", AppMessages.UNKNOWNERROR, ErrorTypes.UNKNOWN, ErrorSeverity.FATAL);
-			throw new MDBCServiceException("Music SQL Manager object is null or invalid");
-		}
 		this.progressKeeper = progressKeeper;
 		this.partition = partition;
+		
         logger.debug("Mdbc connection created with id: "+id);
 	}
 
@@ -117,18 +123,18 @@ public class MdbcConnection implements Connection {
 
 	@Override
 	public Statement createStatement() throws SQLException {
-		return new MdbcCallableStatement(conn.createStatement(), mgr);
+		return new MdbcCallableStatement(conn.createStatement(), this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql) throws SQLException {
 		//TODO: grab the sql call from here and all the other preparestatement calls
-		return new MdbcPreparedStatement(conn.prepareStatement(sql), sql, mgr);
+		return new MdbcPreparedStatement(conn.prepareStatement(sql), sql, this);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql) throws SQLException {
-		return new MdbcCallableStatement(conn.prepareCall(sql), mgr);
+		return new MdbcCallableStatement(conn.prepareCall(sql), this);
 	}
 
 	@Override
@@ -141,13 +147,23 @@ public class MdbcConnection implements Connection {
 		boolean b = conn.getAutoCommit();
 		if (b != autoCommit) {
 		    if(progressKeeper!=null) progressKeeper.commitRequested(id);
-			try {
-				mgr.setAutoCommit(autoCommit,id,progressKeeper,partition);
-				if(progressKeeper!=null)
-                    progressKeeper.setMusicDone(id);
-			} catch (MDBCServiceException e) {
-				logger.error(EELFLoggerDelegate.errorLogger, "Commit to music failed", AppMessages.UNKNOWNERROR, ErrorTypes.UNKNOWN, ErrorSeverity.FATAL);
-				throw new SQLException("Failure commiting to MUSIC");
+		    logger.debug(EELFLoggerDelegate.applicationLogger,"autocommit changed to "+b);
+			if (b) {
+				// My reading is that turning autoCOmmit ON should automatically commit any outstanding transaction
+				if(id == null || id.isEmpty()) {
+					logger.error(EELFLoggerDelegate.errorLogger, "Connection ID is null",AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
+					throw new SQLException("tx id is null");
+				}
+				try {
+					mi.commitLog(partition, transactionDigest, id, progressKeeper);
+				} catch (MDBCServiceException e) {
+					// TODO Auto-generated catch block
+					logger.error("Cannot commit log to music" + e.getStackTrace());
+					throw new SQLException(e.getMessage());
+				}
+			}
+			if(progressKeeper!=null) {
+                progressKeeper.setMusicDone(id);
 			}
 			conn.setAutoCommit(autoCommit);
             if(progressKeeper!=null) {
@@ -164,6 +180,11 @@ public class MdbcConnection implements Connection {
 		return conn.getAutoCommit();
 	}
 
+	/**
+	 * Perform a commit, as requested by the JDBC driver.  If any row updates have been delayed,
+	 * they are performed now and copied into MUSIC.
+	 * @throws SQLException 
+	 */
 	@Override
 	public void commit() throws SQLException {
 		if(progressKeeper.isComplete(id)) {
@@ -174,7 +195,9 @@ public class MdbcConnection implements Connection {
 		}
 
 		try {
-			mgr.commit(id,progressKeeper,partition);
+			logger.debug(EELFLoggerDelegate.applicationLogger, " commit ");
+			// transaction was committed -- add all the updates into the REDO-Log in MUSIC
+			mi.commitLog(partition, transactionDigest, id, progressKeeper);
 		} catch (MDBCServiceException e) {
 			//If the commit fail, then a new commitId should be used 
 			logger.error(EELFLoggerDelegate.errorLogger, "Commit to music failed", AppMessages.UNKNOWNERROR, ErrorTypes.UNKNOWN, ErrorSeverity.FATAL);
@@ -196,19 +219,26 @@ public class MdbcConnection implements Connection {
         }
 	}
 
+	/**
+	 * Perform a rollback, as requested by the JDBC driver.  If any row updates have been delayed,
+	 * they are discarded.
+	 */
 	@Override
 	public void rollback() throws SQLException {
-		mgr.rollback();
+		logger.debug(EELFLoggerDelegate.applicationLogger, "Rollback");;
+		transactionDigest.clear();
 		conn.rollback();
 		progressKeeper.reinitializeTxProgress(id);
 	}
 
+	/**
+	 * Close this MdbcConnection.
+	 */
 	@Override
 	public void close() throws SQLException {
 	    logger.debug("Closing mdbc connection with id:"+id);
-		if (mgr != null) {
-            logger.debug("Closing mdbc manager with id:"+id);
-			mgr.close();
+	    if (dbi != null) {
+			dbi.close();
 		}
 		if (conn != null && !conn.isClosed()) {
             logger.debug("Closing jdbc from mdbc with id:"+id);
@@ -269,18 +299,18 @@ public class MdbcConnection implements Connection {
 
 	@Override
 	public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-		return new MdbcCallableStatement(conn.createStatement(resultSetType, resultSetConcurrency), mgr);
+		return new MdbcCallableStatement(conn.createStatement(resultSetType, resultSetConcurrency), this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
 			throws SQLException {
-		return new MdbcCallableStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency), sql, mgr);
+		return new MdbcCallableStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency), sql, this);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-		return new MdbcCallableStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency), mgr);
+		return new MdbcCallableStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency), this);
 	}
 
 	@Override
@@ -326,34 +356,34 @@ public class MdbcConnection implements Connection {
 	@Override
 	public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
 			throws SQLException {
-		return new MdbcCallableStatement(conn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability), mgr);
+		return new MdbcCallableStatement(conn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability), this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency,
 			int resultSetHoldability) throws SQLException {
-		return new MdbcCallableStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability), sql, mgr);
+		return new MdbcCallableStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability), sql, this);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency,
 			int resultSetHoldability) throws SQLException {
-		return new MdbcCallableStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability), mgr);
+		return new MdbcCallableStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability), this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-		return new MdbcPreparedStatement(conn.prepareStatement(sql, autoGeneratedKeys), sql, mgr);
+		return new MdbcPreparedStatement(conn.prepareStatement(sql, autoGeneratedKeys), sql, this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-		return new MdbcPreparedStatement(conn.prepareStatement(sql, columnIndexes), sql, mgr);
+		return new MdbcPreparedStatement(conn.prepareStatement(sql, columnIndexes), sql, this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-		return new MdbcPreparedStatement(conn.prepareStatement(sql, columnNames), sql, mgr);
+		return new MdbcPreparedStatement(conn.prepareStatement(sql, columnNames), sql, this);
 	}
 
 	@Override
@@ -434,5 +464,57 @@ public class MdbcConnection implements Connection {
 	@Override
 	public int getNetworkTimeout() throws SQLException {
 		return conn.getNetworkTimeout();
+	}
+
+	
+	/**
+	 * Code to be run within the DB driver before a SQL statement is executed.  This is where tables
+	 * can be synchronized before a SELECT, for those databases that do not support SELECT triggers.
+	 * @param sql the SQL statement that is about to be executed
+	 */
+	public void preStatementHook(String sql) {
+		dbi.preStatementHook(sql);
+	}
+
+	/**
+	 * Code to be run within the DB driver after a SQL statement has been executed.  This is where remote
+	 * statement actions can be copied back to Cassandra/MUSIC.
+	 * @param sql the SQL statement that was executed
+	 */
+	public void postStatementHook(String sql) {
+		dbi.postStatementHook(sql, transactionDigest);
+	}
+
+	/**
+	 * Synchronize the list of tables in SQL with the list in MUSIC. This function should be called when the
+	 * proxy first starts, and whenever there is the possibility that tables were created or dropped.  It is synchronized
+	 * in order to prevent multiple threads from running this code in parallel.
+	 */
+	public void synchronizeTables() throws QueryException {
+		Set<String> set1 = dbi.getSQLTableSet();	// set of tables in the database
+		logger.debug(EELFLoggerDelegate.applicationLogger, "synchronizing tables:" + set1);
+		for (String tableName : set1) {
+			// This map will be filled in if this table was previously discovered
+			tableName = tableName.toUpperCase();
+			if (!table_set.contains(tableName) && !dbi.getReservedTblNames().contains(tableName)) {
+				logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+tableName);
+				try {
+					TableInfo ti = dbi.getTableInfo(tableName);
+					mi.initializeMusicForTable(ti,tableName);
+					//\TODO Verify if table info can be modify in the previous step, if not this step can be deleted
+					ti = dbi.getTableInfo(tableName);
+					mi.createDirtyRowTable(ti,tableName);
+					dbi.createSQLTriggers(tableName);
+					table_set.add(tableName);
+					dbi.synchronizeData(tableName);
+					logger.debug(EELFLoggerDelegate.applicationLogger, "synchronized tables:" +
+								table_set.size() + "/" + set1.size() + "tables uploaded");
+				} catch (Exception e) {
+					logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
+					//logger.error(EELFLoggerDelegate.errorLogger, "Exception synchronizeTables: "+e);
+					throw new QueryException();
+				}
+			}
+		}
 	}
 }

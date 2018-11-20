@@ -162,14 +162,13 @@ public interface MusicInterface {
 	/**
 	 * Commits the corresponding REDO-log into MUSIC
 	 *
-	 * @param dbi, the database interface use in the local SQL cache, where the music interface is being used
 	 * @param partition
 	 * @param transactionDigest digest of the transaction that is being committed into the Redo log in music. It has to be a HashMap, because it is required to be serializable
 	 * @param txId id associated with the log being send
 	 * @param progressKeeper data structure that is used to handle to detect failures, and know what to do
 	 * @throws MDBCServiceException
 	 */
-	void commitLog(DBInterface dbi, DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
+	void commitLog(DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
 	MusicRangeInformationRow getMusicRangeInformation(UUID partitionIndex) throws MDBCServiceException;
 

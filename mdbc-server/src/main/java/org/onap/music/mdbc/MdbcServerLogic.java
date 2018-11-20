@@ -97,7 +97,7 @@ public class MdbcServerLogic extends JdbcMeta{
         //\TODO: don't use connectionCache, use this.manager internal state
         Connection conn = connectionCache.getIfPresent(id);
         if (conn == null) {
-            this.manager.CloseConnection(id);
+            this.manager.closeConnection(id);
             logger.error(EELFLoggerDelegate.errorLogger,"Connection not found: invalid id, closed, or expired: "
                     + id);
             throw new RuntimeException(" Connection not found: invalid id, closed, or expired: " + id);
@@ -119,8 +119,8 @@ public class MdbcServerLogic extends JdbcMeta{
         }
         // Avoid global synchronization of connection opening
         try {
-            this.manager.OpenConnection(ch.id, info);
-            Connection conn = this.manager.GetConnection(ch.id);
+            this.manager.openConnection(ch.id, info);
+            Connection conn = this.manager.getConnection(ch.id);
             if(conn == null) {
                 logger.error(EELFLoggerDelegate.errorLogger, "Connection created was null");
                 throw new RuntimeException("Connection created was null for connection: " + ch.id);
@@ -130,7 +130,7 @@ public class MdbcServerLogic extends JdbcMeta{
             // Race condition: someone beat us to storing the connection in the cache.
             if (loadedConn != null) {
                 //\TODO check if we added an additional race condition for this
-                this.manager.CloseConnection(ch.id);
+                this.manager.closeConnection(ch.id);
                 conn.close();
                 throw new RuntimeException("Connection already exists: " + ch.id);
             }
@@ -156,7 +156,7 @@ public class MdbcServerLogic extends JdbcMeta{
             throw new RuntimeException(e.getMessage());
         } finally {
             connectionCache.invalidate(ch.id);
-            this.manager.CloseConnection(ch.id);
+            this.manager.closeConnection(ch.id);
             logger.info("connection closed with id {}", ch.id);
         }
 	}

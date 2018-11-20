@@ -27,7 +27,6 @@ import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
 import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
-import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
@@ -151,7 +150,7 @@ public class StateManager {
 	}
     
     
-    public void CloseConnection(String connectionId){
+    public void closeConnection(String connectionId){
         //\TODO check if there is a race condition
         if(mdbcConnections.containsKey(connectionId)) {
             transactionInfo.deleteTxProgress(connectionId);
@@ -166,7 +165,7 @@ public class StateManager {
         }
     }
 
-    public void OpenConnection(String id, Properties information){
+    public void openConnection(String id, Properties information){
        if(!mdbcConnections.containsKey(id)){
            Connection sqlConnection;
            MdbcConnection newConnection;
@@ -208,7 +207,7 @@ public class StateManager {
      * @param id of the transaction, created using
      * @return
      */
-    public Connection GetConnection(String id) {
+    public Connection getConnection(String id) {
     	if(mdbcConnections.containsKey(id)) {
     		//\TODO: Verify if this make sense
     		// Intent: reinitialize transaction progress, when it already completed the previous tx for the same connection
@@ -253,7 +252,7 @@ public class StateManager {
     	return newConnection;
     }
 
-	public void InitializeSystem() {
+	public void initializeSystem() {
 		//\TODO Prefetch data to system using the data ranges as guide 
 		throw new UnsupportedOperationException("Function initialize system needs to be implemented id MdbcStateManager");
 	}

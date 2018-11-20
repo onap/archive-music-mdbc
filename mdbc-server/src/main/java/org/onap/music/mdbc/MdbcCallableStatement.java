@@ -53,12 +53,12 @@ public class MdbcCallableStatement extends MdbcPreparedStatement implements Call
 	@SuppressWarnings("unused")
 	private static final String DATASTAX_PREFIX = "com.datastax.driver";
 
-	public MdbcCallableStatement(Statement stmt, MusicSqlManager m) {
-		super(stmt, m);
+	public MdbcCallableStatement(Statement stmt, MdbcConnection mConn) {
+		super(stmt, mConn);
 	}
 
-	public MdbcCallableStatement(Statement stmt, String sql, MusicSqlManager mgr) {
-		super(stmt, sql, mgr);
+	public MdbcCallableStatement(Statement stmt, String sql, MdbcConnection mConn) {
+		super(stmt, sql, mConn);
 	}
 	
 	@Override

@@ -38,5 +38,13 @@ public class MusicTxDigestTest {
     	HashMap<Range, StagingTable> digest = (HashMap<Range, StagingTable>) MDBCUtils.fromString(t1);
     	txDigest.replayTxDigest(digest);
 	}
+	
+	@Test
+	public void testEmptyDigest() throws Exception {
+		String t1 = "rO0ABXNyABFqYXZhLnV0aWwuSGFzaE1hcAUH2sHDFmDRAwACRgAKbG9hZEZhY3RvckkACXRocmVzaG9sZHhwP0AAAAAAAAB3CAAAABAAAAAAeA==";
+		MusicTxDigest txDigest = new MusicTxDigest(null);
+		HashMap<Range, StagingTable> digest = (HashMap<Range, StagingTable>) MDBCUtils.fromString(t1);
+		txDigest.replayTxDigest(digest);
+	}
 
 }

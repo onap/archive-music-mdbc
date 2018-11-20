@@ -24,7 +24,7 @@ import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.RedoRow;
-import org.onap.music.mdbc.mixins.CassandraMixin;
+import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.tables.MusicTxDigest;
 
 import com.google.gson.Gson;

@@ -44,21 +44,21 @@ import com.datastax.driver.core.Row;
 /**
  * This class provides the methods that MDBC needs to access Cassandra directly in order to provide persistence
  * to calls to the user's DB.  It stores dirty row references in one table (called DIRTY____) rather than one dirty
- * table per real table (as {@link org.onap.music.mdbc.mixins.CassandraMixin} does).
+ * table per real table (as {@link org.onap.music.mdbc.mixins.MusicMixin} does).
  *
  * @author Robert P. Eby
  */
-public class Cassandra2Mixin extends CassandraMixin {
+public class Music2Mixin extends MusicMixin {
 	private static final String DIRTY_TABLE = "DIRTY____";	// it seems Cassandra won't allow __DIRTY__
 	private boolean dirty_table_created = false;
 	
-	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Cassandra2Mixin.class);
+	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Music2Mixin.class);
 
-	public Cassandra2Mixin() {
+	public Music2Mixin() {
 		super();
 	}
 
-	public Cassandra2Mixin(String url, Properties info) throws MDBCServiceException {
+	public Music2Mixin(String url, Properties info) throws MDBCServiceException {
 		super(url, info);
 	}
 
