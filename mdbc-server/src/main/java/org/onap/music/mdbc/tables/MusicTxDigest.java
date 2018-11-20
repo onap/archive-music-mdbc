@@ -20,12 +20,14 @@
 package org.onap.music.mdbc.tables;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -36,11 +38,13 @@ import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
+import org.onap.music.mdbc.MdbcConnection;
 import org.onap.music.mdbc.MdbcServerLogic;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.configurations.NodeConfiguration;
 import org.onap.music.mdbc.mixins.MusicMixin;
+import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.MusicInterface;
 
 import com.datastax.driver.core.Row;
@@ -56,106 +60,6 @@ public class MusicTxDigest {
 		this.stateManager = stateManager;
 	}
 
-	/**
-	 * Parse the transaction digest into individual events
-	 * @param digest - base 64 encoded, serialized digest
-	 */
-	public void replayTxDigest(HashMap<Range,StagingTable> digest) {
-		for (Map.Entry<Range,StagingTable> entry: digest.entrySet()) {
-    		Range r = entry.getKey();
-    		StagingTable st = entry.getValue();
-    		ArrayList<Operation> opList = st.getOperationList();
-			
-    		for (Operation op: opList) {
-    			replayOperation(r, op);
-    		}
-    	}
-    }
-    
-    /**
-     * Replays operation into local database
-     * @param r
-     * @param op
-     */
-    private void replayOperation(Range r, Operation op) {
-		logger.info("Operation: " + op.getOperationType() + "->" + op.getNewVal());
-		JSONObject jsonOp = op.getNewVal();
-		JSONObject key = op.getKey();
-		
-		ArrayList<String> cols = new ArrayList<String>();
-		ArrayList<Object> vals = new ArrayList<Object>();
-		Iterator<String> colIterator = jsonOp.keys();
-		while(colIterator.hasNext()) {
-			String col = colIterator.next();
-			//FIXME: should not explicitly refer to cassandramixin
-			if (col.equals(MusicMixin.MDBC_PRIMARYKEY_NAME)) {
-				//reserved name
-				continue;
-			}
-			cols.add(col);
-			vals.add(jsonOp.get(col));
-		}
-		
-		//build the queries
-		StringBuilder sql = new StringBuilder();
-		String sep = "";
-		switch (op.getOperationType()) {
-		case INSERT:
-			sql.append(op.getOperationType() + " INTO ");
-			sql.append(r.table + " (") ;
-			sep = "";
-			for (String col: cols) {
-				sql.append(sep + col);
-				sep = ", ";
-			}	
-			sql.append(") VALUES (");
-			sep = "";
-			for (Object val: vals) {
-				sql.append(sep + "\"" + val + "\"");
-				sep = ", ";
-			}
-			sql.append(");");
-			logger.info(sql.toString());
-			break;
-		case UPDATE:
-			sql.append(op.getOperationType() + " ");
-			sql.append(r.table + " SET ");
-			sep="";
-			for (int i=0; i<cols.size(); i++) {
-				sql.append(sep + cols.get(i) + "=\"" + vals.get(i) +"\"");
-				sep = ", ";
-			}
-			sql.append(" WHERE ");
-			sql.append(getPrimaryKeyConditional(op.getKey()));
-			sql.append(";");
-			logger.info(sql.toString());
-			break;
-		case DELETE:
-			sql.append(op.getOperationType() + " FROM ");
-			sql.append(r.table + " WHERE ");
-			sql.append(getPrimaryKeyConditional(op.getKey()));
-			sql.append(";");
-			logger.info(sql.toString());
-			break;
-		case SELECT:
-			//no update happened, do nothing
-			break;
-		default:
-			logger.error(op.getOperationType() + "not implemented for replay");
-		}
-    }
-    
-    private String getPrimaryKeyConditional(JSONObject primaryKeys) {
-    	StringBuilder keyCondStmt = new StringBuilder();
-    	String and = "";
-    	for (String key: primaryKeys.keySet()) {
-    		Object val = primaryKeys.get(key);
-    		keyCondStmt.append(and + key + "=\"" + val + "\"");
-    		and = " AND ";
-    	}
-		return keyCondStmt.toString();
-	}
-
     /**
      * Runs the body of the background daemon
      * @param daemonSleepTimeS time, in seconds, between updates
@@ -163,6 +67,9 @@ public class MusicTxDigest {
      */
 	public void backgroundDaemon(int daemonSleepTimeS) throws InterruptedException {
 		MusicInterface mi = stateManager.getMusicInterface();
+		stateManager.openConnection("daemon", new Properties());
+		DBInterface dbi = ((MdbcConnection) stateManager.getConnection("daemon")).getDBInterface();
+
 		while (true) {
 			//update
 			logger.info(String.format("[%s] Background MusicTxDigest daemon updating local db",
@@ -175,7 +82,7 @@ public class MusicTxDigest {
 			for (UUID partition: partitions) {
 				if (!partition.equals(myPartition.getMusicRangeInformationIndex())){
 					try {
-						replayDigestForPartition(mi, partition);
+						replayDigestForPartition(mi, partition, dbi);
 					} catch (MDBCServiceException e) {
 						logger.error("Unable to update for partition : " + partition + ". " + e.getMessage());
 						continue;
@@ -186,11 +93,24 @@ public class MusicTxDigest {
 		}
 	}
 	
-	public void replayDigestForPartition(MusicInterface mi, UUID partitionId) throws MDBCServiceException {
-		List<MusicTxDigestId> redoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
-		for (MusicTxDigestId txId: redoLogTxIds) {
-			HashMap<Range, StagingTable> digest = mi.getTxDigest(txId);
-			replayTxDigest(digest);
+	/**
+	 * Replay the digest for a given partition
+	 * @param mi
+	 * @param partitionId
+	 * @param dbi
+	 * @throws MDBCServiceException
+	 */
+	public void replayDigestForPartition(MusicInterface mi, UUID partitionId, DBInterface dbi) throws MDBCServiceException {
+		List<MusicTxDigestId> partitionsRedoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
+		for (MusicTxDigestId txId: partitionsRedoLogTxIds) {
+			HashMap<Range, StagingTable> transaction = mi.getTxDigest(txId);
+			try {
+				dbi.replayTransaction(transaction);
+			} catch (SQLException e) {
+				logger.error("Rolling back the entire digest replay. " + partitionId);
+				return;
+			}
+			logger.info("Successfully replayed transaction " + txId);
 		}
 		//todo, keep track of where I am in pointer
 	}

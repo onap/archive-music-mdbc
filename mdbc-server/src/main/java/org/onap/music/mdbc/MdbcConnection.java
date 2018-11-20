@@ -67,7 +67,7 @@ public class MdbcConnection implements Connection {
 	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MdbcConnection.class);
 	
 	private final String id;			// This is the transaction id, assigned to this connection. There is no need to change the id, if connection is reused
-	private final Connection conn;		// the JDBC Connection to the actual underlying database
+	private final Connection jdbcConn;		// the JDBC Connection to the actual underlying database
 	private final MusicInterface mi;
 	private final TxCommitProgress progressKeeper;
 	private final DatabasePartition partition;
@@ -83,10 +83,10 @@ public class MdbcConnection implements Connection {
 		if (c == null) {
 			throw new MDBCServiceException("Connection is null");
 		}
-		this.conn = c;
+		this.jdbcConn = c;
 		info.putAll(MDBCUtils.getMdbcProperties());
 		String mixinDb  = info.getProperty(Configuration.KEY_DB_MIXIN_NAME, Configuration.DB_MIXIN_DEFAULT);
-		this.dbi       = MixinFactory.createDBInterface(mixinDb, mi, url, conn, info);
+		this.dbi       = MixinFactory.createDBInterface(mixinDb, mi, url, jdbcConn, info);
 		this.mi        = mi;
 		try {
 			this.setAutoCommit(c.getAutoCommit());
@@ -112,39 +112,39 @@ public class MdbcConnection implements Connection {
 	@Override
 	public <T> T unwrap(Class<T> iface) throws SQLException {
 		logger.error(EELFLoggerDelegate.errorLogger, "proxyconn unwrap: " + iface.getName());
-		return conn.unwrap(iface);
+		return jdbcConn.unwrap(iface);
 	}
 
 	@Override
 	public boolean isWrapperFor(Class<?> iface) throws SQLException {
 		logger.error(EELFLoggerDelegate.errorLogger, "proxystatement iswrapperfor: " + iface.getName());
-		return conn.isWrapperFor(iface);
+		return jdbcConn.isWrapperFor(iface);
 	}
 
 	@Override
 	public Statement createStatement() throws SQLException {
-		return new MdbcCallableStatement(conn.createStatement(), this);
+		return new MdbcCallableStatement(jdbcConn.createStatement(), this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql) throws SQLException {
 		//TODO: grab the sql call from here and all the other preparestatement calls
-		return new MdbcPreparedStatement(conn.prepareStatement(sql), sql, this);
+		return new MdbcPreparedStatement(jdbcConn.prepareStatement(sql), sql, this);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql) throws SQLException {
-		return new MdbcCallableStatement(conn.prepareCall(sql), this);
+		return new MdbcCallableStatement(jdbcConn.prepareCall(sql), this);
 	}
 
 	@Override
 	public String nativeSQL(String sql) throws SQLException {
-		return conn.nativeSQL(sql);
+		return jdbcConn.nativeSQL(sql);
 	}
 
 	@Override
 	public void setAutoCommit(boolean autoCommit) throws SQLException {
-		boolean b = conn.getAutoCommit();
+		boolean b = jdbcConn.getAutoCommit();
 		if (b != autoCommit) {
 		    if(progressKeeper!=null) progressKeeper.commitRequested(id);
 		    logger.debug(EELFLoggerDelegate.applicationLogger,"autocommit changed to "+b);
@@ -165,7 +165,7 @@ public class MdbcConnection implements Connection {
 			if(progressKeeper!=null) {
                 progressKeeper.setMusicDone(id);
 			}
-			conn.setAutoCommit(autoCommit);
+			jdbcConn.setAutoCommit(autoCommit);
             if(progressKeeper!=null) {
                 progressKeeper.setSQLDone(id);
             }
@@ -177,7 +177,7 @@ public class MdbcConnection implements Connection {
 
 	@Override
 	public boolean getAutoCommit() throws SQLException {
-		return conn.getAutoCommit();
+		return jdbcConn.getAutoCommit();
 	}
 
 	/**
@@ -208,7 +208,7 @@ public class MdbcConnection implements Connection {
 			progressKeeper.setMusicDone(id);
 		}
 
-		conn.commit();
+		jdbcConn.commit();
 
 		if(progressKeeper != null) {
 			progressKeeper.setSQLDone(id);
@@ -227,7 +227,7 @@ public class MdbcConnection implements Connection {
 	public void rollback() throws SQLException {
 		logger.debug(EELFLoggerDelegate.applicationLogger, "Rollback");;
 		transactionDigest.clear();
-		conn.rollback();
+		jdbcConn.rollback();
 		progressKeeper.reinitializeTxProgress(id);
 	}
 
@@ -240,230 +240,230 @@ public class MdbcConnection implements Connection {
 	    if (dbi != null) {
 			dbi.close();
 		}
-		if (conn != null && !conn.isClosed()) {
+		if (jdbcConn != null && !jdbcConn.isClosed()) {
             logger.debug("Closing jdbc from mdbc with id:"+id);
-			conn.close();
+			jdbcConn.close();
 			logger.debug("Connection was closed for id:" + id);
 		}
 	}
 
 	@Override
 	public boolean isClosed() throws SQLException {
-		return conn.isClosed();
+		return jdbcConn.isClosed();
 	}
 
 	@Override
 	public DatabaseMetaData getMetaData() throws SQLException {
-		return conn.getMetaData();
+		return jdbcConn.getMetaData();
 	}
 
 	@Override
 	public void setReadOnly(boolean readOnly) throws SQLException {
-		conn.setReadOnly(readOnly);
+		jdbcConn.setReadOnly(readOnly);
 	}
 
 	@Override
 	public boolean isReadOnly() throws SQLException {
-		return conn.isReadOnly();
+		return jdbcConn.isReadOnly();
 	}
 
 	@Override
 	public void setCatalog(String catalog) throws SQLException {
-		conn.setCatalog(catalog);
+		jdbcConn.setCatalog(catalog);
 	}
 
 	@Override
 	public String getCatalog() throws SQLException {
-		return conn.getCatalog();
+		return jdbcConn.getCatalog();
 	}
 
 	@Override
 	public void setTransactionIsolation(int level) throws SQLException {
-		conn.setTransactionIsolation(level);
+		jdbcConn.setTransactionIsolation(level);
 	}
 
 	@Override
 	public int getTransactionIsolation() throws SQLException {
-		return conn.getTransactionIsolation();
+		return jdbcConn.getTransactionIsolation();
 	}
 
 	@Override
 	public SQLWarning getWarnings() throws SQLException {
-		return conn.getWarnings();
+		return jdbcConn.getWarnings();
 	}
 
 	@Override
 	public void clearWarnings() throws SQLException {
-		conn.clearWarnings();
+		jdbcConn.clearWarnings();
 	}
 
 	@Override
 	public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-		return new MdbcCallableStatement(conn.createStatement(resultSetType, resultSetConcurrency), this);
+		return new MdbcCallableStatement(jdbcConn.createStatement(resultSetType, resultSetConcurrency), this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency)
 			throws SQLException {
-		return new MdbcCallableStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency), sql, this);
+		return new MdbcCallableStatement(jdbcConn.prepareStatement(sql, resultSetType, resultSetConcurrency), sql, this);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-		return new MdbcCallableStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency), this);
+		return new MdbcCallableStatement(jdbcConn.prepareCall(sql, resultSetType, resultSetConcurrency), this);
 	}
 
 	@Override
 	public Map<String, Class<?>> getTypeMap() throws SQLException {
-		return conn.getTypeMap();
+		return jdbcConn.getTypeMap();
 	}
 
 	@Override
 	public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
-		conn.setTypeMap(map);
+		jdbcConn.setTypeMap(map);
 	}
 
 	@Override
 	public void setHoldability(int holdability) throws SQLException {
-		conn.setHoldability(holdability);
+		jdbcConn.setHoldability(holdability);
 	}
 
 	@Override
 	public int getHoldability() throws SQLException {
-		return conn.getHoldability();
+		return jdbcConn.getHoldability();
 	}
 
 	@Override
 	public Savepoint setSavepoint() throws SQLException {
-		return conn.setSavepoint();
+		return jdbcConn.setSavepoint();
 	}
 
 	@Override
 	public Savepoint setSavepoint(String name) throws SQLException {
-		return conn.setSavepoint(name);
+		return jdbcConn.setSavepoint(name);
 	}
 
 	@Override
 	public void rollback(Savepoint savepoint) throws SQLException {
-		conn.rollback(savepoint);
+		jdbcConn.rollback(savepoint);
 	}
 
 	@Override
 	public void releaseSavepoint(Savepoint savepoint) throws SQLException {
-		conn.releaseSavepoint(savepoint);
+		jdbcConn.releaseSavepoint(savepoint);
 	}
 
 	@Override
 	public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability)
 			throws SQLException {
-		return new MdbcCallableStatement(conn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability), this);
+		return new MdbcCallableStatement(jdbcConn.createStatement(resultSetType, resultSetConcurrency, resultSetHoldability), this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency,
 			int resultSetHoldability) throws SQLException {
-		return new MdbcCallableStatement(conn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability), sql, this);
+		return new MdbcCallableStatement(jdbcConn.prepareStatement(sql, resultSetType, resultSetConcurrency, resultSetHoldability), sql, this);
 	}
 
 	@Override
 	public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency,
 			int resultSetHoldability) throws SQLException {
-		return new MdbcCallableStatement(conn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability), this);
+		return new MdbcCallableStatement(jdbcConn.prepareCall(sql, resultSetType, resultSetConcurrency, resultSetHoldability), this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-		return new MdbcPreparedStatement(conn.prepareStatement(sql, autoGeneratedKeys), sql, this);
+		return new MdbcPreparedStatement(jdbcConn.prepareStatement(sql, autoGeneratedKeys), sql, this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-		return new MdbcPreparedStatement(conn.prepareStatement(sql, columnIndexes), sql, this);
+		return new MdbcPreparedStatement(jdbcConn.prepareStatement(sql, columnIndexes), sql, this);
 	}
 
 	@Override
 	public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-		return new MdbcPreparedStatement(conn.prepareStatement(sql, columnNames), sql, this);
+		return new MdbcPreparedStatement(jdbcConn.prepareStatement(sql, columnNames), sql, this);
 	}
 
 	@Override
 	public Clob createClob() throws SQLException {
-		return conn.createClob();
+		return jdbcConn.createClob();
 	}
 
 	@Override
 	public Blob createBlob() throws SQLException {
-		return conn.createBlob();
+		return jdbcConn.createBlob();
 	}
 
 	@Override
 	public NClob createNClob() throws SQLException {
-		return conn.createNClob();
+		return jdbcConn.createNClob();
 	}
 
 	@Override
 	public SQLXML createSQLXML() throws SQLException {
-		return conn.createSQLXML();
+		return jdbcConn.createSQLXML();
 	}
 
 	@Override
 	public boolean isValid(int timeout) throws SQLException {
-		return conn.isValid(timeout);
+		return jdbcConn.isValid(timeout);
 	}
 
 	@Override
 	public void setClientInfo(String name, String value) throws SQLClientInfoException {
-		conn.setClientInfo(name, value);
+		jdbcConn.setClientInfo(name, value);
 	}
 
 	@Override
 	public void setClientInfo(Properties properties) throws SQLClientInfoException {
-		conn.setClientInfo(properties);
+		jdbcConn.setClientInfo(properties);
 	}
 
 	@Override
 	public String getClientInfo(String name) throws SQLException {
-		return conn.getClientInfo(name);
+		return jdbcConn.getClientInfo(name);
 	}
 
 	@Override
 	public Properties getClientInfo() throws SQLException {
-		return conn.getClientInfo();
+		return jdbcConn.getClientInfo();
 	}
 
 	@Override
 	public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-		return conn.createArrayOf(typeName, elements);
+		return jdbcConn.createArrayOf(typeName, elements);
 	}
 
 	@Override
 	public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
-		return conn.createStruct(typeName, attributes);
+		return jdbcConn.createStruct(typeName, attributes);
 	}
 
 	@Override
 	public void setSchema(String schema) throws SQLException {
-		conn.setSchema(schema);
+		jdbcConn.setSchema(schema);
 	}
 
 	@Override
 	public String getSchema() throws SQLException {
-		return conn.getSchema();
+		return jdbcConn.getSchema();
 	}
 
 	@Override
 	public void abort(Executor executor) throws SQLException {
-		conn.abort(executor);
+		jdbcConn.abort(executor);
 	}
 
 	@Override
 	public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
-		conn.setNetworkTimeout(executor, milliseconds);
+		jdbcConn.setNetworkTimeout(executor, milliseconds);
 	}
 
 	@Override
 	public int getNetworkTimeout() throws SQLException {
-		return conn.getNetworkTimeout();
+		return jdbcConn.getNetworkTimeout();
 	}
 
 	
@@ -516,5 +516,9 @@ public class MdbcConnection implements Connection {
 				}
 			}
 		}
+	}
+	
+	public DBInterface getDBInterface() {
+		return this.dbi;
 	}
 }
