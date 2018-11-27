@@ -74,13 +74,11 @@ public class MixinFactory {
 	 * Look for a class in CLASSPATH that implements the {@link MusicInterface} interface, and has the mixin name <i>name</i>.
 	 * If one is found, construct and return it, using the other arguments for the constructor.
 	 * @param name the name of the Mixin
-	 * @param msm the MusicSqlManager to use as an argument to the constructor
-	 * @param dbi the DBInterface to use as an argument to the constructor
-	 * @param url the URL to use as an argument to the constructor
+	 * @param mdbcServerName the name of this mdbcServer instance
 	 * @param info the Properties to use as an argument to the constructor
 	 * @return the newly constructed MusicInterface, or null if one cannot be found.
 	 */
-	public static MusicInterface createMusicInterface(String name, String url, Properties info) {
+	public static MusicInterface createMusicInterface(String name, String mdbcServerName, Properties info) {
 		for (Class<?> cl : Utils.getClassesImplementing(MusicInterface.class)) {
 			try {
 				Constructor<?> con = cl.getConstructor();
@@ -92,7 +90,7 @@ public class MixinFactory {
 						con = cl.getConstructor(String.class, Properties.class);
 						if (con != null) {
 							logger.info(EELFLoggerDelegate.applicationLogger,"Found match: "+miname);
-							return (MusicInterface) con.newInstance(url, info);
+							return (MusicInterface) con.newInstance(mdbcServerName, info);
 						}
 					}
 				}

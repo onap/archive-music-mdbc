@@ -155,7 +155,7 @@ public class MusicMixin implements MusicInterface {
 		this.allReplicaIds  = null;
     }
 
-	public MusicMixin(String url, Properties info) throws MDBCServiceException {
+	public MusicMixin(String mdbcServerName, Properties info) throws MDBCServiceException {
 		// Default values -- should be overridden in the Properties
 		// Default to using the host_ids of the various peers as the replica IDs (this is probably preferred)
 		this.musicAddress   = info.getProperty(KEY_MUSIC_ADDRESS, DEFAULT_MUSIC_ADDRESS);
@@ -173,7 +173,8 @@ public class MusicMixin implements MusicInterface {
 
 		this.music_ns       = info.getProperty(KEY_MUSIC_NAMESPACE,DEFAULT_MUSIC_NAMESPACE);
 		logger.info(EELFLoggerDelegate.applicationLogger,"MusicSqlManager: music_ns="+music_ns);
-        createKeyspace();
+		
+		initializeMetricTables();
     }
 
 	/**
@@ -234,8 +235,12 @@ public class MusicMixin implements MusicInterface {
 			musicSession = null;
 		}
 	}
-	@Override
-	public void initializeMetricDataStructures() throws MDBCServiceException {
+	
+	/**
+	 * This function is used to created all the required data structures, both local  
+	 */
+	private void initializeMetricTables() throws MDBCServiceException {
+		createKeyspace();
 	    try {
             createMusicTxDigest();//\TODO If we start partitioning the data base, we would need to use the redotable number
  			createMusicRangeInformationTable();

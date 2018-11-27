@@ -95,9 +95,9 @@ public class MusicTxDigest {
 	
 	/**
 	 * Replay the digest for a given partition
-	 * @param mi
-	 * @param partitionId
-	 * @param dbi
+	 * @param mi music interface
+	 * @param partitionId the partition to be replayed
+	 * @param dbi interface to the database that will replay the operations
 	 * @throws MDBCServiceException
 	 */
 	public void replayDigestForPartition(MusicInterface mi, UUID partitionId, DBInterface dbi) throws MDBCServiceException {

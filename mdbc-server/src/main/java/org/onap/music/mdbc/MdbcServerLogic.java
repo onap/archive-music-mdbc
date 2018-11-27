@@ -50,7 +50,6 @@ public class MdbcServerLogic extends JdbcMeta{
 	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MdbcServerLogic.class);
 
 	StateManager manager;
-	String name;
 
 	//TODO: Delete this properties after debugging
 	private final Properties info;
@@ -58,8 +57,7 @@ public class MdbcServerLogic extends JdbcMeta{
 
 	public MdbcServerLogic(String Url, Properties info, NodeConfiguration config) throws SQLException, MDBCServiceException {
 		super(Url,info);
-		this.name = config.nodeName;
-		this.manager = new StateManager(Url,info,config.partition,"test"); //FIXME: db name should not be passed in ahead of time
+		this.manager = new StateManager(Url,info,config.partition,config.nodeName, "test"); //FIXME: db name should not be passed in ahead of time
 		this.info = info;
         int concurrencyLevel = Integer.parseInt(
                 info.getProperty(ConnectionCacheSettings.CONCURRENCY_LEVEL.key(),
