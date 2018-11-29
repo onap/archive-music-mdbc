@@ -85,5 +85,6 @@ public class CreateNodeConfigurations {
         }
         configs.readInput();
         configs.createAndSaveNodeConfigurations();
+        System.exit(0);
     }
 }
