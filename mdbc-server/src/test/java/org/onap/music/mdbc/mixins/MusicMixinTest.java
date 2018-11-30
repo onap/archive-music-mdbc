@@ -1,3 +1,23 @@
+/*
+ * ============LICENSE_START====================================================
+ * org.onap.music.mdbc
+ * =============================================================================
+ * Copyright (C) 2018 AT&T Intellectual Property. All rights reserved.
+ * =============================================================================
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ * ============LICENSE_END======================================================
+ */
+
 package org.onap.music.mdbc.mixins;
 
 import static org.junit.Assert.*;
@@ -14,17 +34,20 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.onap.music.datastore.CassaDataStore;
-import org.onap.music.datastore.MusicLockState;
+import org.onap.music.datastore.MusicDataStore;
+import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
+import org.onap.music.lockingservice.cassandra.CassaLockStore;
+import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.main.MusicCore;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
+import org.onap.music.service.impl.MusicCassaCore;
 
 public class MusicMixinTest {
 
@@ -52,9 +75,10 @@ public class MusicMixinTest {
         assertNotNull("Invalid configuration for cassandra", cluster);
         session = cluster.connect();
         assertNotNull("Invalid configuration for cassandra", session);
-        CassaDataStore store = new CassaDataStore(cluster, session);
+
+        MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
+        CassaLockStore store = new CassaLockStore(MusicDataStoreHandle.mDstoreHandle);
         assertNotNull("Invalid configuration for music", store);
-        MusicCore.mDstoreHandle = store;
         try {
             Properties properties = new Properties();
             properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
@@ -145,7 +169,7 @@ public class MusicMixinTest {
             ownershipReturn.getOldIRangeds().get(1).equals(partition2.getMusicRangeInformationIndex()));
         String finalfullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+newPartition.getMusicRangeInformationIndex().toString();
         try {
-            List<String> lockQueue = MusicCore.getLockingServiceHandle().getLockQueue(keyspace, mriTableName,
+            List<String> lockQueue = MusicCassaCore.getLockingServiceHandle().getLockQueue(keyspace, mriTableName,
                 newPartition.getMusicRangeInformationIndex().toString());
             assertEquals(1,lockQueue.size());
             assertEquals(lockQueue.get(0),newPartition.getLockId());

@@ -27,6 +27,7 @@ import java.util.Enumeration;
 import java.util.Iterator;
 import java.util.List;
 
+import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.logging.EELFLoggerDelegate;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.HostDistance;
@@ -89,7 +90,7 @@ public class MusicConnector {
 	}
 	
 	private void connectToMultipleAddresses(String address) {
-		MusicCore.getDSHandle(address);
+		MusicDataStoreHandle.getDSHandle(address);
 	/*
 	PoolingOptions poolingOptions =
 		new PoolingOptions()

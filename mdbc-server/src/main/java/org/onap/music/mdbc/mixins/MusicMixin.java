@@ -43,13 +43,14 @@ import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.TxCommitProgress;
-
+import org.onap.music.service.impl.MusicCassaCore;
 import org.json.JSONObject;
-import org.onap.music.datastore.CassaLockStore;
+import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
+import org.onap.music.datastore.Condition;
 import org.onap.music.main.MusicCore;
 import org.onap.music.main.ResultType;
 import org.onap.music.main.ReturnType;
@@ -1650,7 +1651,7 @@ public class MusicMixin implements MusicInterface {
         }
         CassaLockStore lsHandle;
         try {
-            lsHandle = MusicCore.getLockingServiceHandle();
+            lsHandle = MusicCassaCore.getLockingServiceHandle();
         } catch (MusicLockingException e) {
             logger.error("Error obtaining the locking service handle when checking if relinquish was required");
             throw new MDBCServiceException("Error obtaining locking service"+e.getMessage());
@@ -1723,7 +1724,7 @@ public class MusicMixin implements MusicInterface {
 
     private void executeMusicLockedPut(String namespace, String tableName,
                                        String primaryKeyWithoutDomain, PreparedQueryObject queryObject, String lockId,
-                                       MusicCore.Condition conditionInfo) throws MDBCServiceException {
+                                       Condition conditionInfo) throws MDBCServiceException {
         ReturnType rt ;
         if(lockId==null) {
             try {

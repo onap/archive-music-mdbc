@@ -22,7 +22,7 @@ package org.onap.music.mdbc;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.exceptions.SyntaxError;
-import org.onap.music.datastore.CassaDataStore;
+import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicUtil;
 
@@ -97,15 +97,6 @@ public class TestUtils {
         expectedTypes.put("txid",DataType.uuid());
         expectedTypes.put("transactiondigest",DataType.text());
         return expectedTypes;
-    }
-
-
-    public static void checkRowsInTable(String keyspace, String tableName, CassaDataStore ds,
-                                        HashSet<String> expectedColumns, HashMap<String,DataType> expectedTypes){
-        TableMetadata table = ds.returnColumnMetadata(keyspace,tableName);
-        assertNotNull("Error obtaining metadata of table, there may be an error with its creation", table);
-        List<ColumnMetadata> columnsMeta = table.getColumns();
-        checkDataTypeForTable(columnsMeta,expectedColumns,expectedTypes);
     }
 
     public static void checkDataTypeForTable(List<ColumnMetadata> columnsMeta, HashSet<String> expectedColumns,
