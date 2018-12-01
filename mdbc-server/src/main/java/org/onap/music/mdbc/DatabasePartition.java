@@ -1,3 +1,4 @@
+
 /*
  * ============LICENSE_START====================================================
  * org.onap.music.mdbc
@@ -24,76 +25,87 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.*;
 
-import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 /**
  * A database range contain information about what ranges should be hosted in the current MDBC instance
- * A database range with an empty map, is supposed to contain all the tables in Music.  
- * @author Enrique Saurez 
+ * A database range with an empty map, is supposed to contain all the tables in Music.
+ * @author Enrique Saurez
  */
 public class DatabasePartition {
     private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(DatabasePartition.class);
 
-    private UUID mriIndex;//Index that can be obtained either from
+    private UUID musicRangeInformationIndex;//Index that can be obtained either from
     private String lockId;
     protected List<Range> ranges;
-    private List<UUID> oldMRIIds;
+
+    private boolean ready;
 
     /**
      * Each range represents a partition of the database, a database partition is a union of this partitions.
      * The only requirement is that the ranges are not overlapping.
      */
 
+    public DatabasePartition() {
+        this(new ArrayList<Range>(),null,"");
+    }
+
     public DatabasePartition(UUID mriIndex) {
         this(new ArrayList<Range>(), mriIndex,"");
     }
 
     public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String lockId) {
-        this.ranges = knownRanges;
+        if(mriIndex==null){
+            ready = false;
+        }
+        else{
+            ready = true;
+        }
+        ranges = knownRanges;
 
-        this.mriIndex = mriIndex;
-        this.lockId = lockId;
-        this.oldMRIIds = new ArrayList<>();
+        this.setMusicRangeInformationIndex(mriIndex);
+        this.setLockId(lockId);
     }
 
-    public DatabasePartition(UUID rangeId, String lockId, List<Range> ranges, List<UUID> oldIds) {
-        this.mriIndex = rangeId;
-        this.lockId = lockId;
-        this.ranges = ranges;
-        this.oldMRIIds = oldIds;
-	}
-
-	/**
+    /**
      * This function is used to change the contents of this, with the contents of a different object
      * @param otherPartition partition that is used to substitute the local contents
      */
     public void updateDatabasePartition(DatabasePartition otherPartition){
-        mriIndex = otherPartition.mriIndex;//Index that can be obtained either from
+        musicRangeInformationIndex = otherPartition.musicRangeInformationIndex;//Index that can be obtained either from
         lockId = otherPartition.lockId;
         ranges = otherPartition.ranges;
+        ready = otherPartition.ready;
     }
 
     public String toString(){
-       StringBuilder builder = new StringBuilder().append("Row: ["+mriIndex+"], lockId: ["+lockId +"], ranges: [");
-       for(Range r: ranges){
-           builder.append(r.toString()).append(",");
-       }
-       builder.append("]");
-       return builder.toString();
+        StringBuilder builder = new StringBuilder().append("Row: ["+musicRangeInformationIndex.toString()+"], lockId: ["+lockId +"], ranges: [");
+        for(Range r: ranges){
+            builder.append(r.toString()).append(",");
+        }
+        builder.append("]");
+        return builder.toString();
     }
 
 
     public boolean isLocked(){return lockId != null && !lockId.isEmpty(); }
 
+    public boolean isReady() {
+        return ready;
+    }
+
+    public void setReady(boolean ready) {
+        this.ready = ready;
+    }
+
     public UUID getMRIIndex() {
-        return mriIndex;
+        return musicRangeInformationIndex;
     }
 
     public void setMusicRangeInformationIndex(UUID musicRangeInformationIndex) {
-        this.mriIndex = musicRangeInformationIndex;
+        this.musicRangeInformationIndex = musicRangeInformationIndex;
     }
 
     /**
@@ -130,7 +142,7 @@ public class DatabasePartition {
     public synchronized List<Range> getSnapshot() {
         List<Range> newRange = new ArrayList<>();
         for(Range r : ranges){
-           newRange.add(r.clone());
+            newRange.add(r.clone());
         }
         return newRange;
     }
@@ -147,7 +159,7 @@ public class DatabasePartition {
     }
 
     /**
-     * Function to obtain the configuration 
+     * Function to obtain the configuration
      * @param filepath path to the database range
      * @return a new object of type DatabaseRange
      * @throws FileNotFoundException
@@ -175,27 +187,12 @@ public class DatabasePartition {
         this.lockId = lockId;
     }
 
-    /**
-     * This function is used to check if we need to create a new row in MRI, beacause one of the new ranges is not contained
-     * @param ranges ranges that should be contained in the partition
-     * @param partition currently own partition
-     * @return
-     * 
-     */
-	public boolean owns(List<Range> ranges) {
-		for (Range r: ranges) {
-			if (!this.ranges.contains(r)) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	public List<UUID> getOldMRIIds() {
-		return oldMRIIds;
-	}
-
-	public void setOldMRIIds(List<UUID> oldIds) {
-		this.oldMRIIds = oldIds;
-	}
+    public boolean isContained(Range range){
+        for(Range r: ranges){
+            if(r.overlaps(range)){
+                return true;
+            }
+        }
+        return false;
+    }
 }

@@ -843,7 +843,26 @@ NEW.field refers to the new value
 		
 		jdbcConn.setAutoCommit(autocommit);
     }
-	
+
+	@Override
+	public void disableForeignKeyChecks() throws SQLException {
+	    Statement disable = jdbcConn.createStatement();
+	    disable.execute("SET FOREIGN_KEY_CHECKS=0");
+	    disable.closeOnCompletion();
+	}
+
+	@Override
+	public void enableForeignKeyChecks() throws SQLException {
+        Statement enable = jdbcConn.createStatement();
+	    enable.execute("SET FOREIGN_KEY_CHECKS=1");
+	    enable.closeOnCompletion();
+	}
+
+	@Override
+	public void applyTxDigest(HashMap<Range, StagingTable> txDigest) throws SQLException {
+		replayTransaction(txDigest);
+	}
+
 	/**
 	 * Replays operation into database, usually from txDigest
 	 * @param jdbcStmt

@@ -20,18 +20,19 @@
 
 package org.onap.music.mdbc.mixins;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.UUID;
+
+import java.util.*;
+
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 
 
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Ignore;
@@ -47,7 +48,11 @@ import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.main.MusicCore;
 import org.onap.music.mdbc.DatabasePartition;
+import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.TestUtils;
+import org.onap.music.mdbc.ownership.Dag;
+import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.service.impl.MusicCassaCore;
@@ -82,14 +87,6 @@ public class MusicMixinTest {
         MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
         CassaLockStore store = new CassaLockStore(MusicDataStoreHandle.mDstoreHandle);
         assertNotNull("Invalid configuration for music", store);
-        try {
-            Properties properties = new Properties();
-            properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
-            properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
-            mixin=new MusicMixin(mdbcServerName,properties);
-        } catch (MDBCServiceException e) {
-            fail("error creating music mixin");
-        }
     }
 
     @AfterClass
@@ -99,117 +96,131 @@ public class MusicMixinTest {
         cluster.close();
     }
 
+    @Before
+    public void initTest(){
+        session.execute("DROP KEYSPACE IF EXISTS "+keyspace);
+        try {
+            Properties properties = new Properties();
+            properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
+            properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
+            mixin=new MusicMixin(mdbcServerName,properties);
+        } catch (MDBCServiceException e) {
+            fail("error creating music mixin");
+        }
+
+    }
+
     @Test(timeout=1000)
     public void own() {
-        final UUID uuid = mixin.generateUniqueKey();
+        Range range = new Range("table1");
         List<Range> ranges = new ArrayList<>();
-        ranges.add(new Range("table1"));
-        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
-        MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), "", mdbcServerName);
-        DatabasePartition partition=null;
+        ranges.add(range);
+        final DatabasePartition partition = TestUtils.createBasicRow(range, mixin, mdbcServerName);
+        TestUtils.unlockRow(keyspace,mriTableName,partition);
+
+        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
         try {
-            partition = mixin.createMusicRangeInformation(newRow);
-        } catch (MDBCServiceException e) {
-            fail("failure when creating new row");
-        }
-        String fullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+partition.getMRIIndex().toString();
-        try {
-            MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
-        } catch (MusicLockingException e) {
-            fail("failure when releasing lock");
-        }
-        DatabasePartition newPartition = new DatabasePartition(mixin.generateUniqueKey());
-        try {
-            mixin.own(ranges,newPartition);
+            mixin.own(ranges,currentPartition, MDBCUtils.generateTimebasedUniqueKey());
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
     }
 
-    @Test(timeout=1000)
-    @Ignore //TODO: Fix this. it is breaking because of previous test^
-    public void own2() {
-        final UUID uuid = mixin.generateUniqueKey();
-        final UUID uuid2 = mixin.generateUniqueKey();
-        List<Range> ranges = new ArrayList<>();
-        List<Range> ranges2 = new ArrayList<>();
-        ranges.add(new Range("table2"));
-        ranges2.add(new Range("table3"));
+    private DatabasePartition addRow(List<Range> ranges,boolean isLatest){
+        final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
-        DatabasePartition dbPartition2 = new DatabasePartition(ranges2,uuid2,null);
-        MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), "", mdbcServerName);
-        MusicRangeInformationRow newRow2 = new MusicRangeInformationRow(dbPartition2, new ArrayList<>(), "", mdbcServerName);
+        MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
+            mdbcServerName, isLatest);
         DatabasePartition partition=null;
-        DatabasePartition partition2=null;
         try {
             partition = mixin.createMusicRangeInformation(newRow);
-            partition2 = mixin.createMusicRangeInformation(newRow2);
         } catch (MDBCServiceException e) {
             fail("failure when creating new row");
         }
         String fullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+partition.getMRIIndex().toString();
-        String fullyQualifiedMriKey2 = keyspace+"."+ mriTableName+"."+partition2.getMRIIndex().toString();
         try {
             MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
-            MusicLockState musicLockState2 = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey2, partition2.getLockId());
         } catch (MusicLockingException e) {
             fail("failure when releasing lock");
         }
-        DatabasePartition blankPartition = new DatabasePartition(mixin.generateUniqueKey());
-        DatabasePartition newPartition=null;
+        return partition;
+    }
+
+    @Test(timeout=1000)
+    public void own2() throws InterruptedException, MDBCServiceException {
+        List<Range> range12 = new ArrayList<>( Arrays.asList(
+            new Range("range1"),
+            new Range("range2")
+        ));
+        List<Range> range34 = new ArrayList<>( Arrays.asList(
+            new Range("range3"),
+            new Range("range4")
+        ));
+        List<Range> range24 = new ArrayList<>( Arrays.asList(
+            new Range("range2"),
+            new Range("range4")
+        ));
+        List<Range> range123 = new ArrayList<>( Arrays.asList(
+            new Range("range1"),
+            new Range("range2"),
+            new Range("range3")
+        ));
+        DatabasePartition db1 = addRow(range12, false);
+        DatabasePartition db2 = addRow(range34, false);
+        MILLISECONDS.sleep(10);
+        DatabasePartition db3 = addRow(range12, true);
+        DatabasePartition db4 = addRow(range34, true);
+        MILLISECONDS.sleep(10);
+        DatabasePartition db5 = addRow(range24, true);
+        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+        MusicInterface.OwnershipReturn own = null;
         try {
-            List<Range> ownRanges = new ArrayList<>();
-            ownRanges.add(new Range("table2"));
-            ownRanges.add(new Range("table3"));
-            newPartition = mixin.own(ownRanges, blankPartition);
+            own = mixin.own(range123, currentPartition, MDBCUtils.generateTimebasedUniqueKey());
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
-        assertEquals(2,newPartition.getOldMRIIds().size());
-        assertEquals(newPartition.getLockId(),blankPartition.getLockId());
-        assertTrue(newPartition.getOldMRIIds().get(0).equals(partition.getMRIIndex())||
-            newPartition.getOldMRIIds().get(1).equals(partition.getMRIIndex()));
-        assertTrue(newPartition.getOldMRIIds().get(0).equals(partition2.getMRIIndex())||
-            newPartition.getOldMRIIds().get(1).equals(partition2.getMRIIndex()));
-        String finalfullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+blankPartition.getMRIIndex().toString();
-        try {
-            List<String> lockQueue = MusicCassaCore.getLockingServiceHandle().getLockQueue(keyspace, mriTableName,
-                blankPartition.getMRIIndex().toString());
-            assertEquals(1,lockQueue.size());
-            assertEquals(lockQueue.get(0),blankPartition.getLockId());
-        } catch (MusicServiceException|MusicQueryException|MusicLockingException e) {
-            fail("failure on getting queue");
-        }
-        MusicRangeInformationRow musicRangeInformation=null;
-        try {
-             musicRangeInformation= mixin.getMusicRangeInformation(blankPartition.getMRIIndex());
-        } catch (MDBCServiceException e) {
-            fail("fail to retrieve row");
-        }
-        assertEquals(2,musicRangeInformation.getDBPartition().getSnapshot().size());
-        assertEquals(0,musicRangeInformation.getRedoLog().size());
-        assertEquals(blankPartition.getLockId(),musicRangeInformation.getOwnerId());
-        assertEquals(mdbcServerName,musicRangeInformation.getMetricProcessId());
-        List<Range> snapshot = musicRangeInformation.getDBPartition().getSnapshot();
-        boolean containsTable1=false;
-        Range table1Range = new Range("table2");
-        for(Range r:snapshot){
-            if(r.overlaps(table1Range)){
-                containsTable1=true;
-                break;
-            }
-        }
-        assertTrue(containsTable1);
-        boolean containsTable2=false;
-        Range table2Range = new Range("table3");
-        for(Range r:snapshot){
-            if(r.overlaps(table2Range)){
-                containsTable2=true;
-                break;
-            }
-        }
-        assertTrue(containsTable2);
+        Dag dag = own.getDag();
+
+        DagNode node4 = dag.getNode(db4.getMRIIndex());
+        assertFalse(node4.hasNotIncomingEdges());
+        List<DagNode> outgoingEdges = new ArrayList<>(node4.getOutgoingEdges());
+        assertEquals(1,outgoingEdges.size());
+
+        DagNode missing = outgoingEdges.get(0);
+        Set<Range> missingRanges = missing.getRangeSet();
+        assertEquals(2,missingRanges.size());
+        assertTrue(missingRanges.contains(new Range("range1")));
+        assertTrue(missingRanges.contains(new Range("range3")));
+        List<DagNode> outgoingEdges1 = missing.getOutgoingEdges();
+        assertEquals(1,outgoingEdges1.size());
+
+        DagNode finalNode = outgoingEdges1.get(0);
+        assertFalse(finalNode.hasNotIncomingEdges());
+        Set<Range> finalSet = finalNode.getRangeSet();
+        assertEquals(3,finalSet.size());
+        assertTrue(finalSet.contains(new Range("range1")));
+        assertTrue(finalSet.contains(new Range("range2")));
+        assertTrue(finalSet.contains(new Range("range3")));
+
+        DagNode node5 = dag.getNode(db5.getMRIIndex());
+        List<DagNode> toRemoveOutEdges = node5.getOutgoingEdges();
+        assertEquals(1,toRemoveOutEdges.size());
+        toRemoveOutEdges.remove(finalNode);
+        assertEquals(0,toRemoveOutEdges.size());
+
+        MusicRangeInformationRow row = mixin.getMusicRangeInformation(own.getRangeId());
+        assertTrue(row.getIsLatest());
+        DatabasePartition dbPartition = row.getDBPartition();
+        List<Range> snapshot = dbPartition.getSnapshot();
+        assertEquals(3,snapshot.size());
+        MusicRangeInformationRow node5row = mixin.getMusicRangeInformation(node5.getId());
+        assertFalse(node5row.getIsLatest());
+        MusicRangeInformationRow node4Row = mixin.getMusicRangeInformation(db4.getMRIIndex());
+        assertFalse(node4Row.getIsLatest());
+        MusicRangeInformationRow node3Row = mixin.getMusicRangeInformation(db3.getMRIIndex());
+        assertFalse(node3Row.getIsLatest());
     }
+
 
     @Test
     public void relinquish() {

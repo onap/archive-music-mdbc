@@ -293,12 +293,6 @@ public class MdbcServerLogic extends JdbcMeta{
 		}		
 	}
 
-
-
-
-
-
-
 	@Override
 	public void rollback(ConnectionHandle ch) {
 		try {

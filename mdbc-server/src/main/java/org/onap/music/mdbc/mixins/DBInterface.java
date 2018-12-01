@@ -112,12 +112,16 @@ public interface DBInterface {
 	
 	String getPrimaryKey(String sql, String tableName);
 
-	String applyDigest(Map<Range,StagingTable> digest);
-
 	/**
 	 * Replay a given TxDigest into the local DB
 	 * @param digest
 	 * @throws SQLException if replay cannot occur correctly
 	 */
 	void replayTransaction(HashMap<Range,StagingTable> digest) throws SQLException;
+
+	void disableForeignKeyChecks() throws SQLException;
+
+	void enableForeignKeyChecks() throws SQLException;
+
+	void applyTxDigest(HashMap<Range, StagingTable> txDigest) throws SQLException;
 }

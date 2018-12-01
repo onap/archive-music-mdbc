@@ -103,6 +103,12 @@ public class MDBCUtils {
 		return UUIDs.random();
 	}
 
+    /**
+     *  This function is used to generate time based cassandra uuid
+     * @return a timebased UUID that can be used for fields of type uuid in MUSIC/Cassandra
+     */
+	public static UUID generateTimebasedUniqueKey() {return UUIDs.timeBased();}
+
 	public static Properties getMdbcProperties() {
 		Properties prop = new Properties();
 		InputStream input = null;
