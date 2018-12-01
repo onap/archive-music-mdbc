@@ -23,12 +23,28 @@ import java.util.UUID;
 
 public final class MusicTxDigestId {
 	public final UUID txId;
+	public final int index;
 
-	public MusicTxDigestId(UUID primaryKey) {
+	public MusicTxDigestId(UUID primaryKey, int index) {
 		this.txId= primaryKey;
+		this.index=index;
 	}
 
 	public boolean isEmpty() {
 		return (this.txId==null);
 	}
+
+    @Override
+    public boolean equals(Object o){
+        if (this == o) return true;
+        if(o == null) return false;
+        if(!(o instanceof MusicTxDigestId)) return false;
+        MusicTxDigestId other = (MusicTxDigestId) o;
+        return other.txId.equals(this.txId);
+    }
+
+    @Override
+    public int hashCode(){
+        return txId.hashCode();
+    }
 }

@@ -21,6 +21,9 @@ package org.onap.music.mdbc;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+
+import org.apache.commons.lang3.NotImplementedException;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
@@ -29,6 +32,7 @@ import org.onap.music.logging.format.ErrorTypes;
 import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
+import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
 import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
@@ -241,20 +245,6 @@ public class StateManager {
         return openConnection(id);
     }
     
-    public DatabasePartition own(String mdbcConnectionId, List<Range> ranges, DBInterface dbi) throws MDBCServiceException {
-        DatabasePartition partition = musicInterface.own(ranges, connectionRanges.get(mdbcConnectionId));
-        List<UUID> oldRangeIds = partition.getOldMRIIds();
-        //\TODO: do in parallel for all range ids
-        for(UUID oldRange : oldRangeIds) {
-            MusicTxDigest.replayDigestForPartition(musicInterface, oldRange,dbi);
-        }
-        logger.info("Partition: " + partition.getMRIIndex() + " now owns " + ranges);
-        connectionRanges.put(mdbcConnectionId, partition);
-        return partition;
-    }
-
- 
-
 	public void initializeSystem() {
 		//\TODO Prefetch data to system using the data ranges as guide 
 		throw new UnsupportedOperationException("Function initialize system needs to be implemented id MdbcStateManager");

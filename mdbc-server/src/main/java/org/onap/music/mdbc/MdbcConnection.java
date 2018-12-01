@@ -34,16 +34,10 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Executor;
 
+import org.apache.commons.lang3.NotImplementedException;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.QueryException;
 import org.onap.music.logging.EELFLoggerDelegate;
@@ -51,10 +45,15 @@ import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
 import org.onap.music.mdbc.mixins.DBInterface;
+import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
+import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
+import org.onap.music.mdbc.ownership.Dag;
+import org.onap.music.mdbc.ownership.DagNode;
+import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
 import org.onap.music.mdbc.query.QueryProcessor;
-import org.onap.music.mdbc.tables.MusicTxDigest;
+import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
@@ -490,7 +489,8 @@ public class MdbcConnection implements Connection {
         //Parse tables from the sql query
         Map<String, List<String>> tableToInstruction = QueryProcessor.extractTableFromQuery(sql);
         //Check ownership of keys
-        this.partition = statemanager.own(this.id, MDBCUtils.getTables(tableToInstruction), dbi);
+        List<Range> ranges = MDBCUtils.getTables(tableToInstruction);
+        this.partition = own(ranges);
         dbi.preStatementHook(sql);
     }
 
@@ -539,6 +539,27 @@ public class MdbcConnection implements Connection {
 
     public DBInterface getDBInterface() {
         return this.dbi;
+    }
+
+    public DatabasePartition own(List<Range> ranges) throws MDBCServiceException {
+        DatabasePartition newPartition = null;
+        OwnershipAndCheckpoint ownAndCheck = mi.getOwnAndCheck();
+        UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
+        try {
+            final OwnershipReturn ownershipReturn = mi.own(ranges, partition, ownOpId);
+            Dag dag = ownershipReturn.getDag();
+            DagNode node = dag.getNode(ownershipReturn.getRangeId());
+            MusicRangeInformationRow row = node.getRow();
+            Map<MusicRangeInformationRow, LockResult> lock = new HashMap<>();
+            lock.put(row, new LockResult(row.getPartitionIndex(), ownershipReturn.getOwnerId(), true, ranges));
+            ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, lock, ownershipReturn.getOwnershipId());
+            newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
+                ownershipReturn.getOwnerId());
+        }
+        finally{
+            ownAndCheck.stopOwnershipTimeoutClock(ownOpId);
+        }
+        return newPartition;
     }
 
     public void relinquishIfRequired(DatabasePartition partition) throws MDBCServiceException {
