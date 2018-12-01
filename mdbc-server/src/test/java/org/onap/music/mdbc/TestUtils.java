@@ -22,8 +22,12 @@ package org.onap.music.mdbc;
 import com.datastax.driver.core.*;
 import com.datastax.driver.core.exceptions.QueryExecutionException;
 import com.datastax.driver.core.exceptions.SyntaxError;
+import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.lockingservice.cassandra.CassaLockStore;
+import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.main.MusicCore;
 import org.onap.music.main.MusicUtil;
 
 import java.io.FileInputStream;
@@ -31,6 +35,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
+import org.onap.music.mdbc.mixins.MusicInterface;
+import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 
 import static junit.framework.TestCase.assertNotNull;
 import static junit.framework.TestCase.fail;
@@ -40,6 +46,31 @@ import static org.junit.Assert.assertTrue;
 public class TestUtils {
 
     private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(TestUtils.class);
+
+    public static DatabasePartition createBasicRow(Range range, MusicInterface mixin, String mdbcServerName){
+        final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
+        List<Range> ranges = new ArrayList<>();
+        ranges.add(range);
+        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
+        MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
+            mdbcServerName, true);
+        DatabasePartition partition=null;
+        try {
+            partition = mixin.createMusicRangeInformation(newRow);
+        } catch (MDBCServiceException e) {
+            fail("failure when creating new row");
+        }
+        return partition;
+    }
+
+    public static void unlockRow(String keyspace, String mriTableName, DatabasePartition partition){
+        String fullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+partition.getMRIIndex().toString();
+        try {
+            MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
+        } catch (MusicLockingException e) {
+            fail("failure when releasing lock");
+        }
+    }
 
     public static void createKeyspace(String keyspace, Session session) {
         String queryOp = "CREATE KEYSPACE " +
