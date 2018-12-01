@@ -20,8 +20,6 @@
 
 package org.onap.music.mdbc;
 
-import static org.junit.Assert.*;
-
 import org.junit.Test;
 
 public class MdbcConnectionTest {
