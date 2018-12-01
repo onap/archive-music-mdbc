@@ -114,7 +114,9 @@ public class MusicTxDigest {
 		for (MusicTxDigestId txId: partitionsRedoLogTxIds) {
 			HashMap<Range, StagingTable> transaction = mi.getTxDigest(txId);
 			try {
+				//\TODO do this two operations in parallel
 				dbi.replayTransaction(transaction);
+				mi.replayTransaction(transaction);
 			} catch (SQLException e) {
 				logger.error("Rolling back the entire digest replay. " + partitionId);
 				return;

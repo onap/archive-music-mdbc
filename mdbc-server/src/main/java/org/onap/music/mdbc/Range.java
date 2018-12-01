@@ -51,7 +51,7 @@ public class Range implements Serializable, Cloneable{
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Range r = (Range) o;
-		return (table.equals(r.table));
+		return (this.overlaps(r)) && (r.overlaps(this));
 	}
 
 	@Override
