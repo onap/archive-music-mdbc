@@ -88,7 +88,7 @@ public class TablesConfiguration {
                 partitionId = partitionInfo.partitionId;
             }
             //2) Create a row in the transaction information table
-            UUID mriTableIndex = MDBCUtils.generateUniqueKey();
+            UUID mriTableIndex = MDBCUtils.generateTimebasedUniqueKey();
             //3) Add owner and tit information to partition info table
             RedoRow newRedoRow = new RedoRow(mriTableName,mriTableIndex);
             //DatabaseOperations.updateRedoRow(musicNamespace,pitName,partitionId,newRedoRow,partitionInfo.owner,null);

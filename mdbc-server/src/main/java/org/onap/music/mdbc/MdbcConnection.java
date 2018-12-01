@@ -55,6 +55,7 @@ import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
 import org.onap.music.mdbc.query.QueryProcessor;
+import org.onap.music.mdbc.tables.MusicSynchronization;
 import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
@@ -541,11 +542,17 @@ public class MdbcConnection implements Connection {
 
     public void own(List<Range> ranges) throws MDBCServiceException {
         final OwnershipReturn ownershipReturn = mi.own(ranges, partition);
-        final List<UUID> oldRangeIds = ownershipReturn.getOldIRangeds();
+        MusicSynchronization.SynchronizeTables(dbi,mi,ownershipReturn.getNewRanges());
+        final Map<UUID,String> oldRangeIds = ownershipReturn.getOldIdsAndLocks();
         //\TODO: do in parallel for all range ids
-        for(UUID oldRange : oldRangeIds) {
+        for(UUID oldRange : oldRangeIds.keySet()) {
             MusicTxDigest.replayDigestForPartition(mi, oldRange,dbi);
         }
+        /*TODO: move this to be perform async after finishing the own function
+         * To do this we need to be careful in other assumptions which include:
+         * That we only have 2 rows for a given range at any time in the system
+         */
+        mi.deleteOldMriRows(oldRangeIds);
     }
 
     public void relinquishIfRequired(DatabasePartition partition) throws MDBCServiceException {

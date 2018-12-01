@@ -112,8 +112,6 @@ public interface DBInterface {
 	
 	String getPrimaryKey(String sql, String tableName);
 
-	String applyDigest(Map<Range,StagingTable> digest);
-
 	/**
 	 * Replay a given TxDigest into the local DB
 	 * @param digest

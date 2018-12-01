@@ -26,12 +26,14 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 
 
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.onap.music.datastore.MusicDataStore;
@@ -44,6 +46,7 @@ import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.main.MusicCore;
 import org.onap.music.mdbc.DatabasePartition;
+import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
@@ -79,14 +82,6 @@ public class MusicMixinTest {
         MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
         CassaLockStore store = new CassaLockStore(MusicDataStoreHandle.mDstoreHandle);
         assertNotNull("Invalid configuration for music", store);
-        try {
-            Properties properties = new Properties();
-            properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
-            properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
-            mixin=new MusicMixin(mdbcServerName,properties);
-        } catch (MDBCServiceException e) {
-            fail("error creating music mixin");
-        }
     }
 
     @AfterClass
@@ -96,13 +91,27 @@ public class MusicMixinTest {
         cluster.close();
     }
 
+    @Before
+    public void initTest(){
+        session.execute("DROP KEYSPACE IF EXISTS "+keyspace);
+        try {
+            Properties properties = new Properties();
+            properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
+            properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
+            mixin=new MusicMixin(mdbcServerName,properties);
+        } catch (MDBCServiceException e) {
+            fail("error creating music mixin");
+        }
+
+    }
+
     @Test
     public void own() {
-        final UUID uuid = mixin.generateUniqueKey();
+        final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
         List<Range> ranges = new ArrayList<>();
         ranges.add(new Range("table1"));
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
-        MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), "", mdbcServerName);
+        MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "", mdbcServerName);
         DatabasePartition partition=null;
         try {
             partition = mixin.createMusicRangeInformation(newRow);
@@ -125,16 +134,18 @@ public class MusicMixinTest {
 
     @Test
     public void own2() {
-        final UUID uuid = mixin.generateUniqueKey();
-        final UUID uuid2 = mixin.generateUniqueKey();
+        final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
+        final UUID uuid2 = MDBCUtils.generateTimebasedUniqueKey();
         List<Range> ranges = new ArrayList<>();
         List<Range> ranges2 = new ArrayList<>();
         ranges.add(new Range("table1"));
         ranges2.add(new Range("table2"));
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
         DatabasePartition dbPartition2 = new DatabasePartition(ranges2,uuid2,null);
-        MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), "", mdbcServerName);
-        MusicRangeInformationRow newRow2 = new MusicRangeInformationRow(dbPartition2, new ArrayList<>(), "", mdbcServerName);
+        MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
+            mdbcServerName);
+        MusicRangeInformationRow newRow2 = new MusicRangeInformationRow(uuid2,dbPartition2, new ArrayList<>(), "",
+            mdbcServerName);
         DatabasePartition partition=null;
         DatabasePartition partition2=null;
         try {
@@ -161,12 +172,13 @@ public class MusicMixinTest {
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
-        assertEquals(2,ownershipReturn.getOldIRangeds().size());
+        assertEquals(2,ownershipReturn.getOldIdsAndLocks().size());
         assertEquals(ownershipReturn.getOwnerId(),newPartition.getLockId());
-        assertTrue(ownershipReturn.getOldIRangeds().get(0).equals(partition.getMusicRangeInformationIndex())||
-            ownershipReturn.getOldIRangeds().get(1).equals(partition.getMusicRangeInformationIndex()));
-        assertTrue(ownershipReturn.getOldIRangeds().get(0).equals(partition2.getMusicRangeInformationIndex())||
-            ownershipReturn.getOldIRangeds().get(1).equals(partition2.getMusicRangeInformationIndex()));
+        final Map<UUID, String> oldIdsAndLocks = ownershipReturn.getOldIdsAndLocks();
+        for(Map.Entry<UUID,String> idAndLock:oldIdsAndLocks.entrySet()) {
+            assertTrue(idAndLock.getKey().equals(partition.getMusicRangeInformationIndex()) ||
+                idAndLock.getKey().equals(partition2.getMusicRangeInformationIndex()));
+        }
         String finalfullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+newPartition.getMusicRangeInformationIndex().toString();
         try {
             List<String> lockQueue = MusicCassaCore.getLockingServiceHandle().getLockQueue(keyspace, mriTableName,
