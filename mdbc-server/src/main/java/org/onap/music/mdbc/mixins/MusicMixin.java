@@ -226,7 +226,7 @@ public class MusicMixin implements MusicInterface {
             MusicCore.nonKeyRelatedPut(queryObject, "eventual");
         } catch (MusicServiceException e) {
             if (!e.getMessage().equals("Keyspace "+music_ns+" already exists")) {
-                throw new MDBCServiceException("Error creating namespace: "+music_ns+". Internal error:"+e.getErrorMessage());
+                throw new MDBCServiceException("Error creating namespace: "+music_ns+". Internal error:"+e.getErrorMessage(), e);
             }
         }
     }
@@ -950,7 +950,7 @@ public class MusicMixin implements MusicInterface {
             results = MusicCore.get(pQueryObject);
         } catch (MusicServiceException e) {
             logger.error("Error executing music get operation for query: ["+cql+"]");
-            throw new MDBCServiceException("Error executing get: "+e.getMessage());
+            throw new MDBCServiceException("Error executing get: "+e.getMessage(), e);
         }
         return results;
     }
@@ -1077,13 +1077,13 @@ public class MusicMixin implements MusicInterface {
             lockReturn = MusicCore.acquireLock(fullyQualifiedKey,lockId);
         } catch (MusicLockingException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Lock was not acquire correctly for key "+fullyQualifiedKey);
-            throw new MDBCServiceException("Lock was not acquire correctly for key "+fullyQualifiedKey);
+            throw new MDBCServiceException("Lock was not acquire correctly for key "+fullyQualifiedKey, e);
         } catch (MusicServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Error in music, when locking key: "+fullyQualifiedKey);
-            throw new MDBCServiceException("Error in music, when locking: "+fullyQualifiedKey);
+            throw new MDBCServiceException("Error in music, when locking: "+fullyQualifiedKey, e);
         } catch (MusicQueryException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Error in executing query music, when locking key: "+fullyQualifiedKey);
-            throw new MDBCServiceException("Error in executing query music, when locking: "+fullyQualifiedKey);
+            throw new MDBCServiceException("Error in executing query music, when locking: "+fullyQualifiedKey, e);
         }
         return lockReturn;
     }
@@ -1106,7 +1106,8 @@ public class MusicMixin implements MusicInterface {
                 } catch (InterruptedException e) {
                     continue;
                 }
-                if(n++==20){
+		n++;
+                if(n==20){
                     throw new MDBCServiceException("Lock was impossible to obtain, waited for 20 exponential backoffs!") ;
                 }
             }
@@ -1173,7 +1174,7 @@ public class MusicMixin implements MusicInterface {
         try {
             serializedTransactionDigest = MDBCUtils.toString(transactionDigest);
         } catch (IOException e) {
-            throw new MDBCServiceException("Failed to serialized transaction digest with error "+e.toString());
+            throw new MDBCServiceException("Failed to serialized transaction digest with error "+e.toString(), e);
         }
         MusicTxDigestId digestId = new MusicTxDigestId(commitId);
         addTxDigest(digestId, serializedTransactionDigest);
@@ -1283,7 +1284,7 @@ public class MusicMixin implements MusicInterface {
             newRow = executeMusicUnlockedQuorumGet(pQueryObject);
         } catch (MDBCServiceException e) {
             logger.error("Get operationt error: Failure to get row from MRI "+musicRangeInformationTableName);
-            throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information");
+            throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information", e);
         }
 
     	return getMRIRowFromCassandraRow(newRow);
@@ -1380,7 +1381,7 @@ public class MusicMixin implements MusicInterface {
             executeMusicLockedPut(this.music_ns,this.musicRangeInformationTableName,id.toString(),query,lockId,null);
         } catch (MDBCServiceException e) {
             logger.error("Initialization error: Failure to add new row to transaction information");
-            throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information");
+            throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information", e);
         }
         return id;
     }
@@ -1450,7 +1451,7 @@ public class MusicMixin implements MusicInterface {
             MusicCore.nonKeyRelatedPut(query,"critical");
         } catch (MusicServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Transaction Digest serialization was invalid for commit "+newId.txId.toString()+ "with error "+e.getErrorMessage());
-            throw new MDBCServiceException("Transaction Digest serialization for commit "+newId.txId.toString());
+            throw new MDBCServiceException("Transaction Digest serialization for commit "+newId.txId.toString(), e);
         }
     }
 
@@ -1465,7 +1466,7 @@ public class MusicMixin implements MusicInterface {
             newRow = executeMusicUnlockedQuorumGet(pQueryObject);
         } catch (MDBCServiceException e) {
             logger.error("Get operation error: Failure to get row from txdigesttable with id:"+id.txId);
-            throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information");
+            throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information", e);
         }
         String digest = newRow.getString("transactiondigest");
         HashMap<Range,StagingTable> changes;
@@ -1473,10 +1474,10 @@ public class MusicMixin implements MusicInterface {
             changes = (HashMap<Range, StagingTable>) MDBCUtils.fromString(digest);
         } catch (IOException e) {
             logger.error("IOException when deserializing digest failed with an invalid class for id:"+id.txId);
-            throw new MDBCServiceException("Deserializng digest failed with ioexception");
+            throw new MDBCServiceException("Deserializng digest failed with ioexception", e);
         } catch (ClassNotFoundException e) {
             logger.error("Deserializng digest failed with an invalid class for id:"+id.txId);
-            throw new MDBCServiceException("Deserializng digest failed with an invalid class");
+            throw new MDBCServiceException("Deserializng digest failed with an invalid class", e);
         }
         return changes;
     }
@@ -1632,7 +1633,7 @@ public class MusicMixin implements MusicInterface {
         try {
             MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey,ownerId);
         } catch (MusicLockingException e) {
-            throw new MDBCServiceException(e.getMessage());
+            throw new MDBCServiceException(e.getMessage(), e);
         }
     }
 
@@ -1654,14 +1655,14 @@ public class MusicMixin implements MusicInterface {
             lsHandle = MusicCassaCore.getLockingServiceHandle();
         } catch (MusicLockingException e) {
             logger.error("Error obtaining the locking service handle when checking if relinquish was required");
-            throw new MDBCServiceException("Error obtaining locking service"+e.getMessage());
+            throw new MDBCServiceException("Error obtaining locking service"+e.getMessage(), e);
         }
         long lockQueueSize;
         try {
             lockQueueSize = lsHandle.getLockQueueSize(music_ns, this.musicRangeInformationTableName, partition.getMusicRangeInformationIndex().toString());
         } catch (MusicServiceException|MusicQueryException e) {
             logger.error("Error obtaining the lock queue size");
-            throw new MDBCServiceException("Error obtaining lock queue size: "+e.getMessage());
+            throw new MDBCServiceException("Error obtaining lock queue size: "+e.getMessage(), e);
         }
         if(lockQueueSize> 1){
             //If there is any other node waiting, we just relinquish ownership
@@ -1704,7 +1705,7 @@ public class MusicMixin implements MusicInterface {
         } catch(MusicServiceException e){
             //\TODO: handle better, at least transform into an MDBCServiceException
             e.printStackTrace();
-            throw new MDBCServiceException("Error executing critical get");
+            throw new MDBCServiceException("Error executing critical get", e);
         }
         if(result.isExhausted()){
             throw new MDBCServiceException("There is not a row that matches the id "+primaryKey);
@@ -1731,13 +1732,13 @@ public class MusicMixin implements MusicInterface {
                 rt = MusicCore.atomicPut(namespace, tableName, primaryKeyWithoutDomain, queryObject, conditionInfo);
             } catch (MusicLockingException e) {
                 logger.error("Music locked put failed");
-                throw new MDBCServiceException("Music locked put failed");
+                throw new MDBCServiceException("Music locked put failed", e);
             } catch (MusicServiceException e) {
                 logger.error("Music service fail: Music locked put failed");
-                throw new MDBCServiceException("Music service fail: Music locked put failed");
+                throw new MDBCServiceException("Music service fail: Music locked put failed", e);
             } catch (MusicQueryException e) {
                 logger.error("Music query fail: locked put failed");
-                throw new MDBCServiceException("Music query fail: Music locked put failed");
+                throw new MDBCServiceException("Music query fail: Music locked put failed", e);
             }
         }
         else {

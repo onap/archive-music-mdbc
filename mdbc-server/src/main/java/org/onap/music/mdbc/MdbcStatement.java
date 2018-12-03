@@ -84,7 +84,7 @@ public class MdbcStatement implements Statement {
             if (!nm.startsWith(DATASTAX_PREFIX))
                 throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return r;
     }
@@ -105,7 +105,7 @@ public class MdbcStatement implements Statement {
             if (!nm.startsWith(DATASTAX_PREFIX))
                 throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return n;
     }
@@ -197,7 +197,7 @@ public class MdbcStatement implements Statement {
                 throw e;
             }
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return b;
     }
@@ -304,7 +304,7 @@ public class MdbcStatement implements Statement {
             if (!nm.startsWith(DATASTAX_PREFIX))
                 throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return n;
     }
@@ -324,7 +324,7 @@ public class MdbcStatement implements Statement {
             if (!nm.startsWith(DATASTAX_PREFIX))
                 throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return n;
     }
@@ -344,7 +344,7 @@ public class MdbcStatement implements Statement {
             if (!nm.startsWith(DATASTAX_PREFIX))
                 throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return n;
     }
@@ -364,7 +364,7 @@ public class MdbcStatement implements Statement {
             if (!nm.startsWith(DATASTAX_PREFIX))
                 throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return b;
     }
@@ -384,7 +384,7 @@ public class MdbcStatement implements Statement {
             if (!nm.startsWith(DATASTAX_PREFIX))
                 throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return b;
     }
@@ -405,7 +405,7 @@ public class MdbcStatement implements Statement {
             if (!nm.startsWith(DATASTAX_PREFIX))
                 throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e.getMessage(), e);
         }
         return b;
     }

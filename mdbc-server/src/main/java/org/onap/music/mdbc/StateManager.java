@@ -131,7 +131,7 @@ public class StateManager {
         } catch (SQLException e) {
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
                     ErrorTypes.GENERALSERVICEERROR);
-            throw new MDBCServiceException(e.getMessage());
+            throw new MDBCServiceException(e.getMessage(), e);
         }
     }
 

@@ -164,7 +164,7 @@ public class MdbcConnection implements Connection {
                 } catch (MDBCServiceException e) {
                     // TODO Auto-generated catch block
                     logger.error("Cannot commit log to music" + e.getStackTrace());
-                    throw new SQLException(e.getMessage());
+                    throw new SQLException(e.getMessage(), e);
                 }
             }
             if(progressKeeper!=null) {
@@ -206,7 +206,7 @@ public class MdbcConnection implements Connection {
         } catch (MDBCServiceException e) {
             //If the commit fail, then a new commitId should be used
             logger.error(EELFLoggerDelegate.errorLogger, "Commit to music failed", AppMessages.UNKNOWNERROR, ErrorTypes.UNKNOWN, ErrorSeverity.FATAL);
-            throw new SQLException("Failure commiting to MUSIC");
+            throw new SQLException("Failure commiting to MUSIC", e);
         }
 
         if(progressKeeper != null) {
@@ -529,7 +529,7 @@ public class MdbcConnection implements Connection {
                 } catch (Exception e) {
                     logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
                     //logger.error(EELFLoggerDelegate.errorLogger, "Exception synchronizeTables: "+e);
-                    throw new QueryException();
+                    throw new QueryException(e);
                 }
             }
         }

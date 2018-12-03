@@ -119,7 +119,7 @@ public class TablesConfiguration {
             MusicCore.createTable(internalNamespace,"unsynced_keys", queryObject,"critical");
         } catch (MusicServiceException e) {
             logger.error("Error creating unsynced keys table" );
-            throw new MDBCServiceException("Error creating unsynced keys table");
+            throw new MDBCServiceException("Error creating unsynced keys table", e);
         }
     }
 

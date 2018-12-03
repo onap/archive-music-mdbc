@@ -832,7 +832,7 @@ NEW.field refers to the new value
     				logger.error("Unable to replay: " + op.getOperationType() + "->" + op.getNewVal() + "."
     						+ "Rolling back the entire digest replay.");
     				jdbcConn.rollback();
-    				throw new SQLException(e);
+    				throw e;
     			}
     		}
     	}

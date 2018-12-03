@@ -151,7 +151,7 @@ public class MdbcServerLogic extends JdbcMeta{
             conn.close();
         } catch (SQLException e) {
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
-            throw new RuntimeException(e.getMessage());
+            throw new RuntimeException(e.getMessage(), e);
         } finally {
             connectionCache.invalidate(ch.id);
             this.manager.closeConnection(ch.id);

@@ -100,7 +100,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
 		} catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return r;
 	}
@@ -121,7 +121,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
         } catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return n;
 	}
@@ -211,7 +211,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 				throw e;
 			}
 		} catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return b;
 	}
@@ -318,7 +318,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
 		} catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return n;
 	}
@@ -338,7 +338,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
         } catch (MDBCServiceException e) {
-            throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
         }
 		return n;
 	}
@@ -358,7 +358,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
         } catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return n;
 	}
@@ -378,7 +378,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
         } catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return b;
 	}
@@ -398,7 +398,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
 		} catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return b;
 	}
@@ -418,7 +418,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
         } catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return b;
 	}
@@ -469,7 +469,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
         } catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 
 
@@ -492,7 +492,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 			if (!nm.startsWith(DATASTAX_PREFIX))
 				throw e;
         } catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return n;
 	}
@@ -621,7 +621,7 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 				throw e;
 			}
         } catch (MDBCServiceException e) {
-		    throw new SQLException(e.getMessage());
+		    throw new SQLException(e.getMessage(), e);
 		}
 		return b;
 	}
