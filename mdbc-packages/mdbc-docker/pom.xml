@@ -1,0 +1,171 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.onap.music.mdbc</groupId>
+		<artifactId>mdbc-packages</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
+
+	<packaging>pom</packaging>
+	<artifactId>mdbc-docker</artifactId>
+	<name>mdbc-docker</name>
+	<description>MDBC Docker Images</description>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<mdbc.project.version>${project.version}</mdbc.project.version>
+		<docker.skip>false</docker.skip>
+		<docker.skip.build>false</docker.skip.build>
+		<docker.skip.push>false</docker.skip.push>
+		<docker.pull.registry>nexus3.onap.org:10001</docker.pull.registry>
+		<docker.push.registry>nexus3.onap.org:10003</docker.push.registry>
+	</properties>
+
+	<build>
+		<finalName>${project.artifactId}-${project.version}</finalName>
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.groovy.maven</groupId>
+				<artifactId>gmaven-plugin</artifactId>
+				<version>1.0</version>
+				<executions>
+					<execution>
+						<phase>validate</phase>
+						<goals>
+							<goal>execute</goal>
+						</goals>
+						<configuration>
+							<source>
+								println 'Project version: ' + project.properties['mdbc.project.version'];
+								def versionArray;
+								if ( project.properties['mdbc.project.version'] != null ) {
+									versionArray = project.properties['mdbc.project.version'].split('-');
+								}
+
+								if ( project.properties['mdbc.project.version'].endsWith("-SNAPSHOT") ) {
+									project.properties['project.docker.latesttag.version']=versionArray[0] + "-SNAPSHOT-latest";
+								} else {
+									project.properties['project.docker.latesttag.version']=versionArray[0] + "-STAGING-latest";
+								}
+
+								println 'New tag for docker: ' + project.properties['project.docker.latesttag.version'];
+							</source>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>io.fabric8</groupId>
+				<artifactId>docker-maven-plugin</artifactId>
+				<version>0.19.1</version>
+
+				<configuration>
+					<verbose>true</verbose>
+					<apiVersion>1.23</apiVersion>
+					<pullRegistry>${docker.pull.registry}</pullRegistry>
+					<pushRegistry>${docker.push.registry}</pushRegistry>
+
+					<images>
+						<image>
+							<name>onap/music/mdbc-server</name>
+							<build>
+								<cleanup>try</cleanup>
+								<dockerFileDir>docker-files</dockerFileDir>
+								<dockerFile>Dockerfile.mdbc-server</dockerFile>
+								<tags>
+									<tag>${project.version}</tag>
+									<tag>${project.version}-${maven.build.timestamp}</tag>
+									<tag>${project.docker.latesttag.version}</tag>
+								</tags>
+								<assembly>
+									<inline>
+										<dependencySets>
+											<dependencySet>
+												<includes>
+													<include>org.onap.music.mdbc:mdbc-server:jar:jar-with-dependencies</include>
+												</includes>
+												<outputFileNameMapping>mdbc-server.jar</outputFileNameMapping>
+											</dependencySet>
+										</dependencySets>
+									</inline>
+								</assembly>
+							</build>
+						</image>
+						<image>
+							<!-- The standard cassandra image doesn't give us
+							     any way to load a schema before exposing the
+							     service ports -->
+							<name>onap/music/mdbc-cassandra</name>
+							<build>
+								<cleanup>try</cleanup>
+								<dockerFileDir>docker-files</dockerFileDir>
+								<dockerFile>Dockerfile.mdbc-cassandra</dockerFile>
+								<tags>
+									<tag>${project.version}</tag>
+									<tag>${project.version}-${maven.build.timestamp}</tag>
+									<tag>${project.docker.latesttag.version}</tag>
+								</tags>
+							</build>
+						</image>
+					</images>
+				</configuration>
+
+				<executions>
+					<execution>
+						<id>clean-images</id>
+						<phase>pre-clean</phase>
+						<goals>
+							<goal>remove</goal>
+						</goals>
+						<configuration>
+							<removeAll>true</removeAll>
+						</configuration>
+					</execution>
+
+					<execution>
+						<id>generate-images</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>build</goal>
+						</goals>
+					</execution>
+
+					<execution>
+						<id>push-images</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>build</goal>
+							<goal>push</goal>
+						</goals>
+						<configuration>
+							<image>onap/music/mdbc-server,onap/music/mdbc-cassandra</image>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-deploy-plugin</artifactId>
+				<version>2.8</version>
+				<configuration>
+					<skip>true</skip>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.onap.music.mdbc</groupId>
+			<artifactId>mdbc-server</artifactId>
+			<classifier>jar-with-dependencies</classifier>
+			<version>${project.version}</version>
+		</dependency>
+	</dependencies>
+</project>

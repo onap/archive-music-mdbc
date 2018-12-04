@@ -1,0 +1,30 @@
+FROM openjdk:8-jdk-alpine
+
+ARG http_proxy
+ARG https_proxy
+ENV HTTP_PROXY=$http_proxy
+ENV HTTPS_PROXY=$https_proxy
+ENV http_proxy=$HTTP_PROXY
+ENV https_proxy=$HTTPS_PROXY
+
+# Update the package list and upgrade installed packages
+RUN apk update && apk upgrade
+
+# Install commonly needed tools
+RUN apk --no-cache add curl netcat-openbsd sudo
+
+# Create 'mdbc' user
+RUN addgroup -g 1000 mdbc && adduser -S -u 1000 -G mdbc -s /bin/sh mdbc
+
+RUN mkdir /app && mkdir /app/config
+
+COPY maven/mdbc-server.jar /app
+COPY scripts/start-mdbc-server.sh /app
+COPY scripts/wait-for.sh /app
+
+RUN chown -R mdbc:mdbc /app && chmod 700 /app/*.sh
+
+VOLUME /app/config
+
+WORKDIR /app
+CMD ["/app/start-mdbc-server.sh"]

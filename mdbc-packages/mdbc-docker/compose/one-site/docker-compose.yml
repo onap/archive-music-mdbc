@@ -1,0 +1,72 @@
+version: '3'
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: ${MTU}
+services:
+################################################################################
+  cassandra-1:
+    image:
+      onap/music/mdbc-cassandra
+    container_name:
+      cassandra-1
+    hostname:
+      cassandra-1.music.testlab.onap.org
+    expose:
+      - 9042
+      - 9160
+      - 7199
+    environment:
+      - CASSANDRA_CLUSTER_NAME=testcluster
+      - CASSANDRA_SEEDS=cassandra-1
+      - CASSANDRA_START_RPC=true
+    volumes:
+      - ./volumes/cassandra/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+#     - ./cache/cassandra-1:/var/lib/cassandra
+    command:
+      - -s0
+################################################################################
+  mariadb-1:
+    image: mariadb:10.1.11
+    container_name:
+      mariadb-1
+    hostname:
+      mariadb-1.music.testlab.onap.org
+    expose:
+      - 3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+    volumes:
+      - ./volumes/mariadb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./volumes/mariadb/conf.d:/etc/mysql/conf.d
+################################################################################
+  mdbc-server-1:
+    image: onap/music/mdbc-server
+    container_name:
+      mdbc-server-1
+    ports:
+      - "30001:30001"
+    volumes:
+      - ./volumes/mdbc-server/config:/app/config
+    environment:
+      - JVM_ARGS=-Xms64m -Xmx512m
+      - AVATICA_PORT=30001
+      - JDBC_URL=jdbc:mysql://mariadb-1:3306
+      - JDBC_USER=test
+      - JDBC_PASSWORD=password
+      - EXIT_DELAY=900
+    hostname:
+      mdbc-server-1.music.testlab.onap.org
+    depends_on:
+      - cassandra-1
+      - mariadb-1
+    command:
+      - /app/wait-for.sh
+      - -q
+      - -t
+      - "300"
+      - cassandra-1:9042
+      - mariadb-1:3306
+      - --
+      - "/app/start-mdbc-server.sh"

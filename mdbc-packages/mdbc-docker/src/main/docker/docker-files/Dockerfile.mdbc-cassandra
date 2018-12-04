@@ -1,0 +1,9 @@
+FROM cassandra:3.11.1
+
+VOLUME /docker-entrypoint-initdb.d
+
+COPY scripts/start-cassandra.sh /
+RUN chmod 755 /start-cassandra.sh
+
+CMD []
+ENTRYPOINT ["/start-cassandra.sh"]

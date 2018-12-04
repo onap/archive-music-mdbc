@@ -97,6 +97,7 @@
 
     <modules>
         <module>mdbc-server</module>
+        <module>mdbc-packages</module>
     </modules>
 
     <dependencies>
