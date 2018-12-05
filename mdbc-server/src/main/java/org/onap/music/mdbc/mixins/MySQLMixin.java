@@ -30,17 +30,20 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.apache.calcite.sql.parser.SqlParseException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.query.QueryProcessor;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.OperationType;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -945,4 +948,46 @@ NEW.field refers to the new value
 		String sql = "DELETE FROM " + TRANS_TBL + " WHERE CONNECTION_ID = " + this.connId; 
 		jdbcStmt.executeQuery(sql);
 	}
+	
+	public Map<String, String> lockTablesInQuery(String query) throws MDBCServiceException {
+		        
+        Map<String, String> returnMap = new HashMap<>();
+        try {
+            Map<String, List<String>> masterLockMap = QueryProcessor.parseSqlQuery(query);
+            logger.info(EELFLoggerDelegate.applicationLogger, ">>>>>>>> Query: "+query+ " >> masterLockMap: "+masterLockMap);
+            Iterator<Entry<String, List<String>>> it = masterLockMap.entrySet().iterator();
+            
+            while(it.hasNext()) {
+                Map.Entry<String, List<String>> kvpair = (Map.Entry<String, List<String>>)it.next();
+                String tableName = kvpair.getKey();
+                List<String> lockTypeList = kvpair.getValue();
+                for(String lockType : lockTypeList) {
+                    String lockedTime = mi.lockTableWithALockType(lockType, tableName, "123");
+                    boolean hasAcquired = mi.acquireAlockForTableWithALockType(lockType, tableName, "123", lockedTime);
+                    logger.info(EELFLoggerDelegate.applicationLogger, "Has Table acquired lock? : "+hasAcquired+ ">>lockedTime: "+lockedTime);
+                    if(hasAcquired)
+                            returnMap.put(tableName, lockType+":"+lockedTime);
+                    else {
+                            throw new MDBCServiceException("Unable to acquire lock on table "+tableName+ " since lock already exists.");
+                    }
+                }
+            }
+        } catch (SqlParseException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+        }
+        
+        return returnMap;
+	}
+	public void unlockTableWithALockType(Map<String, String> lockedMap) throws MDBCServiceException {
+		Iterator<Entry<String, String>> it = lockedMap.entrySet().iterator();
+
+		while(it.hasNext()) {
+			Map.Entry<String, String> kvpair = (Map.Entry<String, String>)it.next();
+			String tableName = kvpair.getKey();
+			String lockType = kvpair.getValue();
+			mi.unlockTableWithALockType(lockType, tableName, "123");
+		}
+	}
+
 }

@@ -77,7 +77,12 @@ public class QueryProcessor {
 	}
 
 	public static Map<String, List<String>> parseSqlQuery(String query) throws SqlParseException {
+		logger.info(EELFLoggerDelegate.applicationLogger, "Parsing query: "+query);
 		Map<String, List<String>> tableOpsMap = new HashMap<>();
+		//for Create no need to check locks.
+		if(query.toUpperCase().startsWith("CREATE")) 
+			return tableOpsMap;
+		
 		/*SqlParser parser = SqlParser.create(query);
 		SqlNode sqlNode = parser.parseQuery();*/
 		SqlNode sqlNode = getSqlParser(query).parseStmt();
@@ -123,16 +128,22 @@ public class QueryProcessor {
 			SqlNode where = sqlSelect.getWhere();
 			
 			for (String table : tablesArr) {
-				String[] split = table.split("`");
-				String tableName = split[1];
+				
+				String tableName = null;
+					if(table.contains("`")) {
+						String[] split = table.split("`");
+						tableName = split[1];
+					} else
+						tableName = table;
+
 				List<String> Ops = tableOpsMap.get(tableName);
 				if (Ops == null) Ops = new ArrayList<>();
 				if (where == null) {
 					Ops.add(Operation.TABLE.getOperation());
-					tableOpsMap.put(split[1], Ops);
+					tableOpsMap.put(tableName, Ops);
 				} else {
 					Ops.add(Operation.SELECT.getOperation());
-					tableOpsMap.put(split[1], Ops);
+					tableOpsMap.put(tableName, Ops);
 				}
 			}
 		}
@@ -196,7 +207,7 @@ public class QueryProcessor {
 						tableOpsMap.put(table, Ops);
 					}
 				} else {
-					logger.error(EELFLoggerDelegate.errorLogger, "Not recognized sql type");
+					logger.error(EELFLoggerDelegate.errorLogger, "Not recognized sql type: "+sqlQuery);
 					tbl = "";
 				}
 			}

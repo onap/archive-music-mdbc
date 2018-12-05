@@ -270,5 +270,10 @@ public interface MusicInterface {
 	List<UUID> getPartitionIndexes() throws MDBCServiceException;
 
 	void replayTransaction(HashMap<Range,StagingTable> digest) throws MDBCServiceException;
+	String lockTableWithALockType(String lockType, String tableName, String txnid) throws MDBCServiceException;
+	void unlockTableWithALockType(String lockType, String tableName, String txnid) throws MDBCServiceException;
+	boolean acquireAlockForTableWithALockType(String lockType, String tableName, String txnid, String lockedTime)
+	                    throws MDBCServiceException;
+
 }
 

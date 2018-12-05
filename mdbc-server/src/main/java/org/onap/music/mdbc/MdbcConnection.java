@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 
+import org.apache.calcite.sql.parser.SqlParseException;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.QueryException;
 import org.onap.music.logging.EELFLoggerDelegate;
@@ -486,7 +487,19 @@ public class MdbcConnection implements Connection {
     public void preStatementHook(final String sql) throws MDBCServiceException {
         //TODO: verify ownership of keys here
         //Parse tables from the sql query
-        Map<String, List<String>> tableToInstruction = QueryProcessor.extractTableFromQuery(sql);
+        Map<String, List<String>> tableToInstruction = null;
+		try {
+			String sql1 = null;
+ 			if(sql.endsWith(";"))
+ 				sql1 = sql.substring(0, sql.length()-1);
+ 			else
+ 				sql1 = sql;
+			tableToInstruction = QueryProcessor.parseSqlQuery(sql1);
+		} catch (SqlParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		logger.info(EELFLoggerDelegate.applicationLogger, "Vikram: tableToInstruction: "+tableToInstruction );
         //Check ownership of keys
         own(MDBCUtils.getTables(tableToInstruction));
         dbi.preStatementHook(sql);
@@ -543,6 +556,7 @@ public class MdbcConnection implements Connection {
         final OwnershipReturn ownershipReturn = mi.own(ranges, partition);
         final List<UUID> oldRangeIds = ownershipReturn.getOldIRangeds();
         //\TODO: do in parallel for all range ids
+        if(oldRangeIds == null) return;
         for(UUID oldRange : oldRangeIds) {
             MusicTxDigest.replayDigestForPartition(mi, oldRange,dbi);
         }

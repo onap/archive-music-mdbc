@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.Operation;
@@ -120,4 +121,5 @@ public interface DBInterface {
 	 * @throws SQLException if replay cannot occur correctly
 	 */
 	void replayTransaction(HashMap<Range,StagingTable> digest) throws SQLException;
+	Map<String, String> lockTablesInQuery(String sql) throws MDBCServiceException;
 }

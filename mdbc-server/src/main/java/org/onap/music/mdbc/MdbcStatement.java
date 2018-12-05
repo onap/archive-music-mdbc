@@ -24,13 +24,21 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLWarning;
 import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicLockingException;
+import org.onap.music.exceptions.MusicQueryException;
+import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.exceptions.QueryException;
+import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
+import org.onap.music.main.MusicCore;
+import org.onap.music.main.ReturnType;
 
 /**
  * ProxyStatement is a proxy Statement that front ends Statements from the underlying JDBC driver.  It passes all operations through,
@@ -73,11 +81,45 @@ public class MdbcStatement implements Statement {
     public ResultSet executeQuery(String sql) throws SQLException {
         logger.debug(EELFLoggerDelegate.applicationLogger,"executeQuery: "+sql);
         ResultSet r = null;
-        try {
+        Map<String, String> lockTablesMap = new HashMap<>();
+		 String key = null;
+		 String lockId = null;
+		 try {
+		 		if(!sql.toUpperCase().startsWith("CREATE")) {
+		 			String sql1 = null;
+		 			if(sql.endsWith(";"))
+		 				sql1 = sql.substring(0, sql.length()-1);
+		 			else
+		 				sql1 = sql;
+		 			lockTablesMap = mConn.getDBInterface().lockTablesInQuery(sql1);
+		 		}
+		 	for (Map.Entry<String, String> entry : lockTablesMap.entrySet()) {
+		 		key = "namespace.lockmaster."+entry.getKey();
+		 	}
+		 if(key != null) {
+		 	lockId = MusicCore.createLockReference(key);
+		 	try {
+				ReturnType lockAcqResult = MusicCore.acquireLock(key, lockId);
+			} catch (MusicLockingException | MusicQueryException | MusicServiceException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		 }
             mConn.preStatementHook(sql);
             r = stmt.executeQuery(sql);
             mConn.postStatementHook(sql);
             synchronizeTables(sql);
+            
+            
+            if(key != null) {
+			 	try {
+					MusicLockState lockAcqResult = MusicCore.voluntaryReleaseLock(key, lockId);
+				} catch (MusicLockingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			 }
+            
         } catch (SQLException e) {
             String nm = e.getClass().getName();
             logger.error(EELFLoggerDelegate.errorLogger, "executeQuery: exception "+nm);
@@ -179,11 +221,47 @@ public class MdbcStatement implements Statement {
         logger.debug(EELFLoggerDelegate.applicationLogger,"execute: "+sql);
         boolean b = false;
         //\TODO Add the result of the postStatementHook to b
-        try {
+        
+        Map<String, String> lockTablesMap = new HashMap<>();
+		 String key = null;
+		 String lockId = null;
+		 try {
+		 		if(!sql.toUpperCase().startsWith("CREATE")) {
+		 			String sql1 = null;
+		 			if(sql.endsWith(";"))
+		 				sql1 = sql.substring(0, sql.length()-1);
+		 			else
+		 				sql1 = sql;
+		 			lockTablesMap = mConn.getDBInterface().lockTablesInQuery(sql1);
+		 		}
+		 	for (Map.Entry<String, String> entry : lockTablesMap.entrySet()) {
+		 		key = "namespace.lockmaster."+entry.getKey();
+		 	}
+		 if(key != null) {
+		 	lockId = MusicCore.createLockReference(key);
+		 	try {
+				ReturnType lockAcqResult = MusicCore.acquireLock(key, lockId);
+			} catch (MusicLockingException | MusicQueryException | MusicServiceException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		 }
+        
             mConn.preStatementHook(sql);
             b = stmt.execute(sql);
             mConn.postStatementHook(sql);
             synchronizeTables(sql);
+            
+            
+            if(key != null) {
+			 	try {
+					MusicLockState lockAcqResult = MusicCore.voluntaryReleaseLock(key, lockId);
+				} catch (MusicLockingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			 }
+            
         } catch (SQLException e) {
             String nm = e.getClass().getName();
             logger.error(EELFLoggerDelegate.errorLogger, "execute: exception "+nm+" "+e);

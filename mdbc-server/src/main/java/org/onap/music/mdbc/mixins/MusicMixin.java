@@ -284,6 +284,7 @@ public class MusicMixin implements MusicInterface {
         try {
             createMusicTxDigest();//\TODO If we start partitioning the data base, we would need to use the redotable number
             createMusicRangeInformationTable();
+            createLockMasterTable(this.music_ns);
         }
         catch(MDBCServiceException e){
             logger.error(EELFLoggerDelegate.errorLogger,"Error creating tables in MUSIC");
@@ -1149,8 +1150,11 @@ public class MusicMixin implements MusicInterface {
     public void commitLog(DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest, String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException{
         UUID mriIndex = partition.getMusicRangeInformationIndex();
         if(mriIndex==null) {
-            own(partition.getSnapshot(),partition);
-        }
+            //own(partition.getSnapshot(),partition);
+            OwnershipReturn owner = own(partition.getSnapshot(),partition);
+            mriIndex = owner.getRangeId();
+        }            
+        logger.info(EELFLoggerDelegate.applicationLogger, "mriIndex: "+mriIndex);
         String fullyQualifiedMriKey = music_ns+"."+ this.musicRangeInformationTableName+"."+mriIndex.toString();
         //0. See if reference to lock was already created
         String lockId = partition.getLockId();
@@ -1717,7 +1721,7 @@ public class MusicMixin implements MusicInterface {
         throws MDBCServiceException{
         ResultSet result = MusicCore.quorumGet(cqlObject);
         //\TODO: handle better, at least transform into an MDBCServiceException
-        if(result.isExhausted()){
+        if(result == null || result.isExhausted()){
             throw new MDBCServiceException("There is not a row that matches the query: ["+cqlObject.getQuery()+"]");
         }
         return result.one();
@@ -1754,4 +1758,122 @@ public class MusicMixin implements MusicInterface {
     public void replayTransaction(HashMap<Range,StagingTable> digest) throws MDBCServiceException{
         throw new NotImplementedException("Error, replay transaction in music mixin needs to be implemented");
     }
+    
+    public void createLockMasterTable(String musicNamespace) throws MDBCServiceException {
+        String tableName = "LockMaster";
+        String primeKey = "tablename";
+        StringBuilder fields = new StringBuilder();
+        fields.append("createdtime text, ");
+        fields.append("id uuid, ");
+        fields.append("txnid text, ");
+        fields.append("tablename text, ");
+        fields.append("locktype text, ");
+        fields.append("ownerid text, ");
+        fields.append("isprocessed text, ");
+        String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s, %s, %s))", musicNamespace, tableName, fields, primeKey, "locktype", "createdtime");
+        try {
+        	System.out.println("Vikram cql: "+cql);
+            executeMusicWriteQuery(musicNamespace,tableName,cql);
+        } catch (MDBCServiceException e) {
+            logger.error("Initialization error: Failure to create transaction information table");
+            throw(e);
+        }
+    }
+
+	public String lockTableWithALockType(String music_ns, String lockType, String tableName, String txnid) throws MDBCServiceException {
+		
+		String currentTime = String.valueOf(System.currentTimeMillis());
+		PreparedQueryObject query = new PreparedQueryObject();
+        String cqlQuery = "INSERT INTO " +
+        		music_ns +
+                '.' +
+                "LockMaster" +
+                " (createdtime,id, tablename, locktype, isprocessed) " +
+                "VALUES (" +"'"+currentTime + "'," +
+                //UUID.randomUUID() + ",'" +txnid+"','"+ tableName+"','"+ lockType+ "','N');";
+                UUID.randomUUID() + ",'"+ tableName+"','"+ lockType+ "','N');";
+        query.appendQueryString(cqlQuery);
+        try {
+            MusicCore.nonKeyRelatedPut(query,"critical");
+        } catch (MusicServiceException e) {
+            logger.error(EELFLoggerDelegate.errorLogger, cqlQuery+" >>Unable to lock table "+tableName+" with lock type: "+lockType+ " >> Exception: "+e);
+            throw new MDBCServiceException(cqlQuery+" >> Unable to lock table "+tableName+" with lock type: "+lockType+ " >> Exception: "+e);
+        }
+        return currentTime;
+	}
+	
+	public void unlockTableWithALockType(String music_ns, String lockTypeAndCTime, String tableName, String txnid) throws MDBCServiceException {
+		
+		logger.info(EELFLoggerDelegate.applicationLogger, "unlockTableWithALockType started with "+lockTypeAndCTime+" && tableName:"+tableName);
+		String lckCTimeArr[] = lockTypeAndCTime.split(":");
+		PreparedQueryObject query = new PreparedQueryObject();
+        String cqlQuery = "UPDATE " +
+        		music_ns +
+                '.' +
+                "LockMaster" +
+                " SET isprocessed = ? WHERE tablename = ? AND locktype = ? AND createdtime = ?";
+        query.appendQueryString(cqlQuery);
+        query.addValue("Y");
+        query.addValue(tableName);
+        query.addValue(lckCTimeArr[0]);
+        query.addValue(lckCTimeArr[1]);
+        try {
+            MusicCore.nonKeyRelatedPut(query,"critical");
+        } catch (MusicServiceException e) {
+            logger.error(EELFLoggerDelegate.errorLogger, "Unable to unlock table "+tableName+" with lock type: "+lckCTimeArr[0]+ " >>>> Exception: "+e);
+            throw new MDBCServiceException("Unable to unlock table "+tableName+" with lock type: "+lckCTimeArr[0]+ " >>>> Exception: "+e);
+        }
+	}
+	
+	public boolean acquireAlockForTableWithALockType(String music_ns, String lockType, String tableName, String lockedTime) throws MDBCServiceException {
+		String currentTime = String.valueOf(System.currentTimeMillis());
+		String cql = String.format("SELECT createdtime, isprocessed FROM %s.%s WHERE tableName = ? AND locktype = ? LIMIT 1;", music_ns, "LockMaster");
+		PreparedQueryObject pQueryObject = new PreparedQueryObject();
+		pQueryObject.appendQueryString(cql);
+		pQueryObject.addValue(tableName);
+		pQueryObject.addValue(lockType);
+		Row newRow = null;
+		try {
+			logger.info(EELFLoggerDelegate.applicationLogger, "acquireAlockForTableWithALockType: "+pQueryObject.getQuery()+ " >>>> "+pQueryObject.getValues());
+            newRow = executeMusicUnlockedQuorumGet(pQueryObject);
+        } catch (MDBCServiceException e) {
+        	if(e.getMessage().contains("There is not a row that matches the query")) {
+        		logger.info(EELFLoggerDelegate.applicationLogger, e.getErrorMessage());
+        	} else {
+        		logger.info(EELFLoggerDelegate.applicationLogger, "Failure to acquire lock for :"+tableName+ " with locktype: "+lockType+ " >>>Exception: "+e);
+            	logger.error(EELFLoggerDelegate.errorLogger, "Failure to acquire lock for :"+tableName+ " with locktype: "+lockType+ " >>>Exception: "+e);
+        		throw new MDBCServiceException("Failure to acquire lock for :"+tableName+ " with locktype: "+lockType);
+        	}
+        }
+		logger.info(EELFLoggerDelegate.applicationLogger, "acquireAlockForTableWithALockType: >>>newRow: "+newRow);
+		if(newRow == null) {
+			return true;
+		} else {
+			String isProcessed = newRow.getString("isprocessed");
+			String createdtime = newRow.getString("createdtime");
+			logger.info(EELFLoggerDelegate.applicationLogger, "acquireAlockForTableWithALockType: >>>isProcessed: "+isProcessed+" >>>>createdtime of existing lock: "+createdtime+ " >>>currentTime: "+currentTime+ " is true?:"+(Long.parseLong(createdtime) > Long.parseLong(currentTime)));
+			if(Long.parseLong(createdtime) == Long.parseLong(lockedTime)) {
+				logger.info(EELFLoggerDelegate.applicationLogger, "acquireAlockForTableWithALockType: >>> Its Current lock only...");
+				return true;
+			}
+			else if(Long.parseLong(createdtime) < Long.parseLong(currentTime) && "Y".equals(isProcessed)) {
+				return true;
+			} else {
+				logger.info(EELFLoggerDelegate.applicationLogger, "acquireAlockForTableWithALockType: >>>newRow: "+newRow + ">> is true? "+(Long.parseLong(createdtime) > Long.parseLong(currentTime)));
+				return false;
+			}
+		}
+	}
+
+	@Override
+	public String lockTableWithALockType(String lockType, String tableName, String txnid) throws MDBCServiceException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void unlockTableWithALockType(String lockType, String tableName, String txnid) throws MDBCServiceException {
+		// TODO Auto-generated method stub
+		
+	}
 }
