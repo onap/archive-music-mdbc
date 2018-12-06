@@ -80,8 +80,10 @@ public class QueryProcessor {
 		logger.info(EELFLoggerDelegate.applicationLogger, "Parsing query: "+query);
 		Map<String, List<String>> tableOpsMap = new HashMap<>();
 		//for Create no need to check locks.
-		if(query.toUpperCase().startsWith("CREATE")) 
+		if(query.toUpperCase().startsWith("CREATE"))  {
+			logger.error(EELFLoggerDelegate.errorLogger, "CREATE TABLE DDL not currently supported currently.");
 			return tableOpsMap;
+		}
 		
 		/*SqlParser parser = SqlParser.create(query);
 		SqlNode sqlNode = parser.parseQuery();*/
@@ -151,6 +153,7 @@ public class QueryProcessor {
 		return tableOpsMap;
 	}
 
+	@Deprecated
 	public static Map<String, List<String>> extractTableFromQuery(String sqlQuery) {
 		List<String> tables = null;
 		Map<String, List<String>> tableOpsMap = new HashMap<>();
@@ -219,8 +222,12 @@ public class QueryProcessor {
 	}
 
 	public static void main(String[] args) throws SqlParseException {
-		String sqlQuery = "SELECT name, age FROM table1 t1, table2 t2 WHERE t1.id = t2.id";
-		// Map<String, List<String>> tableOpsMap = extractTableFromQuery(sqlQuery);
+		
+		String sqlQuery = "CREATE TABLE pet (name VARCHAR(20), owner VARCHAR(20))";
+		System.out.println(parseSqlQuery(sqlQuery));
+		
+		sqlQuery = "SELECT name, age FROM table1 t1, table2 t2 WHERE t1.id = t2.id";
+		//Map<String, List<String>> tableOpsMap = extractTableFromQuery(sqlQuery);
 		System.out.println(parseSqlQuery(sqlQuery));
 
 		sqlQuery = "SELECT name, age FROM table1, table2 t2 WHERE id = t2.id";
