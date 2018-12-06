@@ -50,6 +50,7 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.update.Update;
+import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.util.TablesNamesFinder;
 
 public class QueryProcessor {
@@ -195,8 +196,13 @@ public class QueryProcessor {
 						Ops.add(Operation.SELECT.getOperation());
 						tableOpsMap.put(table, Ops);
 					}
+				} else if (stmt instanceof CreateTable) {
+					CreateTable ct = (CreateTable) stmt;
+					List<String> Ops = new ArrayList<>();
+					Ops.add(Operation.TABLE.getOperation());
+					tableOpsMap.put(ct.getTable().getName(), Ops);
 				} else {
-					logger.error(EELFLoggerDelegate.errorLogger, "Not recognized sql type");
+					logger.error(EELFLoggerDelegate.errorLogger, "Not recognized sql type:" + stmt.getClass());
 					tbl = "";
 				}
 			}

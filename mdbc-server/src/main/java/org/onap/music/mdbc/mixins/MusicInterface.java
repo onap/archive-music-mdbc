@@ -43,25 +43,6 @@ import org.onap.music.mdbc.tables.TxCommitProgress;
  * @author Robert P. Eby
  */
 public interface MusicInterface {
-	class OwnershipReturn{
-		private final String ownerId;
-		private final UUID rangeId;
-		private List<UUID> oldIds;
-		public OwnershipReturn(String ownerId, UUID rangeId, List<UUID> oldIds){
-			this.ownerId=ownerId;
-			this.rangeId=rangeId;
-			this.oldIds=oldIds;
-		}
-		public String getOwnerId(){
-		    return ownerId;
-        }
-        public UUID getRangeId(){
-		    return rangeId;
-        }
-        public List<UUID> getOldIRangeds(){
-            return oldIds;
-        }
-	}
 	/**
 	 * Get the name of this MusicInterface mixin object.
 	 * @return the name
@@ -205,12 +186,11 @@ public interface MusicInterface {
 
     /**
      * This function is used to append an index to the redo log in a MRI row
-     * @param mriRowId mri row index to which we are going to append the index to the redo log
      * @param partition information related to ownership of partitions, used to verify ownership
      * @param newRecord index of the new record to be appended to the redo log
      * @throws MDBCServiceException
      */
-	void appendToRedoLog(UUID mriRowId, DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException;
+	void appendToRedoLog( DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException;
 
     /**
      * This functions adds the tx digest to
@@ -232,10 +212,10 @@ public interface MusicInterface {
      * Use this functions to verify ownership, and own new ranges
      * @param ranges the ranges that should be own after calling this function
      * @param partition current information of the ownership in the system
-     * @return an object indicating the status of the own function result
+     * @return a partition indicating the status of the own function result
      * @throws MDBCServiceException
      */
-	OwnershipReturn own(List<Range> ranges, DatabasePartition partition) throws MDBCServiceException;
+	DatabasePartition own(List<Range> ranges, DatabasePartition partition) throws MDBCServiceException;
 
     /**
      * This function relinquish ownership, if it is time to do it, it should be used at the end of a commit operation
@@ -243,17 +223,6 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
 	void relinquishIfRequired(DatabasePartition partition) throws MDBCServiceException;
-
-    /**
-     * This function is in charge of owning all the ranges requested and creating a new row that show the ownership of all
-     * those ranges.
-     * @param rangeId new id to be used in the new row
-     * @param ranges ranges to be owned by the end of the function called
-     * @param partition current ownership status
-     * @return
-     * @throws MDBCServiceException
-     */
-	OwnershipReturn appendRange(String rangeId, List<Range> ranges, DatabasePartition partition) throws MDBCServiceException;
 
     /**
      * This functions relinquishes a range

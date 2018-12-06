@@ -53,7 +53,6 @@ import org.onap.music.logging.format.ErrorTypes;
 import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
-import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
 import org.onap.music.mdbc.query.QueryProcessor;
 import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -75,12 +74,14 @@ public class MdbcConnection implements Connection {
     private final Connection jdbcConn;		// the JDBC Connection to the actual underlying database
     private final MusicInterface mi;
     private final TxCommitProgress progressKeeper;
-    private final DatabasePartition partition;
     private final DBInterface dbi;
     private final HashMap<Range,StagingTable> transactionDigest;
     private final Set<String> table_set;
+    private final StateManager statemanager;
+    private DatabasePartition partition;
 
-    public MdbcConnection(String id, String url, Connection c, Properties info, MusicInterface mi, TxCommitProgress progressKeeper, DatabasePartition partition) throws MDBCServiceException {
+    public MdbcConnection(String id, String url, Connection c, Properties info, MusicInterface mi,
+    		TxCommitProgress progressKeeper, DatabasePartition partition, StateManager statemanager) throws MDBCServiceException {
         this.id = id;
         this.table_set = Collections.synchronizedSet(new HashSet<String>());
         this.transactionDigest = new HashMap<Range,StagingTable>();
@@ -110,6 +111,7 @@ public class MdbcConnection implements Connection {
         }
         this.progressKeeper = progressKeeper;
         this.partition = partition;
+        this.statemanager = statemanager;
 
         logger.debug("Mdbc connection created with id: "+id);
     }
@@ -488,7 +490,7 @@ public class MdbcConnection implements Connection {
         //Parse tables from the sql query
         Map<String, List<String>> tableToInstruction = QueryProcessor.extractTableFromQuery(sql);
         //Check ownership of keys
-        own(MDBCUtils.getTables(tableToInstruction));
+        this.partition = statemanager.own(this.id, MDBCUtils.getTables(tableToInstruction), dbi);
         dbi.preStatementHook(sql);
     }
 
@@ -537,15 +539,6 @@ public class MdbcConnection implements Connection {
 
     public DBInterface getDBInterface() {
         return this.dbi;
-    }
-
-    public void own(List<Range> ranges) throws MDBCServiceException {
-        final OwnershipReturn ownershipReturn = mi.own(ranges, partition);
-        final List<UUID> oldRangeIds = ownershipReturn.getOldIRangeds();
-        //\TODO: do in parallel for all range ids
-        for(UUID oldRange : oldRangeIds) {
-            MusicTxDigest.replayDigestForPartition(mi, oldRange,dbi);
-        }
     }
 
     public void relinquishIfRequired(DatabasePartition partition) throws MDBCServiceException {

@@ -117,7 +117,7 @@ public class MdbcServerLogic extends JdbcMeta{
         }
         // Avoid global synchronization of connection opening
         try {
-            this.manager.openConnection(ch.id, info);
+            this.manager.openConnection(ch.id);
             Connection conn = this.manager.getConnection(ch.id);
             if(conn == null) {
                 logger.error(EELFLoggerDelegate.errorLogger, "Connection created was null");
