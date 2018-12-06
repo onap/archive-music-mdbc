@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9adffdf1_976e3100",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/DatabasePartition.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 55,
+      "author": {
+        "id": 1423
+      },
+      "writtenOn": "2018-12-06T18:39:24Z",
+      "side": 1,
+      "message": "Should you throw something?",
+      "range": {
+        "startLine": 55,
+        "startChar": 19,
+        "endLine": 55,
+        "endChar": 24
+      },
+      "revId": "32e7dd8a9a507b17c095bc786c43a8989890ea51",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9adffdf1_77738de7",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/DatabasePartition.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 82,
+      "author": {
+        "id": 1423
+      },
+      "writtenOn": "2018-12-06T18:39:24Z",
+      "side": 1,
+      "message": "Suggestion: change mriIndex.toString() to simply mriIndex.  Otherwise, you could get a NullpointerException from this.",
+      "range": {
+        "startLine": 82,
+        "startChar": 76,
+        "endLine": 82,
+        "endChar": 84
+      },
+      "revId": "32e7dd8a9a507b17c095bc786c43a8989890ea51",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
