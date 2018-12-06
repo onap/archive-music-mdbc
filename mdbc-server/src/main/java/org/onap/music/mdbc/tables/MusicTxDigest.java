@@ -67,7 +67,6 @@ public class MusicTxDigest {
      */
 	public void backgroundDaemon(int daemonSleepTimeS) throws InterruptedException {
 		MusicInterface mi = stateManager.getMusicInterface();
-		stateManager.openConnection("daemon", new Properties());
 		DBInterface dbi = ((MdbcConnection) stateManager.getConnection("daemon")).getDBInterface();
 
 		while (true) {
@@ -89,7 +88,7 @@ public class MusicTxDigest {
 			if(ranges.size()!=0) {
 				DatabasePartition myPartition = ranges.get(0);
 				for (UUID partition : partitions) {
-					if (!partition.equals(myPartition.getMusicRangeInformationIndex())) {
+					if (!partition.equals(myPartition.getMRIIndex())) {
 						try {
 							replayDigestForPartition(mi, partition, dbi);
 						} catch (MDBCServiceException e) {
@@ -146,6 +145,4 @@ public class MusicTxDigest {
 		   t.start();
 		
 	}
-
-
 }

@@ -26,6 +26,7 @@ import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
+import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.tables.MusicTxDigest;
@@ -39,6 +40,7 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
 
 /**
  * \TODO Implement an interface for the server logic and a factory 
@@ -169,73 +171,8 @@ public class StateManager {
      * @param id UUID of a connection
      * @param information
      */
-    public void openConnection(String id, Properties information){
-       if(!mdbcConnections.containsKey(id)){
-           Connection sqlConnection;
-           MdbcConnection newConnection;
-           //Create connection to local SQL DB
-           //\TODO: create function to generate connection outside of open connection and get connection
-           try {
-               //\TODO: pass the driver as a variable
-               Class.forName("org.mariadb.jdbc.Driver");
-           }
-           catch (ClassNotFoundException e) {
-               // TODO Auto-generated catch block
-               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
-                            ErrorTypes.GENERALSERVICEERROR);
-               return;
-           }
-           try {
-               sqlConnection = DriverManager.getConnection(this.sqlDBUrl+"/"+this.sqlDBName, this.info);
-           } catch (SQLException e) {
-               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.QUERYERROR, ErrorSeverity.CRITICAL,
-                       ErrorTypes.QUERYERROR);
-               sqlConnection = null;
-           }
-           //check if a range was already created for this connection
-           //TODO: later we could try to match it to some more sticky client id
-           DatabasePartition ranges;
-           if(connectionRanges.containsKey(id)){
-              ranges=connectionRanges.get(id);
-           }
-           else{
-              ranges=new DatabasePartition();
-              connectionRanges.put(id,ranges);
-           }
-           //Create MDBC connection
-           try {
-               newConnection = new MdbcConnection(id, this.sqlDBUrl+"/"+this.sqlDBName, sqlConnection, info, this.musicInterface,
-                   transactionInfo,ranges);
-           } catch (MDBCServiceException e) {
-               logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
-                       ErrorTypes.QUERYERROR);
-               newConnection = null;
-               return;
-           }
-           logger.info(EELFLoggerDelegate.applicationLogger,"Connection created for connection: "+id);
-           transactionInfo.createNewTransactionTracker(id, sqlConnection);
-           if(newConnection != null) {
-               mdbcConnections.put(id,newConnection);
-           }
-       }
-    }
-
-    /**
-     * This function returns the connection to the corresponding transaction 
-     * @param id of the transaction, created using
-     * @return
-     */
-    public Connection getConnection(String id) {
-    	if(mdbcConnections.containsKey(id)) {
-    		//\TODO: Verify if this make sense
-    		// Intent: reinitialize transaction progress, when it already completed the previous tx for the same connection
-    		if(transactionInfo.isComplete(id)) {
-    			transactionInfo.reinitializeTxProgress(id);
-    		}
-    		return mdbcConnections.get(id);
-    	}
-
-    	Connection sqlConnection;
+	public Connection openConnection(String id) {
+		Connection sqlConnection;
     	MdbcConnection newConnection;
         try {
             //TODO: pass the driver as a variable
@@ -263,13 +200,14 @@ public class StateManager {
             ranges=connectionRanges.get(id);
         }
         else{
-            ranges=new DatabasePartition();
+        	//TODO: we don't need to create a partition for each connection
+            ranges=new DatabasePartition(musicInterface.generateUniqueKey());
             connectionRanges.put(id,ranges);
         }
 		//Create MDBC connection
     	try {
 			newConnection = new MdbcConnection(id,this.sqlDBUrl+"/"+this.sqlDBName, sqlConnection, info, this.musicInterface,
-                transactionInfo,ranges);
+                transactionInfo,ranges, this);
 		} catch (MDBCServiceException e) {
 			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
                     ErrorTypes.QUERYERROR);
@@ -282,7 +220,40 @@ public class StateManager {
             mdbcConnections.put(id,newConnection);
         }
     	return newConnection;
+	}
+    
+    
+    /**
+     * This function returns the connection to the corresponding transaction 
+     * @param id of the transaction, created using
+     * @return
+     */
+    public Connection getConnection(String id) {
+        if(mdbcConnections.containsKey(id)) {
+            //\TODO: Verify if this make sense
+            // Intent: reinitialize transaction progress, when it already completed the previous tx for the same connection
+            if(transactionInfo.isComplete(id)) {
+                transactionInfo.reinitializeTxProgress(id);
+            }
+            return mdbcConnections.get(id);
+        }
+
+        return openConnection(id);
     }
+    
+    public DatabasePartition own(String mdbcConnectionId, List<Range> ranges, DBInterface dbi) throws MDBCServiceException {
+        DatabasePartition partition = musicInterface.own(ranges, connectionRanges.get(mdbcConnectionId));
+        List<UUID> oldRangeIds = partition.getOldMRIIds();
+        //\TODO: do in parallel for all range ids
+        for(UUID oldRange : oldRangeIds) {
+            MusicTxDigest.replayDigestForPartition(musicInterface, oldRange,dbi);
+        }
+        logger.info("Partition: " + partition.getMRIIndex() + " now owns " + ranges);
+        connectionRanges.put(mdbcConnectionId, partition);
+        return partition;
+    }
+
+ 
 
 	public void initializeSystem() {
 		//\TODO Prefetch data to system using the data ranges as guide 
