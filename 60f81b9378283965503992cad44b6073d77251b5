@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9adffdf1_e808fc92",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1090,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2018-12-07T22:47:18Z",
+      "side": 1,
+      "message": "This return type is not enough, later it is going to be required to have which ranges is associated to each old MRI index, which is not contained in the new Database Partition",
+      "revId": "60f81b9378283965503992cad44b6073d77251b5",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9adffdf1_a8ebd4ae",
+        "filename": "mdbc-server/src/test/java/org/onap/music/mdbc/mixins/MusicMixinTest.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2018-12-07T22:47:18Z",
+      "side": 1,
+      "message": "This is fix in the latest pull that I added, in case you want to create a new pull, based on that.",
+      "revId": "60f81b9378283965503992cad44b6073d77251b5",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
