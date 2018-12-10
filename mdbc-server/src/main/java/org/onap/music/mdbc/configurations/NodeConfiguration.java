@@ -38,11 +38,13 @@ public class NodeConfiguration {
 
     public DatabasePartition partition;
     public String nodeName;
+    public String sqlDatabaseName;
 
-    public NodeConfiguration(String tables, UUID mriIndex, String mriTableName, String node){
+    public NodeConfiguration(String tables, UUID mriIndex, String sqlDatabaseName, String node){
         //	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
         partition = new DatabasePartition(toRanges(tables), mriIndex, null) ;
         this.nodeName = node;
+        this.sqlDatabaseName = sqlDatabaseName;
     }
 
     protected List<Range> toRanges(String tables){
