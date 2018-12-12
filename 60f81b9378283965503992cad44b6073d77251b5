@@ -37,6 +37,24 @@
     },
     {
       "key": {
+        "uuid": "9adffdf1_39040f17",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1090,
+      "author": {
+        "id": 679
+      },
+      "writtenOn": "2018-12-12T22:22:11Z",
+      "side": 1,
+      "message": "Agreed; as its been tested and there are others waiting on this, lets merge this.",
+      "parentUuid": "9adffdf1_e87d5ce8",
+      "revId": "60f81b9378283965503992cad44b6073d77251b5",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9adffdf1_a8ebd4ae",
         "filename": "mdbc-server/src/test/java/org/onap/music/mdbc/mixins/MusicMixinTest.java",
         "patchSetId": 2
