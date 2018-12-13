@@ -1,0 +1,23 @@
+{
+  "partitions": [
+    {
+      "tables": [
+        {
+          "table": "Invoices"
+        }
+      ],
+      "owner": "",
+      "mriTableName": "musicrangeinformation",
+      "mtxdTableName": "musictxdigest",
+      "partitionId": "",
+      "replicationFactor": 1
+    }
+  ],
+  "musicNamespace": "namespace",
+  "tableToPartitionName": "tabletopartition",
+  "partitionInformationTableName": "partitioninfo",
+  "redoHistoryTableName": "redohistory",
+  "sqlDatabaseName": "test",
+  "internalNamespace": "music_internal",
+  "internalReplicationFactor": 1
+}
