@@ -70,3 +70,48 @@ services:
       - mariadb-1:3306
       - --
       - "/app/start-mdbc-server.sh"
+################################################################################
+  mariadb-2:
+    image: mariadb:10.1.11
+    container_name:
+      mariadb-2
+    hostname:
+      mariadb-2.music.testlab.onap.org
+    expose:
+      - 3306
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+    volumes:
+      - ./volumes/mariadb/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - ./volumes/mariadb/conf.d:/etc/mysql/conf.d
+################################################################################
+  mdbc-server-2:
+    image: onap/music/mdbc-server
+    container_name:
+      mdbc-server-2
+    ports:
+      - "30002:30002"
+    volumes:
+      - ./volumes/mdbc-server-2/config:/app/config
+    environment:
+      - JVM_ARGS=-Xms64m -Xmx512m
+      - AVATICA_PORT=30002
+      - JDBC_URL=jdbc:mysql://mariadb-2:3306
+      - JDBC_USER=test
+      - JDBC_PASSWORD=password
+      - EXIT_DELAY=900
+    hostname:
+      mdbc-server-2.music.testlab.onap.org
+    depends_on:
+      - cassandra-1
+      - mariadb-2
+    command:
+      - /app/wait-for.sh
+      - -q
+      - -t
+      - "300"
+      - cassandra-1:9042
+      - mariadb-2:3306
+      - mdbc-server-1:30001
+      - --
+      - "/app/start-mdbc-server.sh"
