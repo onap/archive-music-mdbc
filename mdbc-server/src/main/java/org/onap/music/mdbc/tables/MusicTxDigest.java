@@ -83,12 +83,12 @@ public class MusicTxDigest {
 			    logger.error("Error obtainting partition indexes, trying again next iteration");
 			    continue;
 			}
-			//2) for each partition I don't own
 			List<DatabasePartition> ranges = stateManager.getRanges();
 			if(ranges.size()!=0) {
 				DatabasePartition myPartition = ranges.get(0);
 				for (UUID partition : partitions) {
 					if (!partition.equals(myPartition.getMRIIndex())) {
+				        //2) for each partition I don't own
 						try {
 							replayDigestForPartition(mi, partition, dbi);
 						} catch (MDBCServiceException e) {
@@ -109,7 +109,8 @@ public class MusicTxDigest {
 	 * @throws MDBCServiceException
 	 */
 	public static void replayDigestForPartition(MusicInterface mi, UUID partitionId, DBInterface dbi) throws MDBCServiceException {
-		List<MusicTxDigestId> partitionsRedoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
+	    MusicRangeInformationRow mriRow = mi.getMusicRangeInformation(partitionId);
+	    List<MusicTxDigestId> partitionsRedoLogTxIds = mriRow.getRedoLog();
 		for (MusicTxDigestId txId: partitionsRedoLogTxIds) {
 			HashMap<Range, StagingTable> transaction = mi.getTxDigest(txId);
 			try {
@@ -118,9 +119,9 @@ public class MusicTxDigest {
 				logger.error("Rolling back the entire digest replay. " + partitionId);
 				return;
 			}
-			logger.info("Successfully replayed transaction " + txId);
+	        logger.info("Successfully replayed transaction " + txId);
+            mi.updateProgressKeeperTable(txId, mriRow.getRanges());
 		}
-		//todo, keep track of where I am in pointer
 	}
 
 	/**

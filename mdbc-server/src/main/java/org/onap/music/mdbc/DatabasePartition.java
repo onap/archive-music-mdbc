@@ -95,6 +95,10 @@ public class DatabasePartition {
     public void setMusicRangeInformationIndex(UUID musicRangeInformationIndex) {
         this.mriIndex = musicRangeInformationIndex;
     }
+    
+    public List<Range> getRanges() {
+        return ranges;
+    }
 
     /**
      * Add a new range to the ones own by the local MDBC

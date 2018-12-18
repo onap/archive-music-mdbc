@@ -111,6 +111,7 @@ public class MusicMixin implements MusicInterface {
     //\TODO Add logic to change the names when required and create the tables when necessary
     private String musicTxDigestTableName = "musictxdigest";
     private String musicRangeInformationTableName = "musicrangeinformation";
+    private String progressKeeperTableName = "progresskeeper";
 
     private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MusicMixin.class);
 
@@ -156,6 +157,7 @@ public class MusicMixin implements MusicInterface {
         //typemap.put(Types.DATE,   	 "TIMESTAMP");
     }
 
+    private final String mdbcServerName;
     protected final String music_ns;
     protected final String myId;
     protected final String[] allReplicaIds;
@@ -168,7 +170,7 @@ public class MusicMixin implements MusicInterface {
     private Set<String> in_progress    = Collections.synchronizedSet(new HashSet<String>());
 
     public MusicMixin() {
-        //this.logger         = null;
+        this.mdbcServerName = null;
         this.musicAddress   = null;
         this.music_ns       = null;
         this.music_rfactor  = 0;
@@ -177,6 +179,7 @@ public class MusicMixin implements MusicInterface {
     }
 
     public MusicMixin(String mdbcServerName, Properties info) throws MDBCServiceException {
+        this.mdbcServerName = mdbcServerName;
         // Default values -- should be overridden in the Properties
         // Default to using the host_ids of the various peers as the replica IDs (this is probably preferred)
         this.musicAddress   = info.getProperty(KEY_MUSIC_ADDRESS, DEFAULT_MUSIC_ADDRESS);
@@ -284,10 +287,22 @@ public class MusicMixin implements MusicInterface {
         try {
             createMusicTxDigest();//\TODO If we start partitioning the data base, we would need to use the redotable number
             createMusicRangeInformationTable();
+            createProgressKeeperTable();
         }
         catch(MDBCServiceException e){
-            logger.error(EELFLoggerDelegate.errorLogger,"Error creating tables in MUSIC");
+            logger.error(EELFLoggerDelegate.errorLogger,"Error creating tables in MUSIC. " + e.getErrorMessage());
         }
+    }
+    
+    /**
+     * Create a table that keeps the update progress of every mdbc server
+     */
+    private void createProgressKeeperTable() {
+        String fields = "siteid text, table text, lastupdate UUID";
+        String primKey = "siteid, partition";
+        String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY(%s));",
+                music_ns, progressKeeperTableName, fields, primKey);
+        executeMusicWriteQuery(cql);
     }
 
     /**
@@ -297,10 +312,8 @@ public class MusicMixin implements MusicInterface {
     @Override
     public void initializeMusicForTable(TableInfo ti, String tableName) {
         /**
-         * This code creates two tables for every table in SQL:
-         * (i) a table with the exact same name as the SQL table storing the SQL data.
-         * (ii) a "dirty bits" table that stores the keys in the Cassandra table that are yet to be
-         * updated in the SQL table (they were written by some other node).
+         * This code creates table for every table in SQL:
+         * a table with the exact same name as the SQL table storing the SQL data.
          */
         StringBuilder fields = new StringBuilder();
         StringBuilder prikey = new StringBuilder();
@@ -338,13 +351,6 @@ public class MusicMixin implements MusicInterface {
      */
     @Override
     public void createDirtyRowTable(TableInfo ti, String tableName) {
-        // create dirtybitsTable at all replicas
-//		for (String repl : allReplicaIds) {
-////			String dirtyRowsTableName = "dirty_"+tableName+"_"+allReplicaIds[i];
-////			String dirtyTableQuery = "CREATE TABLE IF NOT EXISTS "+music_ns+"."+ dirtyRowsTableName+" (dirtyRowKeys text PRIMARY KEY);";
-//			cql = String.format("CREATE TABLE IF NOT EXISTS %s.DIRTY_%s_%s (dirtyRowKeys TEXT PRIMARY KEY);", music_ns, tableName, repl);
-//			executeMusicWriteQuery(cql);
-//		}
         StringBuilder ddl = new StringBuilder("REPLICA__ TEXT");
         StringBuilder cols = new StringBuilder("REPLICA__");
         for (int i = 0; i < ti.columns.size(); i++) {
@@ -917,7 +923,7 @@ public class MusicMixin implements MusicInterface {
     }
 
     /**
-     * This method executes a write query in Music
+     * This method executes an eventual write query in Music
      * @param cql the CQL to be sent to Cassandra
      */
     protected void executeMusicWriteQuery(String cql) {
@@ -1320,7 +1326,6 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
-
     @Override
     public DatabasePartition createMusicRangeInformation(MusicRangeInformationRow info) throws MDBCServiceException {
         DatabasePartition newPartition = info.getDBPartition();
@@ -1459,10 +1464,6 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
-
-    /**
-     * Writes the transaction history to the txDigest
-     */
     @Override
     public void addTxDigest(MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException {
         //createTxDigestRow(music_ns,musicTxDigestTable,newId,transactionDigest);
@@ -1762,9 +1763,18 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
+    @Override
+    public void updateProgressKeeperTable(MusicTxDigestId txId, List<Range> ranges) {
+        for (Range range: ranges) {
+            String cql = String.format("INSERT INTO %s.%s (siteid, partition, lastupdate) VALUES ('%s', '%s', %s)",
+                    music_ns, progressKeeperTableName, mdbcServerName, range,txId.txId);
+            executeMusicWriteQuery(cql);
+        }
+    }
 
     @Override
     public void replayTransaction(HashMap<Range,StagingTable> digest) throws MDBCServiceException{
         throw new NotImplementedException("Error, replay transaction in music mixin needs to be implemented");
     }
+
 }

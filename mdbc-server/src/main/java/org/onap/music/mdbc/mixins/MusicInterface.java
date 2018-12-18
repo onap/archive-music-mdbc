@@ -193,7 +193,7 @@ public interface MusicInterface {
 	void appendToRedoLog( DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException;
 
     /**
-     * This functions adds the tx digest to
+     * This functions Writes the transaction history to the txDigest
      * @param newId id used as index in the MTD table
      * @param transactionDigest digest that contains all the changes performed in the transaction
      * @throws MDBCServiceException
@@ -239,5 +239,12 @@ public interface MusicInterface {
 	List<UUID> getPartitionIndexes() throws MDBCServiceException;
 
 	void replayTransaction(HashMap<Range,StagingTable> digest) throws MDBCServiceException;
+	
+	/**
+	 * Update the pointer in the progress keeper table as to where this site is in replay
+	 * @param txId transaction that has been successfully replayed by this site
+	 * @param ranges list of ranges related to this partition's transactions, as defined by MRI table
+	 */
+    void updateProgressKeeperTable(MusicTxDigestId txId, List<Range> ranges);
 }
 

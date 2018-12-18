@@ -23,10 +23,10 @@ import java.util.List;
 import java.util.UUID;
 
 import org.onap.music.mdbc.DatabasePartition;
+import org.onap.music.mdbc.Range;
 
 public final class MusicRangeInformationRow {
 	private final DatabasePartition dbPartition;
-	//private final UUID partitionIndex;
 	private final List<MusicTxDigestId> redoLog;
 	private final String ownerId;
 	private final String metricProcessId;
@@ -38,15 +38,19 @@ public final class MusicRangeInformationRow {
 		this.ownerId = ownerId;
 		this.metricProcessId = metricProcessId;
 	}
-
-	/*public UUID getPartitionIndex() {
-		return dbPartition.getMusicRangeInformationIndex();
-	} */
 	
 	public DatabasePartition getDBPartition() {
 		return this.dbPartition;
 	}
 
+	public UUID getPartitionIndex() {
+        return dbPartition.getMRIIndex();
+    }
+	
+	public List<Range> getRanges() {
+	    return dbPartition.getRanges();
+	}
+	
 	public List<MusicTxDigestId> getRedoLog() {
 		return redoLog;
 	}
