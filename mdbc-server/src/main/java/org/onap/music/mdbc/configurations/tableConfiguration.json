@@ -3,10 +3,34 @@
     {
       "tables": [
         {
-          "table": "table11"
+          "table": "table_ams"
         }
       ],
-      "owner": "",
+      "owner": "amsterdam",
+      "mriTableName": "musicrangeinformation",
+      "mtxdTableName": "musictxdigest",
+      "partitionId": "",
+      "replicationFactor": 1
+    },
+    {
+      "tables": [
+        {
+          "table": "table_bei"
+        }
+      ],
+      "owner": "beijing",
+      "mriTableName": "musicrangeinformation",
+      "mtxdTableName": "musictxdigest",
+      "partitionId": "",
+      "replicationFactor": 1
+    },
+    {
+      "tables": [
+        {
+          "table": "table_irv"
+        }
+      ],
+      "owner": "irvine",
       "mriTableName": "musicrangeinformation",
       "mtxdTableName": "musictxdigest",
       "partitionId": "",

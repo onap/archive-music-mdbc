@@ -23,7 +23,7 @@ import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.configurations.NodeConfiguration;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
-
+import java.util.ArrayList;
 import java.util.UUID;
 
 public class CreatePartition {
@@ -48,7 +48,7 @@ public class CreatePartition {
     }
 
     public void convert(){
-        config = new NodeConfiguration(tables, UUID.fromString(mriIndex),"test","");
+        config = new NodeConfiguration(tables, UUID.fromString(mriIndex),"test","", new ArrayList<>());
     }
 
     public void saveToFile(){

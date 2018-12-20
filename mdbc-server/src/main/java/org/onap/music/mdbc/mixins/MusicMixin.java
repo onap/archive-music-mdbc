@@ -166,6 +166,7 @@ public class MusicMixin implements MusicInterface {
     private boolean keyspace_created   = false;
     private Map<String, PreparedStatement> ps_cache = new HashMap<>();
     private Set<String> in_progress    = Collections.synchronizedSet(new HashSet<String>());
+    private StateManager stateMgr;
 
     public MusicMixin() {
         //this.logger         = null;
@@ -176,7 +177,8 @@ public class MusicMixin implements MusicInterface {
         this.allReplicaIds  = null;
     }
 
-    public MusicMixin(String mdbcServerName, Properties info) throws MDBCServiceException {
+    public MusicMixin(StateManager stateMgr, Properties info) throws MDBCServiceException {
+        this.stateMgr = stateMgr;
         // Default values -- should be overridden in the Properties
         // Default to using the host_ids of the various peers as the replica IDs (this is probably preferred)
         this.musicAddress   = info.getProperty(KEY_MUSIC_ADDRESS, DEFAULT_MUSIC_ADDRESS);

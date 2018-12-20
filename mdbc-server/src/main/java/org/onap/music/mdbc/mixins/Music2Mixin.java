@@ -37,6 +37,7 @@ import org.onap.music.main.ReturnType;
 
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.DatabasePartition;
+import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.TableInfo;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
@@ -58,8 +59,8 @@ public class Music2Mixin extends MusicMixin {
 		super();
 	}
 
-	public Music2Mixin(String url, Properties info) throws MDBCServiceException {
-		super(url, info);
+	public Music2Mixin(StateManager stateMgr, Properties info) throws MDBCServiceException {
+		super(stateMgr, info);
 	}
 
 	/**

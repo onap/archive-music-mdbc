@@ -37,6 +37,7 @@ import org.junit.ClassRule;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.mockito.Mock;
 import org.onap.music.datastore.MusicDataStore;
 import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.exceptions.MDBCServiceException;
@@ -48,6 +49,7 @@ import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.main.MusicCore;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.service.impl.MusicCassaCore;
@@ -64,6 +66,8 @@ public class MusicMixinTest {
     private static Session session;
     private static String cassaHost = "localhost";
     private static MusicMixin mixin = null;
+    @Mock
+    private static StateManager stateMgr;
 
     @BeforeClass
     public static void init() throws MusicServiceException {
@@ -86,7 +90,7 @@ public class MusicMixinTest {
             Properties properties = new Properties();
             properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
             properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
-            mixin=new MusicMixin(mdbcServerName,properties);
+            mixin=new MusicMixin(stateMgr,properties);
         } catch (MDBCServiceException e) {
             fail("error creating music mixin");
         }

@@ -36,15 +36,21 @@ public class NodeConfiguration {
 
     private static transient final EELFLoggerDelegate LOG = EELFLoggerDelegate.getLogger(NodeConfiguration.class);
 
+    /** the starting database partition that this node will try to own */
     public DatabasePartition partition;
-    public String nodeName;
+    /** the database that will be using mdbc */
     public String sqlDatabaseName;
+    /** a unique name across all mdbc configurations */
+    public String nodeName;
+    /** a list of unique node names for all the sites */
+    public List<String> mdbcNodeNames;
 
-    public NodeConfiguration(String tables, UUID mriIndex, String sqlDatabaseName, String node){
+    public NodeConfiguration(String tables, UUID mriIndex, String sqlDatabaseName, String node, List<String> mdbcNodeNames){
         //	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
         partition = new DatabasePartition(toRanges(tables), mriIndex, null) ;
-        this.nodeName = node;
         this.sqlDatabaseName = sqlDatabaseName;
+        this.nodeName = node;
+        this.mdbcNodeNames = mdbcNodeNames;
     }
 
     protected List<Range> toRanges(String tables){

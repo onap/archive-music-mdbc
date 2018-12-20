@@ -74,14 +74,17 @@ public class StateManager {
     
     /** Identifier for this server instance */
     private String mdbcServerName;
+    private List<String> mdbcServerNames;
     private Map<String,DatabasePartition> connectionRanges;//Each connection owns its own database partition
     
 
-	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
+	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName,
+	        List<String> mdbcServerNames,String sqlDBName) throws MDBCServiceException {
         this.sqlDBName = sqlDBName;
         this.sqlDBUrl = sqlDBUrl;
         this.info = info;
         this.mdbcServerName = mdbcServerName;
+        this.mdbcServerNames = mdbcServerNames;
     
         this.connectionRanges = new HashMap<>();
         this.transactionInfo = new TxCommitProgress();
@@ -109,7 +112,7 @@ public class StateManager {
      * @throws MDBCServiceException
      */
     protected void initMusic() throws MDBCServiceException {
-        this.musicInterface = MixinFactory.createMusicInterface(musicmixin, mdbcServerName, info);
+        this.musicInterface = MixinFactory.createMusicInterface(musicmixin, this, info);
         this.mdbcConnections = new HashMap<>();
     }
     

@@ -70,6 +70,10 @@ public class TablesConfiguration {
             logger.error("Partitions was not correctly initialized");
             throw new MDBCServiceException("Partition was not correctly initialized");
         }
+        List<String> nodeNames = new ArrayList<>();
+        for (PartitionInformation partition: partitions) {
+            nodeNames.add(partition.owner);
+        }
         for(PartitionInformation partitionInfo : partitions){
             String mriTableName = partitionInfo.mriTableName;
             //0) Create the corresponding Music Range Information table
@@ -104,7 +108,7 @@ public class TablesConfiguration {
                 newStr.append(r.toString()).append(",");
             }
             nodeConfigs.add(new NodeConfiguration(newStr.toString(),mriTableIndex,
-            		sqlDatabaseName, partitionInfo.owner));
+            		sqlDatabaseName, partitionInfo.owner, nodeNames));
         }
         return nodeConfigs;
     }
