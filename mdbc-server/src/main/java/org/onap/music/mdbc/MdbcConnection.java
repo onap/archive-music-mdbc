@@ -53,6 +53,7 @@ import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
 import org.onap.music.mdbc.query.QueryProcessor;
+import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
@@ -69,8 +70,8 @@ import org.onap.music.mdbc.tables.TxCommitProgress;
 public class MdbcConnection implements Connection {
     private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MdbcConnection.class);
 
-    private final String id;			// This is the transaction id, assigned to this connection. There is no need to change the id, if connection is reused
-    private final Connection jdbcConn;		// the JDBC Connection to the actual underlying database
+    private final String id;            // This is the transaction id, assigned to this connection. There is no need to change the id, if connection is reused
+    private final Connection jdbcConn;      // the JDBC Connection to the actual underlying database
     private final MusicInterface mi;
     private final TxCommitProgress progressKeeper;
     private final DBInterface dbi;
@@ -80,7 +81,7 @@ public class MdbcConnection implements Connection {
     private DatabasePartition partition;
 
     public MdbcConnection(String id, String url, Connection c, Properties info, MusicInterface mi,
-    		TxCommitProgress progressKeeper, DatabasePartition partition, StateManager statemanager) throws MDBCServiceException {
+            TxCommitProgress progressKeeper, DatabasePartition partition, StateManager statemanager) throws MDBCServiceException {
         this.id = id;
         this.table_set = Collections.synchronizedSet(new HashSet<String>());
         this.transactionDigest = new HashMap<Range,StagingTable>();
@@ -161,7 +162,7 @@ public class MdbcConnection implements Connection {
                     throw new SQLException("tx id is null");
                 }
                 try {
-                    mi.commitLog(partition, transactionDigest, id, progressKeeper);
+                    mi.commitLog(partition, statemanager.getEventualRanges(), transactionDigest, id, progressKeeper);
                 } catch (MDBCServiceException e) {
                     // TODO Auto-generated catch block
                     logger.error("Cannot commit log to music" + e.getStackTrace());
@@ -203,7 +204,7 @@ public class MdbcConnection implements Connection {
         try {
             logger.debug(EELFLoggerDelegate.applicationLogger, " commit ");
             // transaction was committed -- add all the updates into the REDO-Log in MUSIC
-            mi.commitLog(partition, transactionDigest, id, progressKeeper);
+            mi.commitLog(partition, statemanager.getEventualRanges(), transactionDigest, id, progressKeeper);
         } catch (MDBCServiceException e) {
             //If the commit fail, then a new commitId should be used
             logger.error(EELFLoggerDelegate.errorLogger, "Commit to music failed", AppMessages.UNKNOWNERROR, ErrorTypes.UNKNOWN, ErrorSeverity.FATAL);
@@ -226,7 +227,8 @@ public class MdbcConnection implements Connection {
 
         //\TODO try to execute outside of the critical path of commit
         try {
-            relinquishIfRequired(partition);
+            if(partition != null)
+                relinquishIfRequired(partition);
         } catch (MDBCServiceException e) {
             logger.warn("Error trying to relinquish: "+partition.toString());
         }
@@ -489,11 +491,19 @@ public class MdbcConnection implements Connection {
         //Parse tables from the sql query
         Map<String, List<String>> tableToInstruction = QueryProcessor.extractTableFromQuery(sql);
         //Check ownership of keys
-        List<Range> ranges = MDBCUtils.getTables(tableToInstruction);
-        this.partition = own(ranges);
+        List<Range> queryTables = MDBCUtils.getTables(tableToInstruction);
+        // filter out ranges that fall under Eventually consistent
+        // category as these tables do not need ownership
+        List<Range> scQueryTables = filterEveTables( queryTables);
+        this.partition = own(scQueryTables);
         dbi.preStatementHook(sql);
     }
 
+
+    private List<Range> filterEveTables(List<Range> queryTables) {
+        queryTables.removeAll(statemanager.getEventualRanges());
+        return queryTables;
+    }
 
     /**
      * Code to be run within the DB driver after a SQL statement has been executed.  This is where remote
@@ -510,7 +520,7 @@ public class MdbcConnection implements Connection {
      * in order to prevent multiple threads from running this code in parallel.
      */
     public void synchronizeTables() throws QueryException {
-        Set<String> set1 = dbi.getSQLTableSet();	// set of tables in the database
+        Set<String> set1 = dbi.getSQLTableSet();    // set of tables in the database
         logger.debug(EELFLoggerDelegate.applicationLogger, "synchronizing tables:" + set1);
         for (String tableName : set1) {
             // This map will be filled in if this table was previously discovered

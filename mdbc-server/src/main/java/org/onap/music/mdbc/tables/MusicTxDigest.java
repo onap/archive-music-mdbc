@@ -19,35 +19,21 @@
  */
 package org.onap.music.mdbc.tables;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
-import org.json.JSONObject;
-import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MDBCServiceException;
-import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.DatabasePartition;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.MdbcConnection;
-import org.onap.music.mdbc.MdbcServerLogic;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.StateManager;
-import org.onap.music.mdbc.configurations.NodeConfiguration;
-import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.MusicInterface;
-
-import com.datastax.driver.core.Row;
 
 public class MusicTxDigest {
 	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MusicTxDigest.class);
@@ -98,8 +84,46 @@ public class MusicTxDigest {
 					}
 				}
 			}
+		
+			//Step 3: ReplayDigest() for E.C conditions
+			try {
+				replayDigest(mi,dbi);
+			} catch (MDBCServiceException e) {
+				logger.error("Unable to perform Eventual Consistency operations" + e.getMessage());
+				continue;
+			}	
+			
 		}
 	}
+
+	/**
+	 * Replay the digest for eventual consistency.
+	 * @param mi music interface
+	 * @param partitionId the partition to be replayed
+	 * @param dbi interface to the database that will replay the operations
+	 * @throws MDBCServiceException
+	 */
+	public static void replayDigest(MusicInterface mi, DBInterface dbi) throws MDBCServiceException {
+					//List<MusicTxDigestId> partitionsRedoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
+					//From where should I fetch TransactionsIDs ??? from NEW TABLE ?? or EXISING TABLE ?? << what the new SITE_TABLE details??
+					// --> It is a new table called ECTxDigest
+					//I should sort/ call a method which gives all the entires of  a table based on the time-stamp from Low to High
+
+		ArrayList<HashMap<Range, StagingTable>> ecTxDigest = mi.getEveTxDigest();
+		
+					//for (MusicTxDigestId txId: partitionsRedoLogTxIds) { // partitionsRedoLogTxIds --> this comes from new table where timeStamp > currentTimeStamp  ( THIS SHOULD BE lessthan.. which is ASC order)
+					//HashMap<Range, StagingTable> transaction = mi2.getEcTxDigest();  // Getting records from musictxdigest TABLE.
+		for (HashMap<Range, StagingTable> transaction: ecTxDigest) {
+			try {
+				dbi.replayTransaction(transaction); // I think this Might change if the data is coming from a new table.. ( what is the new table structure??)
+			} catch (SQLException e) {
+				logger.error("EC:Rolling back the entire digest replay.");
+				return;
+			}
+			logger.info("EC: Successfully replayed transaction ");
+		}
+	}
+
 	
 	/**
 	 * Replay the digest for a given partition
@@ -109,21 +133,21 @@ public class MusicTxDigest {
 	 * @throws MDBCServiceException
 	 */
 	public static void replayDigestForPartition(MusicInterface mi, UUID partitionId, DBInterface dbi) throws MDBCServiceException {
-		List<MusicTxDigestId> partitionsRedoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
-		for (MusicTxDigestId txId: partitionsRedoLogTxIds) {
-			HashMap<Range, StagingTable> transaction = mi.getTxDigest(txId);
-			try {
-				//\TODO do this two operations in parallel
-				dbi.replayTransaction(transaction);
-				mi.replayTransaction(transaction);
-			} catch (SQLException e) {
-				logger.error("Rolling back the entire digest replay. " + partitionId);
-				return;
-			}
-			logger.info("Successfully replayed transaction " + txId);
-		}
-		//todo, keep track of where I am in pointer
-	}
+        List<MusicTxDigestId> partitionsRedoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
+        for (MusicTxDigestId txId: partitionsRedoLogTxIds) {
+            HashMap<Range, StagingTable> transaction = mi.getTxDigest(txId);
+            try {
+                //\TODO do this two operations in parallel
+                dbi.replayTransaction(transaction);
+                mi.replayTransaction(transaction);
+            } catch (SQLException e) {
+                logger.error("Rolling back the entire digest replay. " + partitionId);
+                return;
+            }
+            logger.info("Successfully replayed transaction " + txId);
+        }
+        //todo, keep track of where I am in pointer
+    }
 
 	/**
 	 * Start the background daemon defined by this object

@@ -17,7 +17,6 @@
  * limitations under the License.
  * ============LICENSE_END======================================================
  */
-
 package org.onap.music.mdbc.mixins;
 
 import java.sql.Connection;
@@ -844,7 +843,7 @@ NEW.field refers to the new value
 		
 		jdbcConn.setAutoCommit(autocommit);
     }
-
+	
 	@Override
 	public void disableForeignKeyChecks() throws SQLException {
 	    Statement disable = jdbcConn.createStatement();
@@ -896,7 +895,7 @@ NEW.field refers to the new value
 		switch (op.getOperationType()) {
 		case INSERT:
 			sql.append(op.getOperationType() + " INTO ");
-			sql.append(r.table + " (") ;
+			sql.append(r.getTable() + " (") ;
 			sep = "";
 			for (String col: cols) {
 				sql.append(sep + col);
@@ -912,7 +911,7 @@ NEW.field refers to the new value
 			break;
 		case UPDATE:
 			sql.append(op.getOperationType() + " ");
-			sql.append(r.table + " SET ");
+			sql.append(r.getTable() + " SET ");
 			sep="";
 			for (int i=0; i<cols.size(); i++) {
 				sql.append(sep + cols.get(i) + "=\"" + vals.get(i) +"\"");
@@ -924,7 +923,7 @@ NEW.field refers to the new value
 			break;
 		case DELETE:
 			sql.append(op.getOperationType() + " FROM ");
-			sql.append(r.table + " WHERE ");
+			sql.append(r.getTable() + " WHERE ");
 			sql.append(getPrimaryKeyConditional(op.getKey()));
 			sql.append(";");
 			break;

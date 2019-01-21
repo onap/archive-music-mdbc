@@ -359,7 +359,7 @@ public class Dag {
             Range range = rangeAndNodes.getKey();
             Set<DagNode> nodes = rangeAndNodes.getValue();
             if(nodes.size() > 2){
-                logger.error("Range "+range.table+"has more than 2 active rows");
+                logger.error("Range "+range.getTable()+"has more than 2 active rows");
                 throw new MDBCServiceException("Range has more than 2 active rows");
             }
             else if(nodes.size()==2){

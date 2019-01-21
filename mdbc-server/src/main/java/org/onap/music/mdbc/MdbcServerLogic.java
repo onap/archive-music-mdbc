@@ -58,6 +58,8 @@ public class MdbcServerLogic extends JdbcMeta{
 	public MdbcServerLogic(String Url, Properties info, NodeConfiguration config) throws SQLException, MDBCServiceException {
 		super(Url,info);
 		this.manager = new StateManager(Url,info,config.nodeName, config.sqlDatabaseName); //FIXME: db name should not be passed in ahead of time
+		manager.setEventualRanges(config.getEventual().getRanges());
+		
 		this.info = info;
         int concurrencyLevel = Integer.parseInt(
                 info.getProperty(ConnectionCacheSettings.CONCURRENCY_LEVEL.key(),
@@ -292,6 +294,12 @@ public class MdbcServerLogic extends JdbcMeta{
 			throw(err);
 		}		
 	}
+
+
+
+
+
+
 
 	@Override
 	public void rollback(ConnectionHandle ch) {
