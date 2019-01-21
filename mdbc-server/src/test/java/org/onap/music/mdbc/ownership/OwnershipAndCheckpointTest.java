@@ -158,7 +158,7 @@ public class OwnershipAndCheckpointTest {
         String id = MDBCUtils.generateUniqueKey().toString();
         TxCommitProgress progressKeeper = new TxCommitProgress();
         progressKeeper.createNewTransactionTracker(id ,this.conn);
-        musicMixin.commitLog(partition, stagingTable, id, progressKeeper);
+        musicMixin.commitLog(partition, null, stagingTable, id, progressKeeper);
         TestUtils.unlockRow(keyspace,mriTableName,partition);
     }
 

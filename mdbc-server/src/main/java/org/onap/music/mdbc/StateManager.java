@@ -79,7 +79,7 @@ public class StateManager {
     /** Identifier for this server instance */
     private String mdbcServerName;
     private Map<String,DatabasePartition> connectionRanges;//Each connection owns its own database partition
-    
+    private List<Range> eventualRanges;
 
 	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
         this.sqlDBName = sqlDBName;
@@ -149,6 +149,14 @@ public class StateManager {
         return new ArrayList<>(connectionRanges.values());
 	}
 
+
+    public List<Range> getEventualRanges() {
+        return eventualRanges;
+    }
+
+    public void setEventualRanges(List<Range> eventualRanges) {
+        this.eventualRanges = eventualRanges;
+    }
 
     public void closeConnection(String connectionId){
         //\TODO check if there is a race condition

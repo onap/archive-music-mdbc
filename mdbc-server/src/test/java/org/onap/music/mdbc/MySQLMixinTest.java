@@ -20,23 +20,19 @@
 
 package org.onap.music.mdbc;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.*;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
 import org.onap.music.mdbc.mixins.MySQLMixin;
 
 import ch.vorburger.mariadb4j.DB;
 
 public class MySQLMixinTest {
 
-	public static final String DATABASE = "mdbcTest";
+	public static final String DATABASE = "mdbctest";
 	public static final String TABLE= "Persons";
 	public static final String CREATE_TABLE = "CREATE TABLE IF NOT EXISTS " + TABLE + " (\n" +
             "    PersonID int,\n" +
@@ -75,7 +71,7 @@ public class MySQLMixinTest {
 	
 	@Test
 	public void testGetDataBaseName() throws SQLException {
-		assertEquals(DATABASE, mysqlMixin.getDatabaseName());
+		Assert.assertEquals(DATABASE, mysqlMixin.getDatabaseName());
 	}
 
 }

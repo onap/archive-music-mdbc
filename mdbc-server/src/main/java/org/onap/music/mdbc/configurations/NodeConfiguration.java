@@ -37,12 +37,14 @@ public class NodeConfiguration {
     private static transient final EELFLoggerDelegate LOG = EELFLoggerDelegate.getLogger(NodeConfiguration.class);
 
     public DatabasePartition partition;
+    public Eventual eventual;
     public String nodeName;
     public String sqlDatabaseName;
 
     public NodeConfiguration(String tables, UUID mriIndex, String sqlDatabaseName, String node){
         //	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
         partition = new DatabasePartition(toRanges(tables), mriIndex, null) ;
+        eventual = new Eventual(toRanges(tables));
         this.nodeName = node;
         this.sqlDatabaseName = sqlDatabaseName;
     }
@@ -86,5 +88,13 @@ public class NodeConfiguration {
         Gson gson = new Gson();
         NodeConfiguration config = gson.fromJson(br, NodeConfiguration.class);
         return config;
+    }
+
+    public Eventual getEventual() {
+        return eventual;
+    }
+
+    public void setEventual(Eventual eventual) {
+        this.eventual = eventual;
     }
 }

@@ -23,27 +23,45 @@ import java.io.IOException;
 import java.io.Reader;
 import java.nio.ByteBuffer;
 import java.sql.Types;
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
+import java.util.Properties;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.UUID;
+import java.util.function.BiFunction;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
-import org.onap.music.mdbc.*;
-import org.onap.music.mdbc.ownership.Dag;
-import org.onap.music.mdbc.ownership.DagNode;
-import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
-import org.onap.music.mdbc.tables.*;
 import org.json.JSONObject;
+import org.onap.music.datastore.Condition;
 import org.onap.music.datastore.PreparedQueryObject;
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
-import org.onap.music.datastore.Condition;
+import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicCore;
 import org.onap.music.main.ResultType;
 import org.onap.music.main.ReturnType;
-
-import org.onap.music.exceptions.MDBCServiceException;
-import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.mdbc.DatabasePartition;
+import org.onap.music.mdbc.MDBCUtils;
+import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.ownership.Dag;
+import org.onap.music.mdbc.ownership.DagNode;
+import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
+import org.onap.music.mdbc.tables.MusicRangeInformationRow;
+import org.onap.music.mdbc.tables.MusicTxDigestId;
+import org.onap.music.mdbc.tables.RangeDependency;
+import org.onap.music.mdbc.tables.StagingTable;
+import org.onap.music.mdbc.tables.TxCommitProgress;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
@@ -101,6 +119,7 @@ public class MusicMixin implements MusicInterface {
 
     //\TODO Add logic to change the names when required and create the tables when necessary
     private String musicTxDigestTableName = "musictxdigest";
+    private String musicEventualTxDigestTableName = "musicevetxdigest";
     private String musicRangeInformationTableName = "musicrangeinformation";
     private String musicRangeDependencyTableName = "musicrangedependency";
 
@@ -193,6 +212,7 @@ public class MusicMixin implements MusicInterface {
     private OwnershipAndCheckpoint ownAndCheck;
 
     public MusicMixin() {
+
         //this.logger         = null;
         this.musicAddress   = null;
         this.music_ns       = null;
@@ -272,7 +292,6 @@ public class MusicMixin implements MusicInterface {
         Row row = rs.one();
         return (row == null) ? "UNKNOWN" : row.getUUID("HOST_ID").toString();
     }
-
     private String getAllHostIds() {
         ResultSet results = null;
         try {
@@ -297,7 +316,6 @@ public class MusicMixin implements MusicInterface {
     public String getMixinName() {
         return "cassandra";
     }
-
     /**
      * Do what is needed to close down the MUSIC connection.
      */
@@ -316,6 +334,7 @@ public class MusicMixin implements MusicInterface {
         createKeyspace();
         try {
             createMusicTxDigest();//\TODO If we start partitioning the data base, we would need to use the redotable number
+            createMusicEventualTxDigest();
             createMusicRangeInformationTable();
             createMusicRangeDependencyTable();
         }
@@ -1254,6 +1273,8 @@ public class MusicMixin implements MusicInterface {
         return newRanges;
     }
 
+
+
     protected String createAndAssignLock(String fullyQualifiedKey, DatabasePartition partition) throws MDBCServiceException {
         UUID mriIndex = partition.getMRIIndex();
         String lockId;
@@ -1290,8 +1311,21 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
-    public void commitLog(DatabasePartition partition, HashMap<Range,StagingTable> transactionDigest,
-                          String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException{
+
+    /**
+     * Writes the transaction information to metric's txDigest and musicRangeInformation table
+     * This officially commits the transaction globally
+     */
+    @Override
+    public void commitLog(DatabasePartition partition, List<Range> eventualRanges, HashMap<Range,StagingTable> transactionDigest, String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException{
+        
+        // first deal with commit for eventually consistent tables
+        filterAndAddEventualTxDigest(eventualRanges, transactionDigest, txId, progressKeeper);
+        
+        // if strong consistency tables are not present in the transaction then return
+        if(partition == null || partition.getMRIIndex() == null)
+            return;
+        
         UUID mriIndex = partition.getMRIIndex();
         String fullyQualifiedMriKey = music_ns+"."+ this.musicRangeInformationTableName+"."+mriIndex;
         //0. See if reference to lock was already created
@@ -1312,6 +1346,10 @@ public class MusicMixin implements MusicInterface {
         //Add creation type of transaction digest
 
         //1. Push new row to RRT and obtain its index
+        if(transactionDigest == null || transactionDigest.isEmpty()) {
+            return;
+        }
+        
         String serializedTransactionDigest;
         try {
             serializedTransactionDigest = MDBCUtils.toString(transactionDigest);
@@ -1326,6 +1364,66 @@ public class MusicMixin implements MusicInterface {
         }
         //3. Append RRT index into the corresponding TIT row array
         appendToRedoLog(partition,digestId);
+    }
+
+    private void filterAndAddEventualTxDigest(List<Range> eventualRanges,
+            HashMap<Range, StagingTable> transactionDigest, String txId,
+            TxCommitProgress progressKeeper) throws MDBCServiceException {
+        
+        if(eventualRanges == null || eventualRanges.isEmpty()) {
+            return;
+        }
+        
+        HashMap<Range,StagingTable> eventualTransactionDigest = new HashMap<Range,StagingTable>();
+        
+        for(Range eventualRange: eventualRanges) {
+            transactionDigest.computeIfPresent(eventualRange, new BiFunction<Range,StagingTable,StagingTable>() {
+
+                @Override
+                public StagingTable apply(Range key, StagingTable value) {
+                    eventualTransactionDigest.put(key, value);
+                    //transactionDigest.remove(key);
+                    return null;
+                }
+                
+            });
+        }
+        
+        UUID commitId = getCommitId(txId, progressKeeper);
+        
+        //1. Push new row to RRT
+        
+        String serializedTransactionDigest;
+        if(eventualTransactionDigest != null && !eventualTransactionDigest.isEmpty()) {
+        
+            try {
+                serializedTransactionDigest = MDBCUtils.toString(eventualTransactionDigest);
+            } catch (IOException e) {
+                throw new MDBCServiceException("Failed to serialized transaction digest with error "+e.toString(), e);
+            }
+            MusicTxDigestId digestId = new MusicTxDigestId(commitId,-1);
+            addEventualTxDigest(digestId, serializedTransactionDigest);
+            
+            if(progressKeeper!= null) {
+                progressKeeper.setRecordId(txId,digestId);
+            }
+        }
+        
+        
+    }
+
+    private UUID getCommitId(String txId, TxCommitProgress progressKeeper)
+            throws MDBCServiceException {
+        UUID commitId;
+        //Generate a local commit id
+        if(progressKeeper.containsTx(txId)) {
+            commitId = progressKeeper.getCommitId(txId);
+        }
+        else{
+            logger.error(EELFLoggerDelegate.errorLogger, "Tx with id "+txId+" was not created in the TxCommitProgress ");
+            throw new MDBCServiceException("Tx with id "+txId+" was not created in the TxCommitProgress ");
+        }
+        return commitId;
     }
 
     /**
@@ -1452,10 +1550,10 @@ public class MusicMixin implements MusicInterface {
         String cql = String.format("SELECT * FROM %s.%s WHERE range = ?;", music_ns, musicRangeDependencyTableName);
         PreparedQueryObject pQueryObject = new PreparedQueryObject();
         pQueryObject.appendQueryString(cql);
-        pQueryObject.addValue(baseRange.table);
+        pQueryObject.addValue(baseRange.getTable());
         Row newRow;
         try {
-            newRow = executeMusicLockedGet(music_ns, musicRangeDependencyTableName,pQueryObject,baseRange.table,null);
+            newRow = executeMusicLockedGet(music_ns, musicRangeDependencyTableName,pQueryObject,baseRange.getTable(),null);
         } catch (MDBCServiceException e) {
             logger.error("Get operationt error: Failure to get row from MRI "+musicRangeInformationTableName);
             throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information", e);
@@ -1515,12 +1613,12 @@ public class MusicMixin implements MusicInterface {
     public void createMusicRangeDependency(RangeDependency rangeAndDependencies) throws MDBCServiceException {
         StringBuilder insert = new StringBuilder("INSERT INTO ")
                 .append(this.music_ns)
-    			.append('.')
-    			.append(this.musicRangeDependencyTableName)
-    			.append(" (range,dependencies) VALUES ")
-    			.append("(")
-    			.append(rangeAndDependencies.getRange().table)
-    			.append(",{");
+                .append('.')
+                .append(this.musicRangeDependencyTableName)
+                .append(" (range,dependencies) VALUES ")
+                .append("(")
+                .append(rangeAndDependencies.getRange().getTable())
+                .append(",{");
         boolean first=true;
         for(Range r: rangeAndDependencies.dependentRanges()){
             if(first){ first=false; }
@@ -1537,16 +1635,16 @@ public class MusicMixin implements MusicInterface {
 
 
     private UUID createEmptyMriRow(List<Range> rangesCopy) {
-    	//TODO: THis should call one of the other createMRIRows
-    	UUID id = generateUniqueKey();
+        //TODO: THis should call one of the other createMRIRows
+        UUID id = generateUniqueKey();
         StringBuilder insert = new StringBuilder("INSERT INTO ")
                 .append(this.music_ns)
-    			.append('.')
-    			.append(this.musicRangeInformationTableName)
-    			.append(" (rangeid,keys,ownerid,metricprocessid,txredolog) VALUES ")
-    			.append("(")
-    			.append(id)
-    			.append(",{");
+                .append('.')
+                .append(this.musicRangeInformationTableName)
+                .append(" (rangeid,keys,ownerid,metricprocessid,txredolog) VALUES ")
+                .append("(")
+                .append(id)
+                .append(",{");
         boolean first=true;
         for(Range r: rangesCopy){
             if(first){ first=false; }
@@ -1565,7 +1663,7 @@ public class MusicMixin implements MusicInterface {
         MusicCore.eventualPut(query);
         return id;
     }
-    
+        
     
     /**
      * Creates a new empty MRI row
@@ -1635,12 +1733,44 @@ public class MusicMixin implements MusicInterface {
     public void createMusicTxDigest() throws MDBCServiceException {
         createMusicTxDigest(-1);
     }
+    
+    public void createMusicEventualTxDigest() throws MDBCServiceException {
+        createMusicEventualTxDigest(-1);
+    }
 
 
     /**
-     * This function creates the MusicTxDigest table. It contain information related to each transaction committed
+     * This function creates the MusicEveTxDigest table. It contain information related to each eventual transaction committed
      * 	* LeaseId: id associated with the lease, text
      * 	* LeaseCounter: transaction number under this lease, bigint \TODO this may need to be a varint later
+     *  * TransactionDigest: text that contains all the changes in the transaction
+     */
+    private void createMusicEventualTxDigest(int musicTxDigestTableNumber) throws MDBCServiceException {
+        String tableName = this.musicEventualTxDigestTableName;
+        if(musicTxDigestTableNumber >= 0) {
+            tableName = tableName +
+                "-" +
+                Integer.toString(musicTxDigestTableNumber);
+        }
+        String priKey = "txTimeId";
+        StringBuilder fields = new StringBuilder();
+        fields.append("txid uuid, ");
+        fields.append("transactiondigest text, ");
+        fields.append("txTimeId TIMEUUID ");//notice lack of ','
+        String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", this.music_ns, tableName, fields, priKey);
+        try {
+            executeMusicWriteQuery(this.music_ns,tableName,cql);
+        } catch (MDBCServiceException e) {
+            logger.error("Initialization error: Failure to create redo records table");
+            throw(e);
+        }
+    }
+    
+    
+    /**
+     * This function creates the MusicTxDigest table. It contain information related to each transaction committed
+     *  * LeaseId: id associated with the lease, text
+     *  * LeaseCounter: transaction number under this lease, bigint \TODO this may need to be a varint later
      *  * TransactionDigest: text that contains all the changes in the transaction
      */
     private void createMusicTxDigest(int musicTxDigestTableNumber) throws MDBCServiceException {
@@ -1704,6 +1834,35 @@ public class MusicMixin implements MusicInterface {
             throw new MDBCServiceException("Transaction Digest serialization for commit "+newId.txId.toString(), e);
         }
     }
+    
+    /**
+     * Writes the Eventual transaction history to the evetxDigest
+     */
+    @Override
+    public void addEventualTxDigest(MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException {
+        //createTxDigestRow(music_ns,musicTxDigestTable,newId,transactionDigest);
+        PreparedQueryObject query = new PreparedQueryObject();
+        String cqlQuery = "INSERT INTO " +
+            this.music_ns +
+            '.' +
+            this.musicEventualTxDigestTableName +
+            " (txid,transactiondigest,txTimeId) " +
+            "VALUES (" +
+            newId.txId + ",'" +
+            transactionDigest + 
+            "'," +
+           // "toTimestamp(now())" +
+           "now()" +
+            ");";
+        query.appendQueryString(cqlQuery);
+        //\TODO check if I am not shooting on my own foot
+        try {
+            MusicCore.nonKeyRelatedPut(query,"critical");
+        } catch (MusicServiceException e) {
+            logger.error(EELFLoggerDelegate.errorLogger, "Transaction Digest serialization was invalid for commit "+newId.txId.toString()+ "with error "+e.getErrorMessage());
+            throw new MDBCServiceException("Transaction Digest serialization for commit "+newId.txId.toString(), e);
+        }
+    }
 
     @Override
     public HashMap<Range,StagingTable> getTxDigest(MusicTxDigestId id) throws MDBCServiceException {
@@ -1731,7 +1890,49 @@ public class MusicMixin implements MusicInterface {
         }
         return changes;
     }
+    
+    
+    @Override
+    public ArrayList<HashMap<Range,StagingTable>> getEveTxDigest() throws MDBCServiceException {
+        HashMap<Range,StagingTable> changes;
+        ArrayList<HashMap<Range,StagingTable>> ecDigestList = new ArrayList<HashMap<Range,StagingTable>>();
+            
+            //but was this timestamp is getting added as per post: https://dev.mysql.com/doc/refman/8.0/en/time-zone-leap-seconds.html
+            //Ex1: SELECT uuid, txDigest, UNIX_TIMESTAMP(ts) FROM ectxdigest ORDER by ts;
+            //Ex2: SELECT * FROM ectxdigest ORDER by ts; or SELECT * FROM ectxdigest
+          //####### this will pull all records.. but REPLAY will be against specific records once the NODE it back ON-Line.
+            // I should get the last record timestamp so that I can put a where condition.
+            //EX3: SELECT uuid, txDigest, UNIX_TIMESTAMP(ts) FROM ectxdigest where UNIX_TIMESTAMP(ts)>UNIX_TIMESTAMP(<<Date/Time value from others>>) ORDER by ts;
+        String cql = String.format("SELECT * FROM %s.%s ;", music_ns, this.musicEventualTxDigestTableName);  
+            // Ex 1 & 2 might return millions of records!! things to consider outOfMemory issue, performance issue etc.. How to overcome??
+            // Ex 3: will return less records compare to Ex:1 and Ex:2.
+        PreparedQueryObject pQueryObject = new PreparedQueryObject();
+        pQueryObject.appendQueryString(cql);
 
+            // I need to get a ResultSet of all the records and give each row to the below HashMap.
+        ResultSet rs = executeMusicRead(pQueryObject.toString());
+        while (!rs.isExhausted()) {
+            Row row = rs.one();
+            String digest = row.getString("transactiondigest");
+            
+            try {
+                changes = (HashMap<Range, StagingTable>) MDBCUtils.fromString(digest);
+            } catch (IOException e) {
+                logger.error("IOException when deserializing digest");
+                throw new MDBCServiceException("Deserializng digest failed with ioexception", e);
+            } catch (ClassNotFoundException e) {
+                logger.error("Deserializng digest failed with an invalid class");
+                throw new MDBCServiceException("Deserializng digest failed with an invalid class", e);
+            }
+
+            ecDigestList.add(changes);
+        }      
+            
+        return ecDigestList;
+    }
+
+
+    
     ResultSet getAllMriCassandraRows() throws MDBCServiceException {
         StringBuilder cqlOperation = new StringBuilder();
         cqlOperation.append("SELECT * FROM ")
@@ -1997,7 +2198,11 @@ public class MusicMixin implements MusicInterface {
 
     @Override
     public OwnershipReturn own(List<Range> ranges, DatabasePartition partition, UUID opId) throws MDBCServiceException {
-        Map<UUID,LockResult> newLocks = new HashMap<>();
+    	
+    	if(ranges == null || ranges.isEmpty()) 
+              return null;
+    	
+    	Map<UUID,LockResult> newLocks = new HashMap<>();
         //Init timeout clock
         ownAndCheck.startOwnershipTimeoutClock(opId);
         //Find
@@ -2285,7 +2490,7 @@ public class MusicMixin implements MusicInterface {
 
     @Override
     public void replayTransaction(HashMap<Range,StagingTable> digest) throws MDBCServiceException{
-        throw new NotImplementedException("Error, replay transaction in music mixin needs to be implemented");
+        //throw new NotImplementedException("Error, replay transaction in music mixin needs to be implemented");
     }
 
     @Override

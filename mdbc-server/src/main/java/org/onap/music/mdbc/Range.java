@@ -33,10 +33,10 @@ public class Range implements Serializable, Cloneable{
 
 	private static final long serialVersionUID = 1610744496930800088L;
 
-	public String table;
+	private String table;
 
 	public Range(String table) {
-		this.table = table;
+		this.table = table.toUpperCase();
 	}
 
 	public String toString(){return table;}
@@ -51,12 +51,12 @@ public class Range implements Serializable, Cloneable{
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Range r = (Range) o;
-		return (this.overlaps(r)) && (r.overlaps(this));
+        return (this.overlaps(r)) && (r.overlaps(this));
 	}
 
 	@Override
 	public int hashCode(){
-		return table.hashCode();
+        return table.hashCode();
 	}
 
 	@Override
@@ -75,5 +75,9 @@ public class Range implements Serializable, Cloneable{
 	public boolean overlaps(Range other) {
 		return table.equals(other.table);
 	}
+
+    public String getTable() {
+        return table;
+    }
 
 }
