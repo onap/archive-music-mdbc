@@ -39,7 +39,7 @@ public class Range implements Serializable, Cloneable{
 		this.table = table.toUpperCase();
 	}
 
-	public String toString(){return table;}
+	public String toString(){return table.toUpperCase();}
 
 	/**
 	 * Compares to Range types

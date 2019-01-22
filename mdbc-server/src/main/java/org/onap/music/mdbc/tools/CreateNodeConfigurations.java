@@ -19,8 +19,11 @@
  */
 package org.onap.music.mdbc.tools;
 
+import org.onap.music.datastore.MusicDataStore;
+import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.main.MusicUtil;
 import org.onap.music.mdbc.configurations.NodeConfiguration;
 import org.onap.music.mdbc.configurations.TablesConfiguration;
 import com.beust.jcommander.JCommander;
@@ -52,6 +55,7 @@ public class CreateNodeConfigurations {
 
 
     public void readInput(){
+        LOG.info("Reading inputs");
         try {
             inputConfig = TablesConfiguration.readJsonFromFile(tableConfigurationsFile);
         } catch (FileNotFoundException e) {
@@ -75,6 +79,8 @@ public class CreateNodeConfigurations {
     }
 
     public static void main(String[] args) {
+        LOG.info("Starting create node configuration executor");
+        LOG.info("Using music file configuration:"+MusicUtil.getMusicPropertiesFilePath());
         CreateNodeConfigurations configs = new CreateNodeConfigurations();
         @SuppressWarnings("deprecation")
         JCommander jc = new JCommander(configs, args);

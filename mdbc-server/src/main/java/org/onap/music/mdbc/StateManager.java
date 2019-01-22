@@ -164,8 +164,9 @@ public class StateManager {
             transactionInfo.deleteTxProgress(connectionId);
             try {
                 Connection conn = mdbcConnections.get(connectionId);
-                if(conn!=null)
+                if(conn!=null) {
                     conn.close();
+                }
             } catch (SQLException e) {
                 logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
                         ErrorTypes.GENERALSERVICEERROR);
@@ -173,7 +174,8 @@ public class StateManager {
             mdbcConnections.remove(connectionId);
         }
         if(connectionRanges.containsKey(connectionId)){
-            //TODO release lock?
+            //We relinquish all locks obtained by a given
+            relinquish(connectionRanges.get(connectionId));
             connectionRanges.remove(connectionId);
         }
     }
@@ -256,4 +258,13 @@ public class StateManager {
 		//\TODO Prefetch data to system using the data ranges as guide 
 		throw new UnsupportedOperationException("Function initialize system needs to be implemented id MdbcStateManager");
 	}
+
+	private void relinquish(DatabasePartition partition){
+        try {
+            musicInterface.relinquish(partition.getLockId(),partition.getMRIIndex().toString());
+        } catch (MDBCServiceException e) {
+            logger.error("Relinquish failed, would need to forcefully obtain lock later");
+        }
+
+    }
 }
