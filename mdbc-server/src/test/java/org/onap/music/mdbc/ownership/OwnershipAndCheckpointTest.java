@@ -175,7 +175,12 @@ public class OwnershipAndCheckpointTest {
         TxCommitProgress progressKeeper = new TxCommitProgress();
         progressKeeper.createNewTransactionTracker(id ,this.conn);
         musicMixin.commitLog(partition, null, stagingTable, id, progressKeeper);
-        TestUtils.unlockRow(keyspace,mriTableName,partition);
+        try {
+            TestUtils.unlockRow(keyspace, mriTableName, partition);
+        }
+        catch(Exception e){
+            fail(e.getMessage());
+        }
     }
 
     private OwnershipReturn cleanAndOwnPartition(List<Range> ranges, UUID ownOpId) throws SQLException {

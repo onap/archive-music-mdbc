@@ -34,49 +34,49 @@
     </parent>
 
     <dependencies>
-    	<dependency>
-		    <groupId>org.apache.calcite</groupId>
-		    <artifactId>calcite</artifactId>
-		    <version>1.11.0</version>
-		    <type>pom</type>
-		</dependency>
+        <dependency>
+            <groupId>org.apache.calcite</groupId>
+            <artifactId>calcite</artifactId>
+            <version>1.11.0</version>
+            <type>pom</type>
+        </dependency>
         <dependency>
             <groupId>com.datastax.cassandra</groupId>
             <artifactId>cassandra-driver-core</artifactId>
             <version>3.3.0</version>
         </dependency>
         <dependency>
-          <!-- The oparent dependency managed version 26.0-jre will not work -->
-          <!-- 19.0 is needed by cassandra-driver-core 3.3.0 -->
-          <groupId>com.google.guava</groupId>
-          <artifactId>guava</artifactId>
-          <version>19.0</version>
+            <!-- The oparent dependency managed version 26.0-jre will not work -->
+            <!-- 19.0 is needed by cassandra-driver-core 3.3.0 -->
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>19.0</version>
         </dependency>
         <dependency>
-          <!-- The oparent dependency managed version 9.4.12.v20180830 will not work -->
-          <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>jetty-http</artifactId>
-          <version>9.2.19.v20160908</version>
+            <!-- The oparent dependency managed version 9.4.12.v20180830 will not work -->
+            <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-http</artifactId>
+            <version>9.2.19.v20160908</version>
         </dependency>
         <dependency>
-          <!-- The oparent dependency managed version 9.4.12.v20180830 will not work -->
-          <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>jetty-server</artifactId>
-          <version>9.2.19.v20160908</version>
+            <!-- The oparent dependency managed version 9.4.12.v20180830 will not work -->
+            <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>9.2.19.v20160908</version>
         </dependency>
         <dependency>
-          <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>jetty-security</artifactId>
-          <version>9.2.19.v20160908</version>
+            <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-security</artifactId>
+            <version>9.2.19.v20160908</version>
         </dependency>
         <dependency>
-          <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
-          <groupId>org.eclipse.jetty</groupId>
-          <artifactId>jetty-util</artifactId>
-          <version>9.2.19.v20160908</version>
+            <!-- 9.2.19.v20160908 is needed by avatica-server 1.12.0 -->
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-util</artifactId>
+            <version>9.2.19.v20160908</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>
@@ -89,9 +89,9 @@
             <version>20160810</version>
         </dependency>
         <dependency>
-                <groupId>org.mariadb.jdbc</groupId>
-                <artifactId>mariadb-java-client</artifactId>
-                <version>2.3.0</version>
+          <groupId>org.mariadb.jdbc</groupId>
+          <artifactId>mariadb-java-client</artifactId>
+          <version>2.3.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
         <dependency>
@@ -208,11 +208,11 @@
                 </configuration>
                 <executions>
                     <execution>
-                      <id>make-assembly</id> <!-- this is used for inheritance merges -->
-                      <phase>package</phase> <!-- bind to the packaging phase -->
-                      <goals>
-                          <goal>single</goal>
-                      </goals>
+                        <id>make-assembly</id> <!-- this is used for inheritance merges -->
+                        <phase>package</phase> <!-- bind to the packaging phase -->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
                     </execution>
                     <execution>
                         <id>node-configuration</id>
@@ -230,6 +230,25 @@
                                 <descriptorRef>jar-with-dependencies</descriptorRef>
                             </descriptorRefs>
                             <finalName>create-node-configuration</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>cluster-setup</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <archive>
+                                <manifest>
+                                    <mainClass>org.onap.music.mdbc.tools.ClusterSetup</mainClass>
+                                </manifest>
+                            </archive>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <finalName>cluster-setup</finalName>
                             <appendAssemblyId>false</appendAssemblyId>
                         </configuration>
                     </execution>

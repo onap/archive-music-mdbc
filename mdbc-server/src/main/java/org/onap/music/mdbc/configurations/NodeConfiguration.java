@@ -50,6 +50,9 @@ public class NodeConfiguration {
     }
 
     protected List<Range> toRanges(String tables){
+        if(tables.isEmpty()){
+            return new ArrayList<>();
+        }
         List<Range> newRange = new ArrayList<>();
         String[] tablesArray=tables.split(",");
         for(String table: tablesArray) {

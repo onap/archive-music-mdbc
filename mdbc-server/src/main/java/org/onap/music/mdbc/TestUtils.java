@@ -20,11 +20,8 @@
 package org.onap.music.mdbc;
 
 import com.datastax.driver.core.*;
-import com.datastax.driver.core.exceptions.QueryExecutionException;
-import com.datastax.driver.core.exceptions.SyntaxError;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
-import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicCore;
@@ -38,16 +35,12 @@ import java.util.*;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 
-import static junit.framework.TestCase.assertNotNull;
-import static junit.framework.TestCase.fail;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 public class TestUtils {
 
     private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(TestUtils.class);
 
-    public static DatabasePartition createBasicRow(Range range, MusicInterface mixin, String mdbcServerName){
+    public static DatabasePartition createBasicRow(Range range, MusicInterface mixin, String mdbcServerName)
+        throws MDBCServiceException {
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
         List<Range> ranges = new ArrayList<>();
         ranges.add(range);
@@ -55,21 +48,14 @@ public class TestUtils {
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
             mdbcServerName, true);
         DatabasePartition partition=null;
-        try {
-            partition = mixin.createMusicRangeInformation(newRow);
-        } catch (MDBCServiceException e) {
-            fail("failure when creating new row");
-        }
+        partition = mixin.createMusicRangeInformation(newRow);
         return partition;
     }
 
-    public static void unlockRow(String keyspace, String mriTableName, DatabasePartition partition){
+    public static void unlockRow(String keyspace, String mriTableName, DatabasePartition partition)
+        throws MusicLockingException {
         String fullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+partition.getMRIIndex().toString();
-        try {
-            MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
-        } catch (MusicLockingException e) {
-            fail("failure when releasing lock");
-        }
+        MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
     }
 
     public static void createKeyspace(String keyspace, Session session) {
@@ -78,15 +64,7 @@ public class TestUtils {
                 " WITH REPLICATION " +
                 "= {'class':'SimpleStrategy', 'replication_factor':1}; ";
         ResultSet res=null;
-        try {
-            res = session.execute(queryOp);
-        }
-        catch(QueryExecutionException e){
-            fail("Failure executing creation of keyspace with error: " + e.getMessage());
-        } catch(SyntaxError e){
-            fail("Failure executing creation of keyspace with syntax error: " + e.getMessage());
-        }
-        assertTrue("Keyspace "+keyspace+" is already being used, please change it to avoid loosing data",res.wasApplied());
+        res = session.execute(queryOp);
     }
 
     public static void deleteKeyspace(String keyspace, Session session){
@@ -94,7 +72,6 @@ public class TestUtils {
                 keyspace +
                 ";";
         ResultSet res = session.execute(queryBuilder);
-        assertTrue("Keyspace "+keyspace+" doesn't exist and it should",res.wasApplied());
     }
 
     public static HashSet<String> getMriColNames(){
@@ -109,14 +86,18 @@ public class TestUtils {
         );
     }
 
-    public static HashMap<String, DataType> getMriColTypes(Cluster cluster){
+    public static HashMap<String, DataType> getMriColTypes(Cluster cluster) throws Exception {
         HashMap<String, DataType> expectedTypes = new HashMap<>();
         expectedTypes.put("rangeid",DataType.uuid());
         expectedTypes.put("keys",DataType.set(DataType.text()));
         ProtocolVersion currentVer =  cluster.getConfiguration().getProtocolOptions().getProtocolVersion();
-        assertNotNull("Protocol version for cluster is invalid", currentVer);
+        if(currentVer != null) {
+            throw new Exception("Protocol version for cluster is invalid");
+        }
         CodecRegistry registry = cluster.getConfiguration().getCodecRegistry();
-        assertNotNull("Codec registry for cluster is invalid", registry);
+        if(registry!= null) {
+            throw new Exception("Codec registry for cluster is invalid");
+        }
         expectedTypes.put("txredolog",DataType.list(TupleType.of(currentVer,registry,DataType.text(),DataType.uuid())));
         expectedTypes.put("ownerid",DataType.text());
         expectedTypes.put("metricprocessid",DataType.text());
@@ -131,15 +112,19 @@ public class TestUtils {
     }
 
     public static void checkDataTypeForTable(List<ColumnMetadata> columnsMeta, HashSet<String> expectedColumns,
-                               HashMap<String,DataType> expectedTypes){
+                               HashMap<String,DataType> expectedTypes) throws Exception {
         for(ColumnMetadata cMeta : columnsMeta){
             String columnName = cMeta.getName();
             DataType type = cMeta.getType();
-            assertTrue("Invalid column name: "+columnName,expectedColumns.contains(columnName));
-            assertTrue("Fix the contents of expectedtypes for column: "+columnName,
-                    expectedTypes.containsKey(columnName));
-            assertEquals("Invalid type for column: "+columnName,
-                    expectedTypes.get(columnName),type);
+            if(!expectedColumns.contains(columnName)){
+                throw new Exception("Invalid column name: ");
+            }
+            if(!expectedTypes.containsKey(columnName)){
+                throw new Exception("Fix the contents of expectedtypes for column: "+columnName);
+            }
+            if(expectedTypes.get(columnName)!=type) {
+                throw new Exception("Invalid type for column: "+columnName);
+            }
         }
     }
 
