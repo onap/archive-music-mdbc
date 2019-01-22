@@ -46,6 +46,7 @@
   <!--<jmxConfigurator /> -->
 
   <!--  specify the component name -->
+  <property name="catalina.home" value="/var/log/metric/" />
   <property name="componentName" value="mdbc"></property>
   
   <!--  specify the base path of the log directory -->

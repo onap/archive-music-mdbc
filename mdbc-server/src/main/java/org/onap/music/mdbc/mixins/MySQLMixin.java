@@ -668,7 +668,9 @@ NEW.field refers to the new value
 		}
 		finally {
 			try {
-				rs.close();
+				if(rs!=null) {
+					rs.close();
+				}
 			} catch (SQLException e) {
 				//continue
 			}

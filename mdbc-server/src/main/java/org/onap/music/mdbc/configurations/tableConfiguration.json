@@ -3,7 +3,7 @@
     {
       "tables": [
         {
-          "table": "table11"
+          "table": "PERSONS"
         }
       ],
       "owner": "",

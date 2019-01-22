@@ -41,10 +41,10 @@ public class NodeConfiguration {
     public String nodeName;
     public String sqlDatabaseName;
 
-    public NodeConfiguration(String tables, UUID mriIndex, String sqlDatabaseName, String node){
+    public NodeConfiguration(String tables, String eventualTables, UUID mriIndex, String sqlDatabaseName, String node){
         //	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
         partition = new DatabasePartition(toRanges(tables), mriIndex, null) ;
-        eventual = new Eventual(toRanges(tables));
+        eventual = new Eventual(toRanges(eventualTables));
         this.nodeName = node;
         this.sqlDatabaseName = sqlDatabaseName;
     }

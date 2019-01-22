@@ -59,7 +59,7 @@ o	replicationFactor: indicates the needs of replication for this partition (the 
 mdbc-server/src/main/java/org/onap/music/mdbc/tools/CreateNodeConfiguration.java
 
 To run it, use the following parameters:
-
+``
 -t mdbc-server/src/main/java/org/onap/music/mdbc/configurations/tableConfiguration.json -b base -o /Users/quique/Desktop/
 
 This program is going to generate all the required configuration json for each ETDB node in the system and additionally initialize all the corresponding rows and tables for the system to correctly work. The meaning of the parameters is:
