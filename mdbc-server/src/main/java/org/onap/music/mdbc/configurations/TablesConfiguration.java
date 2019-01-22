@@ -19,6 +19,8 @@
  */
 package org.onap.music.mdbc.configurations;
 
+import com.datastax.driver.core.ResultSet;
+import java.util.stream.Collectors;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.MDBCUtils;
@@ -63,6 +65,7 @@ public class TablesConfiguration {
      * @apiNote This function assumes that when used, there is not associated redo history in the tables to the tables that are going to be managed by this configuration file
      */
     public List<NodeConfiguration> initializeAndCreateNodeConfigurations() throws MDBCServiceException {
+        logger.info("initializing the required spaces");
         initInternalNamespace();
 
         List<NodeConfiguration> nodeConfigs = new ArrayList<>();
@@ -72,7 +75,9 @@ public class TablesConfiguration {
         }
         for(PartitionInformation partitionInfo : partitions){
             String mriTableName = partitionInfo.mriTableName;
+            checkIfMriIsEmpty(mriTableName);
             //0) Create the corresponding Music Range Information table
+            MusicMixin.createMusicRangeInformationTable(musicNamespace,mriTableName);
 
             String partitionId;
             if(partitionInfo.partitionId==null || partitionInfo.partitionId.isEmpty()){
@@ -81,33 +86,57 @@ public class TablesConfiguration {
                     throw new MDBCServiceException("Replication factor and partition id are both empty, and this is an invalid configuration");
                 }
                 //1) Create a row in the partition info table
-                //partitionId = DatabaseOperations.createPartitionInfoRow(musicNamespace,pitName,partitionInfo.replicationFactor,partitionInfo.tables,null);
-
+                partitionId = MDBCUtils.generateTimebasedUniqueKey().toString();
             }
             else{
                 partitionId = partitionInfo.partitionId;
             }
             //2) Create a row in the transaction information table
-            UUID mriTableIndex = MDBCUtils.generateTimebasedUniqueKey();
-            //3) Add owner and tit information to partition info table
-            RedoRow newRedoRow = new RedoRow(mriTableName,mriTableIndex);
-            //DatabaseOperations.updateRedoRow(musicNamespace,pitName,partitionId,newRedoRow,partitionInfo.owner,null);
-            //4) Update ttp with the new partition
-            //for(String table: partitionInfo.tables) {
-                //DatabaseOperations.updateTableToPartition(musicNamespace, ttpName, table, partitionId, null);
-            //}
-            //5) Add it to the redo history table
-            //DatabaseOperations.createRedoHistoryBeginRow(musicNamespace,rhName,newRedoRow,partitionId,null);
-            //6) Create config for this node
+
+            logger.info("Creating empty row with id "+partitionId);
+            MusicMixin.createEmptyMriRow(musicNamespace,partitionInfo.mriTableName,UUID.fromString(partitionId),
+                partitionInfo.owner,null,partitionInfo.getTables(),true);
+
+            //3) Create config for this node
             StringBuilder newStr = new StringBuilder();
             for(Range r: partitionInfo.tables){
-                newStr.append(r.toString()).append(",");
+                newStr.append(r.toString().toUpperCase()).append(",");
             }
-            nodeConfigs.add(new NodeConfiguration(newStr.toString(),mriTableIndex,
+
+            logger.info("Appending row to configuration "+partitionId);
+            nodeConfigs.add(new NodeConfiguration(newStr.toString(),"",UUID.fromString(partitionId),
             		sqlDatabaseName, partitionInfo.owner));
         }
         return nodeConfigs;
     }
+
+    private void checkIfMriIsEmpty(String mriTableName) throws MDBCServiceException {
+        //First check if table exists
+        StringBuilder checkTableExistsString = new StringBuilder("SELECT table_name FROM system_schema.tables WHERE keyspace_name='")
+            .append(musicNamespace)
+            .append("';");
+        PreparedQueryObject checkTableExists = new PreparedQueryObject();
+        checkTableExists.appendQueryString(checkTableExistsString.toString());
+        final ResultSet resultSet = MusicCore.quorumGet(checkTableExists);
+        if(resultSet.isExhausted()){
+            //Table doesn't exist
+            return;
+        }
+        //If exists, check if empty
+        StringBuilder checkRowsInTableString = new StringBuilder("SELECT * FROM ")
+            .append(musicNamespace)
+            .append(".")
+            .append(mriTableName)
+            .append("';");
+        PreparedQueryObject checkRowsInTable = new PreparedQueryObject();
+        checkRowsInTable.appendQueryString(checkRowsInTableString.toString());
+        final ResultSet resultSet2 = MusicCore.quorumGet(checkTableExists);
+        if(!resultSet2.isExhausted()) {
+            throw new MDBCServiceException("When initializing the configuration of the system, the MRI should not exits "
+                + "be empty");
+        }
+    }
+
 
     private void initInternalNamespace() throws MDBCServiceException {
         StringBuilder createKeysTableCql = new StringBuilder("CREATE TABLE IF NOT EXISTS ")

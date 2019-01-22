@@ -492,11 +492,20 @@ public class MdbcConnection implements Connection {
         Map<String, List<String>> tableToInstruction = QueryProcessor.extractTableFromQuery(sql);
         //Check ownership of keys
         List<Range> queryTables = MDBCUtils.getTables(tableToInstruction);
+        if(this.partition!=null ){
+            List<Range> snapshot = this.partition.getSnapshot();
+            if(snapshot!=null){
+                queryTables.addAll(snapshot);
+            }
+        }
         // filter out ranges that fall under Eventually consistent
         // category as these tables do not need ownership
         List<Range> scQueryTables = filterEveTables( queryTables);
-        this.partition = own(scQueryTables);
-        dbi.preStatementHook(sql);
+        DatabasePartition tempPartition = own(scQueryTables);
+        if(tempPartition!=null && tempPartition != partition) {
+            this.partition.updateDatabasePartition(tempPartition);
+        }
+      dbi.preStatementHook(sql);
     }
 
 
@@ -552,19 +561,27 @@ public class MdbcConnection implements Connection {
     }
 
     private DatabasePartition own(List<Range> ranges) throws MDBCServiceException {
+        if(ranges==null||ranges.isEmpty()){
+            return null;
+        }
         DatabasePartition newPartition = null;
         OwnershipAndCheckpoint ownAndCheck = mi.getOwnAndCheck();
         UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
         try {
             final OwnershipReturn ownershipReturn = mi.own(ranges, partition, ownOpId);
+            if(ownershipReturn==null){
+                return null;
+            }
             Dag dag = ownershipReturn.getDag();
-            DagNode node = dag.getNode(ownershipReturn.getRangeId());
-            MusicRangeInformationRow row = node.getRow();
-            Map<MusicRangeInformationRow, LockResult> lock = new HashMap<>();
-            lock.put(row, new LockResult(row.getPartitionIndex(), ownershipReturn.getOwnerId(), true, ranges));
-            ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, lock, ownershipReturn.getOwnershipId());
-            newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
-                ownershipReturn.getOwnerId());
+            if(dag!=null) {
+                DagNode node = dag.getNode(ownershipReturn.getRangeId());
+                MusicRangeInformationRow row = node.getRow();
+                Map<MusicRangeInformationRow, LockResult> lock = new HashMap<>();
+                lock.put(row, new LockResult(row.getPartitionIndex(), ownershipReturn.getOwnerId(), true, ranges));
+                ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, lock, ownershipReturn.getOwnershipId());
+                newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
+                    ownershipReturn.getOwnerId());
+            }
         }
         finally{
             ownAndCheck.stopOwnershipTimeoutClock(ownOpId);

@@ -32,6 +32,9 @@ public class CreatePartition {
     @Parameter(names = { "-t", "--tables" }, required = true,
            description = "This is the tables that are assigned to this ")
    private String tables;
+    @Parameter(names = { "-e", "--tables" }, required = true,
+           description = "This is the tables that are assigned to this ")
+   private String eventual;
     @Parameter(names = { "-f", "--file" }, required = true,
             description = "This is the output file that is going to have the configuration for the ranges")
     private String file;
@@ -48,7 +51,7 @@ public class CreatePartition {
     }
 
     public void convert(){
-        config = new NodeConfiguration(tables, UUID.fromString(mriIndex),"test","");
+        config = new NodeConfiguration(tables, eventual,UUID.fromString(mriIndex),"test","");
     }
 
     public void saveToFile(){

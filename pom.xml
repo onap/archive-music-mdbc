@@ -98,6 +98,7 @@
     <modules>
         <module>mdbc-server</module>
         <module>mdbc-packages</module>
+        <module>mdbc-benchmark</module>
     </modules>
 
     <dependencies>
@@ -247,6 +248,16 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-handler</artifactId>
             <version>4.1.30.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>com.beust</groupId>
+            <artifactId>jcommander</artifactId>
+            <version>1.72</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>3.0</version>
         </dependency>
     </dependencies>
 

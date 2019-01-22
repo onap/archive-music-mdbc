@@ -208,9 +208,12 @@ public class OwnershipAndCheckpointTest {
         OwnershipReturn own = cleanAndOwnPartition(ranges,ownOpId);
 
         Map<MusicRangeInformationRow, LockResult> locks = new HashMap<>();
-        locks.put(own.getDag().getNode(own.getRangeId()).getRow(),new LockResult(own.getRangeId(),own.getOwnerId(),true,
-            ranges));
-        ownAndCheck.checkpoint(musicMixin,mysqlMixin,own.getDag(),ranges,locks, ownOpId);
+        if(own.getDag()!=null) {
+            locks.put(own.getDag().getNode(own.getRangeId()).getRow(),
+                new LockResult(own.getRangeId(), own.getOwnerId(), true,
+                    ranges));
+            ownAndCheck.checkpoint(musicMixin, mysqlMixin, own.getDag(), ranges, locks, ownOpId);
+        }
 
         checkData();
     }
@@ -227,9 +230,13 @@ public class OwnershipAndCheckpointTest {
         UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
         OwnershipReturn own = cleanAndOwnPartition(ranges,ownOpId);
 
+
         Map<MusicRangeInformationRow, LockResult> locks = new HashMap<>();
-        locks.put(own.getDag().getNode(own.getRangeId()).getRow(),new LockResult(own.getRangeId(),own.getOwnerId(),true,
-            ranges));
+        if(own.getDag()!=null) {
+            locks.put(own.getDag().getNode(own.getRangeId()).getRow(),
+                new LockResult(own.getRangeId(), own.getOwnerId(), true,
+                    ranges));
+        }
         ownAndCheck.warmup(musicMixin,mysqlMixin,ranges);
 
         checkData();
