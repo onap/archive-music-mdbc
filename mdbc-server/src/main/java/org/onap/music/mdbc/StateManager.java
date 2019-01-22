@@ -21,16 +21,13 @@ package org.onap.music.mdbc;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
-import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
@@ -47,7 +44,6 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -96,6 +92,7 @@ public class StateManager {
     private List<Range> warmupRanges;
     private Map<Range, Pair<MriReference, Integer>> alreadyApplied;
     private OwnershipAndCheckpoint ownAndCheck;
+    private Thread txDaemon ;
 
 	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
         this.sqlDBName = sqlDBName;
@@ -116,16 +113,22 @@ public class StateManager {
         musicmixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
         
         initMusic();
-        initSqlDatabase(); 
-
+        initSqlDatabase();
+        initTxDaemonThread();
         String t = info.getProperty(KEY_TIMEOUT);
         long timeout = (t == null) ? DEFAULT_TIMEOUT : Integer.parseInt(t);
         alreadyApplied = new ConcurrentHashMap<>();
         ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied, timeout);
-        
-        MusicTxDigest txDaemon = new MusicTxDigest(this);
-        txDaemon.startBackgroundDaemon(Integer.parseInt(
-        		info.getProperty(Configuration.TX_DAEMON_SLEEPTIME_S, Configuration.TX_DAEMON_SLEEPTIME_S_DEFAULT))); 
+    }
+
+    protected void initTxDaemonThread(){
+        txDaemon = new Thread(
+            new MusicTxDigest(Integer.parseInt(
+                info.getProperty(Configuration.TX_DAEMON_SLEEPTIME_S, Configuration.TX_DAEMON_SLEEPTIME_S_DEFAULT)),
+                this));
+        txDaemon.setName("TxDaemon");
+        txDaemon.setDaemon(true);
+        txDaemon.start();
     }
 
     /**
@@ -154,6 +157,7 @@ public class StateManager {
                     .append(";");
             Statement stmt = sqlConnection.createStatement();
             stmt.execute(sql.toString());
+            sqlConnection.close();
         } catch (SQLException e) {
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
                     ErrorTypes.GENERALSERVICEERROR);
@@ -194,7 +198,7 @@ public class StateManager {
                 returnArray = new ArrayList<>(eventualRanges);
             }
             else{
-                returnArray= null;
+                returnArray= new ArrayList<>();
             }
         }
         finally{
@@ -238,7 +242,7 @@ public class StateManager {
         }
         if(connectionRanges.containsKey(connectionId)){
             //We relinquish all locks obtained by a given
-            relinquish(connectionRanges.get(connectionId));
+            //relinquish(connectionRanges.get(connectionId));
             connectionRanges.remove(connectionId);
         }
     }

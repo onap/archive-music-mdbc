@@ -22,16 +22,18 @@ package org.onap.music.mdbc.tables;
 import java.util.UUID;
 
 public final class MusicTxDigestId {
-	public final UUID txId;
+    public final UUID mriId;
+	public final UUID transactionId;
 	public final int index;
 
-	public MusicTxDigestId(UUID primaryKey, int index) {
-		this.txId= primaryKey;
+	public MusicTxDigestId(UUID mriRowId, UUID digestId, int index) {
+	    this.mriId=mriRowId;
+		this.transactionId= digestId;
 		this.index=index;
 	}
 
 	public boolean isEmpty() {
-		return (this.txId==null);
+		return (this.transactionId==null);
 	}
 
     @Override
@@ -40,11 +42,11 @@ public final class MusicTxDigestId {
         if(o == null) return false;
         if(!(o instanceof MusicTxDigestId)) return false;
         MusicTxDigestId other = (MusicTxDigestId) o;
-        return other.txId.equals(this.txId);
+        return other.transactionId.equals(this.transactionId);
     }
 
     @Override
     public int hashCode(){
-        return txId.hashCode();
+        return transactionId.hashCode();
     }
 }

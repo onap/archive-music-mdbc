@@ -29,7 +29,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.configurations.NodeConfiguration;
-import org.onap.music.mdbc.tables.MusicTxDigest;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;

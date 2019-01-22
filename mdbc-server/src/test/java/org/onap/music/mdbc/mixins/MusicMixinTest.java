@@ -122,8 +122,18 @@ public class MusicMixinTest {
 //        Range range = new Range("TABLE1");
 //        List<Range> ranges = new ArrayList<>();
 //        ranges.add(range);
-//        final DatabasePartition partition = TestUtils.createBasicRow(range, mixin, mdbcServerName);
-//        TestUtils.unlockRow(keyspace,mriTableName,partition);
+//    DatabasePartition partition=null;
+//    try {
+//      partition = TestUtils.createBasicRow(range, mixin, mdbcServerName);
+//    }
+//    catch(Exception e){
+//      fail(e.getMessage());
+//    }
+//    try {
+//      TestUtils.unlockRow(keyspace,mriTableName,partition);
+//    } catch (MusicLockingException e) {
+//      fail(e.getMessage());
+//    }
 //
 //        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
 //        try {
@@ -228,7 +238,6 @@ public class MusicMixinTest {
 //        MusicRangeInformationRow node3Row = mixin.getMusicRangeInformation(db3.getMRIIndex());
 //        assertFalse(node3Row.getIsLatest());
 //    }
-
 
     @Test
     public void relinquish() {
