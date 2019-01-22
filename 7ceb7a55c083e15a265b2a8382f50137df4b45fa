@@ -48,6 +48,30 @@
     },
     {
       "key": {
+        "uuid": "9adffdf1_598f4e2a",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1381,
+      "author": {
+        "id": 679
+      },
+      "writtenOn": "2019-01-22T15:40:11Z",
+      "side": 1,
+      "message": "good catch; the way this function works is \"return null\" automatically takes care of the remove.",
+      "parentUuid": "9adffdf1_035879f8",
+      "range": {
+        "startLine": 1381,
+        "startChar": 22,
+        "endLine": 1381,
+        "endChar": 52
+      },
+      "revId": "7ceb7a55c083e15a265b2a8382f50137df4b45fa",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9adffdf1_c3759164",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
         "patchSetId": 1
@@ -59,6 +83,30 @@
       "writtenOn": "2019-01-22T12:50:50Z",
       "side": 1,
       "message": "Ideally, this should be in a background thread, and shouldn\u0027t touch the state of progress keeper, given that don\u0027t we need to give guarantees for this transaction",
+      "range": {
+        "startLine": 1387,
+        "startChar": 7,
+        "endLine": 1407,
+        "endChar": 8
+      },
+      "revId": "7ceb7a55c083e15a265b2a8382f50137df4b45fa",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9adffdf1_b97f5a14",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1407,
+      "author": {
+        "id": 679
+      },
+      "writtenOn": "2019-01-22T15:40:11Z",
+      "side": 1,
+      "message": "noted, will remove the progress keeper; will certainly optimize to have it in another thread in the next version",
+      "parentUuid": "9adffdf1_c3759164",
       "range": {
         "startLine": 1387,
         "startChar": 7,
@@ -94,6 +142,30 @@
     },
     {
       "key": {
+        "uuid": "9adffdf1_39936a51",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1755,
+      "author": {
+        "id": 679
+      },
+      "writtenOn": "2019-01-22T15:40:11Z",
+      "side": 1,
+      "message": "correct, I realized this in my testing yesterday and changed it. will apply the patch.",
+      "parentUuid": "9adffdf1_4309a1dc",
+      "range": {
+        "startLine": 1753,
+        "startChar": 9,
+        "endLine": 1755,
+        "endChar": 62
+      },
+      "revId": "7ceb7a55c083e15a265b2a8382f50137df4b45fa",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9adffdf1_030f19e2",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
         "patchSetId": 1
@@ -105,6 +177,30 @@
       "writtenOn": "2019-01-22T12:50:50Z",
       "side": 1,
       "message": "Use the TOKEN function on the timebased-uuid, to reduce a little bit the overhead of this expensive oepration.\n\nSee: https://docs.datastax.com/en/cql/3.3/cql/cql_reference/cqlSelect.html",
+      "range": {
+        "startLine": 1901,
+        "startChar": 8,
+        "endLine": 1901,
+        "endChar": 126
+      },
+      "revId": "7ceb7a55c083e15a265b2a8382f50137df4b45fa",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9adffdf1_f998826b",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1901,
+      "author": {
+        "id": 679
+      },
+      "writtenOn": "2019-01-22T15:40:11Z",
+      "side": 1,
+      "message": "Yes, another team member is working to improve this.",
+      "parentUuid": "9adffdf1_030f19e2",
       "range": {
         "startLine": 1901,
         "startChar": 8,
