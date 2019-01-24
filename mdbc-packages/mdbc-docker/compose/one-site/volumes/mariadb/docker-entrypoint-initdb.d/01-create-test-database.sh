@@ -24,5 +24,6 @@ CREATE DATABASE /*!32312 IF NOT EXISTS*/ `test` /*!40100 DEFAULT CHARACTER SET l
 DELETE FROM mysql.user WHERE User='test';
 CREATE USER 'test';
 GRANT ALL ON test.* TO 'test' identified by 'password' with GRANT OPTION;
+GRANT SUPER ON *.* TO 'test';
 FLUSH PRIVILEGES;
 EOF
