@@ -201,7 +201,7 @@ public class TestUtils {
                         break;
                     case "all.public.ips":
                         String[] ips = prop.getProperty(key).split(":");
-                        if (ips.length == 1) {
+                        if (ips.length== 1) {
                             // Future use
                         } else if (ips.length > 1) {
                             MusicUtil.setAllPublicIps(

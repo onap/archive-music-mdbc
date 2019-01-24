@@ -112,7 +112,7 @@ public class MusicMixinTest {
 
     @Test(timeout=1000)
     public void own() {
-        Range range = new Range("table1");
+        Range range = new Range("TABLE1");
         List<Range> ranges = new ArrayList<>();
         ranges.add(range);
         final DatabasePartition partition = TestUtils.createBasicRow(range, mixin, mdbcServerName);
@@ -149,21 +149,21 @@ public class MusicMixinTest {
     @Test(timeout=1000)
     public void own2() throws InterruptedException, MDBCServiceException {
         List<Range> range12 = new ArrayList<>( Arrays.asList(
-            new Range("range1"),
-            new Range("range2")
+            new Range("RANGE1"),
+            new Range("RANGE2")
         ));
         List<Range> range34 = new ArrayList<>( Arrays.asList(
-            new Range("range3"),
-            new Range("range4")
+            new Range("RANGE3"),
+            new Range("RANGE4")
         ));
         List<Range> range24 = new ArrayList<>( Arrays.asList(
-            new Range("range2"),
-            new Range("range4")
+            new Range("RANGE2"),
+            new Range("RANGE4")
         ));
         List<Range> range123 = new ArrayList<>( Arrays.asList(
-            new Range("range1"),
-            new Range("range2"),
-            new Range("range3")
+            new Range("RANGE1"),
+            new Range("RANGE2"),
+            new Range("RANGE3")
         ));
         DatabasePartition db1 = addRow(range12, false);
         DatabasePartition db2 = addRow(range34, false);
@@ -189,8 +189,8 @@ public class MusicMixinTest {
         DagNode missing = outgoingEdges.get(0);
         Set<Range> missingRanges = missing.getRangeSet();
         assertEquals(2,missingRanges.size());
-        assertTrue(missingRanges.contains(new Range("range1")));
-        assertTrue(missingRanges.contains(new Range("range3")));
+        assertTrue(missingRanges.contains(new Range("RANGE1")));
+        assertTrue(missingRanges.contains(new Range("RANGE3")));
         List<DagNode> outgoingEdges1 = missing.getOutgoingEdges();
         assertEquals(1,outgoingEdges1.size());
 
@@ -198,9 +198,9 @@ public class MusicMixinTest {
         assertFalse(finalNode.hasNotIncomingEdges());
         Set<Range> finalSet = finalNode.getRangeSet();
         assertEquals(3,finalSet.size());
-        assertTrue(finalSet.contains(new Range("range1")));
-        assertTrue(finalSet.contains(new Range("range2")));
-        assertTrue(finalSet.contains(new Range("range3")));
+        assertTrue(finalSet.contains(new Range("RANGE1")));
+        assertTrue(finalSet.contains(new Range("RANGE2")));
+        assertTrue(finalSet.contains(new Range("RANGE3")));
 
         DagNode node5 = dag.getNode(db5.getMRIIndex());
         List<DagNode> toRemoveOutEdges = node5.getOutgoingEdges();
