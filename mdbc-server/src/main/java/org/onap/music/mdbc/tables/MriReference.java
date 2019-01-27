@@ -28,4 +28,6 @@ public final class MriReference {
 		this.index=  index;
 	}
 
+	public long getTimestamp() { return index.timestamp();}
+
 }

@@ -21,10 +21,7 @@ package org.onap.music.mdbc.tables;
 
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
@@ -70,23 +67,26 @@ public class MusicTxDigest {
 			    continue;
 			}
 			//2) for each partition I don't own
-			List<DatabasePartition> ranges = stateManager.getRanges();
-			if(ranges.size()!=0) {
-				DatabasePartition myPartition = ranges.get(0);
-				for (UUID partition : partitions) {
-					if (!partition.equals(myPartition.getMRIIndex())) {
-						try {
-							//replayDigestForPartition(mi, partition, dbi);
-						    mi.getOwnAndCheck().warmup(mi, dbi, myPartition.getSnapshot());
-						} catch (MDBCServiceException e) {
-							logger.error("Unable to update for partition : " + partition + ". " + e.getMessage());
-							continue;
-						}
-					}
-				}
-			}
-		
-			//Step 3: ReplayDigest() for E.C conditions
+            final List<Range> warmuplist = stateManager.getWarmupRanges();
+			if(warmuplist!=null) {
+                final Set<Range> warmupRanges = new HashSet(warmuplist);
+                final List<DatabasePartition> currentPartitions = stateManager.getPartitions();
+                List<Range> missingRanges = new ArrayList<>();
+                if (currentPartitions.size() != 0) {
+                    for (DatabasePartition part : currentPartitions) {
+                        List<Range> partitionRanges = part.getSnapshot();
+                        warmupRanges.removeAll(partitionRanges);
+                    }
+                    try {
+                        mi.getOwnAndCheck().warmup(mi, dbi, new ArrayList<>(warmupRanges));
+                    } catch (MDBCServiceException e) {
+                        logger.error("Unable to update for partition : " + warmupRanges + ". " + e.getMessage());
+                        continue;
+                    }
+                }
+            }
+
+    //Step 3: ReplayDigest() for E.C conditions
 			try {
 				replayDigest(mi,dbi);
 			} catch (MDBCServiceException e) {

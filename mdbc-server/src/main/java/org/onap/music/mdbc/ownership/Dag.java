@@ -29,6 +29,7 @@ import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MriRowComparator;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 
@@ -231,15 +232,15 @@ public class Dag {
         return toApplyNodes.isEmpty();
     }
 
-    public void setAlreadyApplied(Map<Range, Pair<MusicRangeInformationRow,Integer>> alreadyApplied, Set<Range> ranges)
+    public void setAlreadyApplied(Map<Range, Pair<MriReference,Integer>> alreadyApplied, Set<Range> ranges)
         throws MDBCServiceException {
         for(Map.Entry<UUID,DagNode> node : nodes.entrySet()){
             Set<Range> intersection = new HashSet<>(ranges);
             intersection.retainAll(node.getValue().getRangeSet());
             for(Range r : intersection){
                 if(alreadyApplied.containsKey(r)){
-                    final Pair<MusicRangeInformationRow, Integer> appliedPair = alreadyApplied.get(r);
-                    final MusicRangeInformationRow appliedRow = appliedPair.getKey();
+                    final Pair<MriReference, Integer> appliedPair = alreadyApplied.get(r);
+                    final MriReference appliedRow = appliedPair.getKey();
                     final int index = appliedPair.getValue();
                     final long appliedTimestamp = appliedRow.getTimestamp();
                     final long nodeTimestamp = node.getValue().getTimestamp();

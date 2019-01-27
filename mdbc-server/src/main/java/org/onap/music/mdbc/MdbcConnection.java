@@ -504,6 +504,7 @@ public class MdbcConnection implements Connection {
         DatabasePartition tempPartition = own(scQueryTables);
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
+            mi.reloadAlreadyApplied(this.partition);
         }
       dbi.preStatementHook(sql);
     }

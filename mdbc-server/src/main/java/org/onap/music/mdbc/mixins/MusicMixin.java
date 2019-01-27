@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
@@ -57,11 +58,7 @@ import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
-import org.onap.music.mdbc.tables.MusicRangeInformationRow;
-import org.onap.music.mdbc.tables.MusicTxDigestId;
-import org.onap.music.mdbc.tables.RangeDependency;
-import org.onap.music.mdbc.tables.StagingTable;
-import org.onap.music.mdbc.tables.TxCommitProgress;
+import org.onap.music.mdbc.tables.*;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
@@ -208,7 +205,7 @@ public class MusicMixin implements MusicInterface {
     private boolean keyspace_created   = false;
     private Map<String, PreparedStatement> ps_cache = new HashMap<>();
     private Set<String> in_progress    = Collections.synchronizedSet(new HashSet<String>());
-    private Map<Range, Pair<MusicRangeInformationRow, Integer>> alreadyApplied;
+    private Map<Range, Pair<MriReference, Integer>> alreadyApplied;
     private OwnershipAndCheckpoint ownAndCheck;
 
     public MusicMixin() {
@@ -243,7 +240,7 @@ public class MusicMixin implements MusicInterface {
         String t = info.getProperty(KEY_TIMEOUT);
         this.timeout = (t == null) ? DEFAULT_TIMEOUT : Integer.parseInt(t);
 
-        alreadyApplied = new HashMap<>();
+        alreadyApplied = new ConcurrentHashMap<>();
         ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied,timeout);
 
         initializeMetricTables();
@@ -263,21 +260,25 @@ public class MusicMixin implements MusicInterface {
      */
     @Override
     public void createKeyspace() throws MDBCServiceException {
+        createKeyspace(this.music_ns,this.music_rfactor);
+    }
 
+    public static void createKeyspace(String keyspace, int replicationFactor) throws MDBCServiceException {
         Map<String,Object> replicationInfo = new HashMap<>();
         replicationInfo.put("'class'", "'SimpleStrategy'");
-        replicationInfo.put("'replication_factor'", music_rfactor);
+        replicationInfo.put("'replication_factor'", replicationFactor);
 
         PreparedQueryObject queryObject = new PreparedQueryObject();
         queryObject.appendQueryString(
-            "CREATE KEYSPACE IF NOT EXISTS " + this.music_ns +
+            "CREATE KEYSPACE IF NOT EXISTS " + keyspace +
                 " WITH REPLICATION = " + replicationInfo.toString().replaceAll("=", ":"));
 
         try {
             MusicCore.nonKeyRelatedPut(queryObject, "eventual");
         } catch (MusicServiceException e) {
-            if (!e.getMessage().equals("Keyspace "+music_ns+" already exists")) {
-                throw new MDBCServiceException("Error creating namespace: "+music_ns+". Internal error:"+e.getErrorMessage(), e);
+            if (!e.getMessage().equals("Keyspace "+keyspace+" already exists")) {
+                throw new MDBCServiceException("Error creating namespace: "+keyspace+". Internal error:"+e.getErrorMessage(),
+                    e);
             }
         }
     }
@@ -1335,6 +1336,7 @@ public class MusicMixin implements MusicInterface {
         //0. See if reference to lock was already created
         String lockId = partition.getLockId();
         if(mriIndex==null || lockId == null || lockId.isEmpty()) {
+            //\TODO fix this
             own(partition.getSnapshot(),partition, MDBCUtils.generateTimebasedUniqueKey());
         }
 
@@ -1361,7 +1363,7 @@ public class MusicMixin implements MusicInterface {
             } catch (IOException e) {
                 throw new MDBCServiceException("Failed to serialized transaction digest with error " + e.toString(), e);
             }
-            MusicTxDigestId digestId = new MusicTxDigestId(commitId, -1);
+            MusicTxDigestId digestId = new MusicTxDigestId(mriIndex, -1);
             addTxDigest(digestId, serializedTransactionDigest);
             //2. Save RRT index to RQ
             if (progressKeeper != null) {
@@ -1369,6 +1371,20 @@ public class MusicMixin implements MusicInterface {
             }
             //3. Append RRT index into the corresponding TIT row array
             appendToRedoLog(partition, digestId);
+            List<Range> ranges = partition.getSnapshot();
+            for(Range r : ranges) {
+                if(!alreadyApplied.containsKey(r)){
+                    throw new MDBCServiceException("already applied data structure was not updated correctly and range "
+                    +r+" is not contained");
+                }
+                Pair<MriReference, Integer> rowAndIndex = alreadyApplied.get(r);
+                MriReference key = rowAndIndex.getKey();
+                if(!mriIndex.equals(key.index)){
+                    throw new MDBCServiceException("already applied data structure was not updated correctly and range "+
+                        r+" is not pointing to row: "+mriIndex.toString());
+                }
+                alreadyApplied.put(r, Pair.of(new MriReference(mriIndex), rowAndIndex.getValue()+1));
+            }
         }
     }
 
@@ -1936,8 +1952,17 @@ public class MusicMixin implements MusicInterface {
         return ecDigestList;
     }
 
+    @Override
+    public void reloadAlreadyApplied(DatabasePartition partition) throws MDBCServiceException {
+        List<Range> snapshot = partition.getSnapshot();
+        UUID row = partition.getMRIIndex();
+        for(Range r : snapshot){
+            alreadyApplied.put(r,Pair.of(new MriReference(row),-1));
+        }
 
-    
+    }
+
+
     ResultSet getAllMriCassandraRows() throws MDBCServiceException {
         StringBuilder cqlOperation = new StringBuilder();
         cqlOperation.append("SELECT * FROM ")

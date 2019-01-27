@@ -51,6 +51,7 @@ public class TablesConfiguration {
     private String internalNamespace;
     private int internalReplicationFactor;
     private String musicNamespace;
+    private int musicReplicationFactor;
     private String tableToPartitionName;
     private String partitionInformationTableName;
     private String redoHistoryTableName;
@@ -66,6 +67,7 @@ public class TablesConfiguration {
      */
     public List<NodeConfiguration> initializeAndCreateNodeConfigurations() throws MDBCServiceException {
         logger.info("initializing the required spaces");
+        createKeyspaces();
         initInternalNamespace();
 
         List<NodeConfiguration> nodeConfigs = new ArrayList<>();
@@ -81,10 +83,6 @@ public class TablesConfiguration {
 
             String partitionId;
             if(partitionInfo.partitionId==null || partitionInfo.partitionId.isEmpty()){
-                if(partitionInfo.replicationFactor==0){
-                    logger.error("Replication factor and partition id are both empty, and this is an invalid configuration" );
-                    throw new MDBCServiceException("Replication factor and partition id are both empty, and this is an invalid configuration");
-                }
                 //1) Create a row in the partition info table
                 partitionId = MDBCUtils.generateTimebasedUniqueKey().toString();
             }
@@ -108,6 +106,12 @@ public class TablesConfiguration {
             		sqlDatabaseName, partitionInfo.owner));
         }
         return nodeConfigs;
+    }
+
+    private void createKeyspaces() throws MDBCServiceException {
+        MusicMixin.createKeyspace(internalNamespace,internalReplicationFactor);
+        MusicMixin.createKeyspace(musicNamespace,musicReplicationFactor);
+
     }
 
     private void checkIfMriIsEmpty(String mriTableName) throws MDBCServiceException {
@@ -172,7 +176,6 @@ public class TablesConfiguration {
         private String mriTableName;
         private String mtxdTableName;
         private String partitionId;
-        private int replicationFactor;
 
         public List<Range> getTables() {
             return tables;
@@ -204,14 +207,6 @@ public class TablesConfiguration {
 
         public void setPartitionId(String partitionId) {
             this.partitionId = partitionId;
-        }
-
-        public int getReplicationFactor() {
-            return replicationFactor;
-        }
-
-        public void setReplicationFactor(int replicationFactor) {
-            this.replicationFactor = replicationFactor;
         }
 
         public String getMtxdTableName(){

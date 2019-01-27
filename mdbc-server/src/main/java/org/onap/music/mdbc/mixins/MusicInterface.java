@@ -321,7 +321,8 @@ public interface MusicInterface {
 
     OwnershipAndCheckpoint getOwnAndCheck();
     
-    
     ArrayList<HashMap<Range, StagingTable>> getEveTxDigest() throws MDBCServiceException;
+
+    void reloadAlreadyApplied(DatabasePartition partition) throws MDBCServiceException;
 }
 

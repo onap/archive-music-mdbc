@@ -346,7 +346,9 @@ public class Benchmark
         //iterations
         Map<Integer, List<Long>> results = new HashMap<>();
         final int totalIterations = 20;
-        final int[] rows = { 1,10,100, 500, 1000};
+        final int[] rows = { 1,10,50,80//};
+                           ,100,200,300,400};//, 500};
+                         //, 1000};
         for(int row: rows) {
             System.out.println("Running for rows: "+Integer.toString(row));
             results.put(row,new ArrayList<Long>());

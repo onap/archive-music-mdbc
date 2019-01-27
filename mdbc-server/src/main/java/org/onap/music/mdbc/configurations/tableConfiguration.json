@@ -9,15 +9,15 @@
       "owner": "",
       "mriTableName": "musicrangeinformation",
       "mtxdTableName": "musictxdigest",
-      "partitionId": "",
-      "replicationFactor": 1
+      "partitionId": ""
     }
   ],
+  "internalNamespace": "music_internal",
+  "internalReplicationFactor": 1,
   "musicNamespace": "namespace",
+  "musicReplicationFactor": 1,
   "tableToPartitionName": "tabletopartition",
   "partitionInformationTableName": "partitioninfo",
   "redoHistoryTableName": "redohistory",
-  "sqlDatabaseName": "test",
-  "internalNamespace": "music_internal",
-  "internalReplicationFactor": 1
+  "sqlDatabaseName": "test"
 }

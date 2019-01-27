@@ -33,6 +33,7 @@ import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MusicInterface;
+import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -42,7 +43,7 @@ public class OwnershipAndCheckpoint{
     private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(OwnershipAndCheckpoint.class);
     private Lock checkpointLock;
     private AtomicBoolean change;
-    private Map<Range, Pair<MusicRangeInformationRow, Integer>> alreadyApplied;
+    private Map<Range, Pair<MriReference, Integer>> alreadyApplied;
     private Map<UUID,Long> ownershipBeginTime;
     private long timeoutInMs;
 
@@ -50,7 +51,7 @@ public class OwnershipAndCheckpoint{
       this(new HashMap<>(),Long.MAX_VALUE);
     }
 
-    public OwnershipAndCheckpoint(Map<Range, Pair<MusicRangeInformationRow, Integer>> alreadyApplied, long timeoutInMs){
+    public OwnershipAndCheckpoint(Map<Range, Pair<MriReference, Integer>> alreadyApplied, long timeoutInMs){
         change = new AtomicBoolean(true);
         checkpointLock = new ReentrantLock();
         this.alreadyApplied = alreadyApplied;
@@ -114,6 +115,9 @@ public class OwnershipAndCheckpoint{
 
     public void checkpoint(MusicInterface mi, DBInterface di, Dag extendedDag, List<Range> ranges,
         Map<MusicRangeInformationRow, LockResult> locks, UUID ownOpId) throws MDBCServiceException {
+        if(ranges.isEmpty()){
+            return;
+        }
         try {
             checkpointLock.lock();
             change.set(true);
@@ -156,6 +160,9 @@ public class OwnershipAndCheckpoint{
     }
 
     public void warmup(MusicInterface mi, DBInterface di, List<Range> ranges) throws MDBCServiceException {
+        if(ranges.isEmpty()){
+            return;
+        }
         boolean ready = false;
         change.set(true);
         Set<Range> rangeSet = new HashSet<Range>(ranges);
@@ -181,7 +188,8 @@ public class OwnershipAndCheckpoint{
                             final HashMap<Range, StagingTable> txDigest = mi.getTxDigest(pair.getKey());
                             applyTxDigest(di, txDigest);
                             for (Range r : pair.getValue()) {
-                                alreadyApplied.put(r, Pair.of(node.getRow(), pair.getKey().index));
+                                MusicRangeInformationRow row = node.getRow();
+                                alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
                             }
                         }
                         pair = node.nextNotAppliedTransaction(rangeSet);
@@ -208,7 +216,8 @@ public class OwnershipAndCheckpoint{
                     final HashMap<Range, StagingTable> txDigest = mi.getTxDigest(pair.getKey());
                     applyTxDigest(db, txDigest);
                     for (Range r : pair.getValue()) {
-                        alreadyApplied.put(r, Pair.of(node.getRow(), pair.getKey().index));
+                        MusicRangeInformationRow row = node.getRow();
+                        alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
                     }
                     pair = node.nextNotAppliedTransaction(rangeSet);
                     if (timeout(ownOpId)) {

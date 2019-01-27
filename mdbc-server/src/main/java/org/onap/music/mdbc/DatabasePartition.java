@@ -73,7 +73,7 @@ public class DatabasePartition {
      * This function is used to change the contents of this, with the contents of a different object
      * @param otherPartition partition that is used to substitute the local contents
      */
-    public void updateDatabasePartition(DatabasePartition otherPartition){
+    public synchronized void updateDatabasePartition(DatabasePartition otherPartition){
         musicRangeInformationIndex = otherPartition.musicRangeInformationIndex;//Index that can be obtained either from
         lockId = otherPartition.lockId;
         ranges = otherPartition.ranges;
@@ -90,21 +90,21 @@ public class DatabasePartition {
     }
 
 
-    public boolean isLocked(){return lockId != null && !lockId.isEmpty(); }
+    public synchronized boolean isLocked(){return lockId != null && !lockId.isEmpty(); }
 
-    public boolean isReady() {
+    public synchronized boolean isReady() {
         return ready;
     }
 
-    public void setReady(boolean ready) {
+    public synchronized void setReady(boolean ready) {
         this.ready = ready;
     }
 
-    public UUID getMRIIndex() {
+    public synchronized UUID getMRIIndex() {
         return musicRangeInformationIndex;
     }
 
-    public void setMusicRangeInformationIndex(UUID musicRangeInformationIndex) {
+    public synchronized void setMusicRangeInformationIndex(UUID musicRangeInformationIndex) {
         this.musicRangeInformationIndex = musicRangeInformationIndex;
     }
 
@@ -179,15 +179,15 @@ public class DatabasePartition {
         return range;
     }
 
-    public String getLockId() {
+    public synchronized String getLockId() {
         return lockId;
     }
 
-    public void setLockId(String lockId) {
+    public synchronized void setLockId(String lockId) {
         this.lockId = lockId;
     }
 
-    public boolean isContained(Range range){
+    public synchronized boolean isContained(Range range){
         for(Range r: ranges){
             if(r.overlaps(range)){
                 return true;

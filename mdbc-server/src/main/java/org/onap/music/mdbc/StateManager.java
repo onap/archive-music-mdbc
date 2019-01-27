@@ -45,6 +45,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * \TODO Implement an interface for the server logic and a factory 
@@ -79,7 +82,10 @@ public class StateManager {
     /** Identifier for this server instance */
     private String mdbcServerName;
     private Map<String,DatabasePartition> connectionRanges;//Each connection owns its own database partition
+    private final Lock eventualLock  = new ReentrantLock();
     private List<Range> eventualRanges;
+    private final Lock warmupLock = new ReentrantLock();
+    private List<Range> warmupRanges;
 
 	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
         this.sqlDBName = sqlDBName;
@@ -87,7 +93,7 @@ public class StateManager {
         this.info = info;
         this.mdbcServerName = mdbcServerName;
     
-        this.connectionRanges = new HashMap<>();
+        this.connectionRanges = new ConcurrentHashMap<>();
         this.transactionInfo = new TxCommitProgress();
         //\fixme this might not be used, delete?
         try {
@@ -145,17 +151,52 @@ public class StateManager {
     	return this.musicInterface;
     }
     
-    public List<DatabasePartition> getRanges() {
+    public List<DatabasePartition> getPartitions() {
         return new ArrayList<>(connectionRanges.values());
 	}
 
+	public List<Range> getWarmupRanges(){
+        warmupLock.lock();
+        List<Range> returnArray;
+        try {
+            if(warmupRanges!=null) {
+                returnArray = new ArrayList<>(warmupRanges);
+            }
+            else{
+                returnArray = null;
+            }
+        }
+        finally{
+           warmupLock.unlock();
+        }
+        return returnArray;
+    }
 
     public List<Range> getEventualRanges() {
-        return eventualRanges;
+        eventualLock.lock();
+        List<Range> returnArray;
+        try {
+            if(eventualRanges!=null){
+                returnArray = new ArrayList<>(eventualRanges);
+            }
+            else{
+                returnArray= null;
+            }
+        }
+        finally{
+            eventualLock.unlock();
+        }
+        return returnArray;
     }
 
     public void setEventualRanges(List<Range> eventualRanges) {
-        this.eventualRanges = eventualRanges;
+        eventualLock.lock();
+        try {
+            this.eventualRanges = eventualRanges;
+        }
+        finally{
+            eventualLock.unlock();
+        }
     }
 
     public void closeConnection(String connectionId){
@@ -266,5 +307,15 @@ public class StateManager {
             logger.error("Relinquish failed, would need to forcefully obtain lock later");
         }
 
+    }
+
+    public void setWarmupRanges(List<Range> warmupRanges) {
+        warmupLock.lock();
+        try {
+            this.warmupRanges = warmupRanges;
+        }
+        finally{
+            warmupLock.unlock();
+        }
     }
 }

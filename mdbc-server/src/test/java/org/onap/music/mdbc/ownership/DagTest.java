@@ -34,6 +34,7 @@ import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 
@@ -191,7 +192,7 @@ public class DagTest {
 
     @Test
     public void nextToApply2() throws InterruptedException, MDBCServiceException {
-        Map<Range, Pair<MusicRangeInformationRow, Integer>> alreadyApplied = new HashMap<>();
+        Map<Range, Pair<MriReference, Integer>> alreadyApplied = new HashMap<>();
         List<MusicRangeInformationRow> rows = new ArrayList<>();
         List<Range> ranges = new ArrayList<>( Arrays.asList(
             new Range("range1")
@@ -206,7 +207,7 @@ public class DagTest {
             new MusicTxDigestId(MDBCUtils.generateUniqueKey(),1)
         ));
         MusicRangeInformationRow newRow = createNewRow(new ArrayList<>(ranges), "", false, redo2);
-        alreadyApplied.put(new Range("range1"),Pair.of(newRow, 0));
+        alreadyApplied.put(new Range("range1"),Pair.of(new MriReference(newRow.getPartitionIndex()), 0));
         rows.add(newRow);
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo3 = new ArrayList<>(Arrays.asList(

@@ -949,9 +949,12 @@ NEW.field refers to the new value
     	StringBuilder keyCondStmt = new StringBuilder();
     	String and = "";
     	for (String key: primaryKeys.keySet()) {
-    		Object val = primaryKeys.get(key);
-    		keyCondStmt.append(and + key + "=\"" + val + "\"");
-    		and = " AND ";
+    	    // We cannot use the default primary key for the sql table and operations
+    	    if(!key.equals(mi.getMusicDefaultPrimaryKeyName())) {
+                Object val = primaryKeys.get(key);
+                keyCondStmt.append(and + key + "=\"" + val + "\"");
+                and = " AND ";
+            }
     	}
 		return keyCondStmt.toString();
 	}
