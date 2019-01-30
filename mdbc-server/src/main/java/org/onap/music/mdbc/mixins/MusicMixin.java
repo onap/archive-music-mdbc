@@ -42,6 +42,8 @@ import java.util.function.BiFunction;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 import org.onap.music.datastore.Condition;
+import org.onap.music.datastore.MusicDataStore;
+import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
@@ -1302,9 +1304,24 @@ public class MusicMixin implements MusicInterface {
         if(lockId==null) {
            throw new MDBCServiceException("lock reference is null");
         }
-        ReturnType lockReturn = acquireLock(fullyQualifiedKey,lockId);
+        ReturnType lockReturn;
+        int counter=0;
+        do {
+            if(counter > 0){
+                //TODO: Improve backoff
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    logger.warn("Error sleeping for acquiring the lock");
+                }
+                logger.warn("Error acquiring lock id: ["+lockId+"] for key: ["+fullyQualifiedKey+"]");
+            }
+            lockReturn = acquireLock(fullyQualifiedKey,lockId);
+        }while((lockReturn == null||lockReturn.getResult().compareTo(ResultType.SUCCESS) != 0 )&&(counter++<3));
+
         //\TODO this is wrong, we should have a better way to obtain a lock forcefully, clean the queue and obtain the lock
         if(lockReturn.getResult().compareTo(ResultType.SUCCESS) != 0 ) {
+            logger.error("Lock acquire returned invalid error: "+lockReturn.getResult().name());
             return null;
         }
         partition.setLockId(lockId);
@@ -1336,7 +1353,7 @@ public class MusicMixin implements MusicInterface {
      * This officially commits the transaction globally
      */
     @Override
-    public void commitLog(DatabasePartition partition,List<Range> eventualRanges,  HashMap<Range,StagingTable> transactionDigest,
+    public void commitLog(DatabasePartition partition,List<Range> eventualRanges,  StagingTable transactionDigest,
                           String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException{
         // first deal with commit for eventually consistent tables
         filterAndAddEventualTxDigest(eventualRanges, transactionDigest, txId, progressKeeper);
@@ -1377,13 +1394,9 @@ public class MusicMixin implements MusicInterface {
             return;
         }
         
-        String serializedTransactionDigest;
+        ByteBuffer serializedTransactionDigest;
         if(!transactionDigest.isEmpty()) {
-            try {
-                serializedTransactionDigest = MDBCUtils.toString(transactionDigest);
-            } catch (IOException e) {
-                throw new MDBCServiceException("Failed to serialized transaction digest with error " + e.toString(), e);
-            }
+            serializedTransactionDigest = transactionDigest.getSerializedStagingAndClean();
             MusicTxDigestId digestId = new MusicTxDigestId(mriIndex, -1);
             addTxDigest(digestId, serializedTransactionDigest);
             //2. Save RRT index to RQ
@@ -1409,47 +1422,30 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
+    public void cleanAlreadyApplied(){
+        logger.warn("Use this only in test environments");
+        alreadyApplied.clear();
+    }
+
     private void filterAndAddEventualTxDigest(List<Range> eventualRanges,
-            HashMap<Range, StagingTable> transactionDigest, String txId,
+            StagingTable transactionDigest, String txId,
             TxCommitProgress progressKeeper) throws MDBCServiceException {
         
         if(eventualRanges == null || eventualRanges.isEmpty()) {
             return;
         }
-        
-        HashMap<Range,StagingTable> eventualTransactionDigest = new HashMap<Range,StagingTable>();
-        
-        for(Range eventualRange: eventualRanges) {
-            transactionDigest.computeIfPresent(eventualRange, new BiFunction<Range,StagingTable,StagingTable>() {
 
-                @Override
-                public StagingTable apply(Range key, StagingTable value) {
-                    eventualTransactionDigest.put(key, value);
-                    //transactionDigest.remove(key);
-                    return null;
-                }
-                
-            });
+        if(!transactionDigest.areEventualContained(eventualRanges)){
+            throw new MDBCServiceException();
         }
         
         UUID commitId = getCommitId(txId, progressKeeper);
-        
-        //1. Push new row to RRT
-        
-        String serializedTransactionDigest;
-        if(eventualTransactionDigest != null && !eventualTransactionDigest.isEmpty()) {
-        
-            try {
-                serializedTransactionDigest = MDBCUtils.toString(eventualTransactionDigest);
-            } catch (IOException e) {
-                throw new MDBCServiceException("Failed to serialized transaction digest with error "+e.toString(), e);
-            }
+
+        ByteBuffer serialized = transactionDigest.getSerializedEventuallyStagingAndClean();
+
+        if(serialized != null ) {
             MusicTxDigestId digestId = new MusicTxDigestId(commitId,-1);
-            addEventualTxDigest(digestId, serializedTransactionDigest);
-            
-            if(progressKeeper!= null) {
-                progressKeeper.setRecordId(txId,digestId);
-            }
+            addEventualTxDigest(digestId, serialized);
         }
         
         
@@ -1641,9 +1637,11 @@ public class MusicMixin implements MusicInterface {
         DatabasePartition newPartition = info.getDBPartition();
 
         String fullyQualifiedMriKey = music_ns+"."+ musicRangeInformationTableName+"."+newPartition.getMRIIndex().toString();
-        String lockId = createAndAssignLock(fullyQualifiedMriKey,newPartition);
+        String lockId = createAndAssignLock(fullyQualifiedMriKey, newPartition);
+            //TODO: fix this retry logic
         if(lockId == null || lockId.isEmpty()){
-            throw new MDBCServiceException("Error initializing music range information, error creating a lock for a new row") ;
+            throw new MDBCServiceException("Error initializing music range information, error creating a lock for a new row" +
+                "for key "+fullyQualifiedMriKey) ;
         }
         logger.info("Creating MRI " + newPartition.getMRIIndex() + " for ranges " + newPartition.getSnapshot());
         createEmptyMriRow(this.music_ns,this.musicRangeInformationTableName,newPartition.getMRIIndex(),info.getMetricProcessId(),
@@ -1799,7 +1797,7 @@ public class MusicMixin implements MusicInterface {
         String priKey = "txTimeId";
         StringBuilder fields = new StringBuilder();
         fields.append("txid uuid, ");
-        fields.append("transactiondigest text, ");
+        fields.append("transactiondigest blob, ");
         fields.append("txTimeId TIMEUUID ");//notice lack of ','
         String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", this.music_ns, tableName, fields, priKey);
         try {
@@ -1827,7 +1825,7 @@ public class MusicMixin implements MusicInterface {
         String priKey = "txid";
         StringBuilder fields = new StringBuilder();
         fields.append("txid uuid, ");
-        fields.append("transactiondigest text ");//notice lack of ','
+        fields.append("transactiondigest blob ");//notice lack of ','
         String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));", this.music_ns, tableName, fields, priKey);
         try {
             executeMusicWriteQuery(this.music_ns,tableName,cql);
@@ -1857,19 +1855,14 @@ public class MusicMixin implements MusicInterface {
      * Writes the transaction history to the txDigest
      */
     @Override
-    public void addTxDigest(MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException {
-        //createTxDigestRow(music_ns,musicTxDigestTable,newId,transactionDigest);
+    public void addTxDigest(MusicTxDigestId newId, ByteBuffer transactionDigest) throws MDBCServiceException {
+        //\TODO: Save Prepared query to history
         PreparedQueryObject query = new PreparedQueryObject();
-        String cqlQuery = "INSERT INTO " +
-            this.music_ns +
-            '.' +
-            this.musicTxDigestTableName +
-            " (txid,transactiondigest) " +
-            "VALUES (" +
-            newId.txId + ",'" +
-            transactionDigest +
-            "');";
-        query.appendQueryString(cqlQuery);
+        String cql = String.format("INSERT INTO %s.%s (txid,transactiondigest) VALUES (?,?);",this.music_ns,
+            this.musicTxDigestTableName);
+        query.appendQueryString(cql);
+        query.addValue(newId.txId);
+        query.addValue(transactionDigest);
         //\TODO check if I am not shooting on my own foot
         try {
             MusicCore.nonKeyRelatedPut(query,"critical");
@@ -1883,7 +1876,7 @@ public class MusicMixin implements MusicInterface {
      * Writes the Eventual transaction history to the evetxDigest
      */
     @Override
-    public void addEventualTxDigest(MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException {
+    public void addEventualTxDigest(MusicTxDigestId newId, ByteBuffer transactionDigest) throws MDBCServiceException {
         //createTxDigestRow(music_ns,musicTxDigestTable,newId,transactionDigest);
         PreparedQueryObject query = new PreparedQueryObject();
         String cqlQuery = "INSERT INTO " +
@@ -1909,7 +1902,7 @@ public class MusicMixin implements MusicInterface {
     }
 
     @Override
-    public HashMap<Range,StagingTable> getTxDigest(MusicTxDigestId id) throws MDBCServiceException {
+    public StagingTable getTxDigest(MusicTxDigestId id) throws MDBCServiceException {
         String cql = String.format("SELECT * FROM %s.%s WHERE txid = ?;", music_ns, musicTxDigestTableName);
         PreparedQueryObject pQueryObject = new PreparedQueryObject();
         pQueryObject.appendQueryString(cql);
@@ -1921,26 +1914,23 @@ public class MusicMixin implements MusicInterface {
             logger.error("Get operation error: Failure to get row from txdigesttable with id:"+id.txId);
             throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information", e);
         }
-        String digest = newRow.getString("transactiondigest");
-        HashMap<Range,StagingTable> changes;
+        ByteBuffer digest = newRow.getBytes("transactiondigest");
+        StagingTable changes;
         try {
-            changes = (HashMap<Range, StagingTable>) MDBCUtils.fromString(digest);
-        } catch (IOException e) {
-            logger.error("IOException when deserializing digest failed with an invalid class for id:"+id.txId);
-            throw new MDBCServiceException("Deserializng digest failed with ioexception", e);
-        } catch (ClassNotFoundException e) {
-            logger.error("Deserializng digest failed with an invalid class for id:"+id.txId);
-            throw new MDBCServiceException("Deserializng digest failed with an invalid class", e);
+            changes = new StagingTable(digest);
+        } catch (MDBCServiceException e) {
+            logger.error("Deserializng digest failed with an exception:"+e.getErrorMessage());
+            throw e;
         }
         return changes;
     }
     
     
     @Override
-    public LinkedHashMap<UUID, HashMap<Range,StagingTable>> getEveTxDigest(String nodeName) throws MDBCServiceException {
-        HashMap<Range,StagingTable> changes;
+    public LinkedHashMap<UUID, StagingTable> getEveTxDigest(String nodeName) throws MDBCServiceException {
+        StagingTable changes;
         String cql;
-        LinkedHashMap<UUID, HashMap<Range,StagingTable>> ecDigestInformation = new LinkedHashMap<UUID, HashMap<Range,StagingTable>>();
+        LinkedHashMap<UUID, StagingTable> ecDigestInformation = new LinkedHashMap<>();
         UUID musicevetxdigestNodeinfoTimeID = getTxTimeIdFromNodeInfo(nodeName);
         PreparedQueryObject pQueryObject = new PreparedQueryObject();
         
@@ -1949,7 +1939,6 @@ public class MusicMixin implements MusicInterface {
             cql = String.format("SELECT * FROM %s.%s WHERE txtimeid > ? LIMIT 10 ALLOW FILTERING;", music_ns, this.musicEventualTxDigestTableName);
             pQueryObject.appendQueryString(cql);
             pQueryObject.addValue(musicevetxdigestNodeinfoTimeID);
-            
         } else {
             // This is going to Fetch all the Transactiondigest records from the musicevetxdigest table.
             cql = String.format("SELECT * FROM %s.%s LIMIT 10;", music_ns, this.musicEventualTxDigestTableName);
@@ -1960,23 +1949,17 @@ public class MusicMixin implements MusicInterface {
         ResultSet rs = executeMusicRead(pQueryObject);
         while (!rs.isExhausted()) {
             Row row = rs.one();
-            String digest = row.getString("transactiondigest");        
+            ByteBuffer digest = row.getBytes("transactiondigest");
             //String txTimeId = row.getString("txtimeid"); //???
             UUID txTimeId = row.getUUID("txtimeid");    
             
             try {
-                changes = (HashMap<Range, StagingTable>) MDBCUtils.fromString(digest);
-                
-            } catch (IOException e) {
-                logger.error("IOException when deserializing digest");
-                throw new MDBCServiceException("Deserializng digest failed with ioexception", e);
-            } catch (ClassNotFoundException e) {
-                logger.error("Deserializng digest failed with an invalid class");
-                throw new MDBCServiceException("Deserializng digest failed with an invalid class", e);
+                changes = new StagingTable(digest);
+            } catch (MDBCServiceException e) {
+                logger.error("Deserializng digest failed: "+e.getErrorMessage());
+                throw e;
             }
-
             ecDigestInformation.put(txTimeId, changes);
-
         }      
         return ecDigestInformation;
     }
@@ -2555,7 +2538,7 @@ public class MusicMixin implements MusicInterface {
     }
 
     @Override
-    public void replayTransaction(HashMap<Range,StagingTable> digest) throws MDBCServiceException{
+    public void replayTransaction(StagingTable digest) throws MDBCServiceException{
         //\TODO: implement logic to move data from digests to Music Data Tables
         //throw new NotImplementedException("Error, replay transaction in music mixin needs to be implemented");
         return;

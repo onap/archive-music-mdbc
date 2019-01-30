@@ -28,7 +28,6 @@ import java.util.Set;
 
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
-import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;
 
 /**
@@ -97,7 +96,7 @@ public interface DBInterface {
 	 * @param sql the SQL statement that was executed
 	 * @param transactionDigest
 	 */
-	void postStatementHook(final String sql,Map<Range,StagingTable> transactionDigest);
+	void postStatementHook(final String sql,StagingTable transactionDigest);
 	/**
 	 * This method executes a read query in the SQL database.  Methods that call this method should be sure
 	 * to call resultset.getStatement().close() when done in order to free up resources.
@@ -117,11 +116,11 @@ public interface DBInterface {
 	 * @param digest
 	 * @throws SQLException if replay cannot occur correctly
 	 */
-	void replayTransaction(HashMap<Range,StagingTable> digest) throws SQLException;
+	void replayTransaction(StagingTable digest, List<Range> ranges) throws SQLException;
 
 	void disableForeignKeyChecks() throws SQLException;
 
 	void enableForeignKeyChecks() throws SQLException;
 
-	void applyTxDigest(HashMap<Range, StagingTable> txDigest) throws SQLException;
+	void applyTxDigest(StagingTable txDigest, List<Range> ranges) throws SQLException;
 }

@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package org.onap.music.mdbc.proto.ProtoDigest;
+
+// ***********************
+// To generate:
+// 1. cd to this directory
+// 2. Using protoc ver 3.6.1 (change following command to protoc)
+//     protoc-3.6.1 --java_out=../../../../../ digest.proto
+// This is going to generate the folder ProtoDigest in this same directory
+// ***********************
+
+message Row{
+  enum OpType {
+    INSERT = 0;
+    UPDATE = 1;
+    DELETE = 2;
+  }
+  OpType type = 1;
+  string key = 2;
+  string val = 3;
+  string table = 4;
+}
+
+message CompleteDigest{
+  repeated Row rows = 1;
+}

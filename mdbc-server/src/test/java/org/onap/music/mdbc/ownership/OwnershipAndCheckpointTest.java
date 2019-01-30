@@ -61,7 +61,7 @@ public class OwnershipAndCheckpointTest {
     final private static String mtdTableName = "musictxdigest";
     final private static String mdbcServerName = "name";
     public static final String DATABASE = "mdbcTest";
-	public static final String TABLE= "Persons";
+	public static final String TABLE= "PERSONS";
 	public static final String CREATE_TABLE = "CREATE TABLE IF NOT EXISTS " + TABLE + " (\n" +
             "    PersonID int,\n" +
             "    LastName varchar(255),\n" +
@@ -87,10 +87,11 @@ public class OwnershipAndCheckpointTest {
         } catch (Exception e) {
             fail(e.getMessage());
         }
-        cluster = new Cluster.Builder().addContactPoint(cassaHost).withPort(9142).build();
+        cluster=EmbeddedCassandraServerHelper.getCluster();
+        //cluster = new Cluster.Builder().addContactPoint(cassaHost).withPort(9142).build();
         cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(20000);
         assertNotNull("Invalid configuration for cassandra", cluster);
-        session = cluster.connect();
+        session = EmbeddedCassandraServerHelper.getSession();
         assertNotNull("Invalid configuration for cassandra", session);
         Class.forName("org.mariadb.jdbc.Driver");
         MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
@@ -105,9 +106,13 @@ public class OwnershipAndCheckpointTest {
     @AfterClass
     public static void close() throws MusicServiceException, MusicQueryException, ManagedProcessException {
         //TODO: shutdown cassandra
-        session.close();
-        cluster.close();
+        musicMixin=null;
         db.stop();
+        try {
+            EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
+        }
+        catch(NullPointerException e){
+        }
     }
 
     private void dropTable() throws SQLException {
@@ -149,7 +154,8 @@ public class OwnershipAndCheckpointTest {
         final DatabasePartition partition = TestUtils.createBasicRow(range, musicMixin, mdbcServerName);
         String sqlOperation = "INSERT INTO "+TABLE+" (PersonID,LastName,FirstName,Address,City) VALUES "+
             "(1,'SAUREZ','ENRIQUE','GATECH','ATLANTA');";
-        HashMap<Range, StagingTable> stagingTable = new HashMap<>();
+        StagingTable stagingTable = new StagingTable();
+        musicMixin.reloadAlreadyApplied(partition);
         final Statement executeStatement = this.conn.createStatement();
         executeStatement.execute(sqlOperation);
         this.conn.commit();
@@ -164,6 +170,7 @@ public class OwnershipAndCheckpointTest {
 
     private OwnershipReturn cleanAndOwnPartition(List<Range> ranges, UUID ownOpId) throws SQLException {
         dropAndCreateTable();
+        musicMixin.cleanAlreadyApplied();
         DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
 
         OwnershipReturn own=null;
@@ -196,9 +203,10 @@ public class OwnershipAndCheckpointTest {
     }
 
     @Test
-    @Ignore
+    //@Ignore
     public void checkpoint() throws MDBCServiceException, SQLException {
-        Range range = new Range(TABLE);
+        Range range =
+            new Range(TABLE);
         OwnershipAndCheckpoint ownAndCheck = musicMixin.getOwnAndCheck();
         initDatabase(range);
 
@@ -219,7 +227,7 @@ public class OwnershipAndCheckpointTest {
     }
 
     @Test
-    @Ignore
+    //@Ignore
     public void warmup() throws MDBCServiceException, SQLException {
         Range range = new Range(TABLE);
         OwnershipAndCheckpoint ownAndCheck = musicMixin.getOwnAndCheck();
