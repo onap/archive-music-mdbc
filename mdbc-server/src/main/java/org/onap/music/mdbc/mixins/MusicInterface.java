@@ -20,7 +20,12 @@
 package org.onap.music.mdbc.mixins;
 
 import com.datastax.driver.core.ResultSet;
-import java.util.*;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
@@ -182,13 +187,12 @@ public interface MusicInterface {
 	 *
 	 * @param partition information related to ownership of partitions, used to verify ownership when commiting the Tx
 	 * @param eventualRanges 
-	 * @param transactionDigest digest of the transaction that is being committed into the Redo log in music. It has to
-     * be a HashMap, because it is required to be serializable
+	 * @param transactionDigest digest of the transaction that is being committed into the Redo log in music.
 	 * @param txId id associated with the log being send
 	 * @param progressKeeper data structure that is used to handle to detect failures, and know what to do
 	 * @throws MDBCServiceException
 	 */
-	void commitLog(DatabasePartition partition, List<Range> eventualRanges, HashMap<Range,StagingTable> transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
+	void commitLog(DatabasePartition partition, List<Range> eventualRanges, StagingTable transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
 
     /**
@@ -236,7 +240,7 @@ public interface MusicInterface {
      * @param transactionDigest digest that contains all the changes performed in the transaction
      * @throws MDBCServiceException
      */
-	void addTxDigest(MusicTxDigestId newId, String transactionDigest) throws MDBCServiceException;
+	void addTxDigest(MusicTxDigestId newId, ByteBuffer transactionDigest) throws MDBCServiceException;
 	
 	/**
      * This functions adds the eventual tx digest to
@@ -245,17 +249,9 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
 	
-    void addEventualTxDigest(MusicTxDigestId newId, String transactionDigest)
+    void addEventualTxDigest(MusicTxDigestId newId, ByteBuffer transactionDigest)
             throws MDBCServiceException;
 
-    /**
-     * Function used to retrieve a given transaction digest and deserialize it
-     * @param id of the transaction digest to be retrieved
-     * @return the deserialize transaction digest that can be applied to the local SQL database
-     * @throws MDBCServiceException
-     */
-	HashMap<Range,StagingTable> getTxDigest(MusicTxDigestId id) throws MDBCServiceException;
-	
 	/**
      * Function used to retrieve a given eventual transaction digest for the current node and deserialize it
      * @param nodeName that identifies a node
@@ -263,7 +259,14 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
 	
-	public LinkedHashMap<UUID, HashMap<Range,StagingTable>> getEveTxDigest(String nodeName) throws MDBCServiceException;
+	public LinkedHashMap<UUID, StagingTable> getEveTxDigest(String nodeName) throws MDBCServiceException;
+    /**
+     * Function used to retrieve a given transaction digest and deserialize it
+     * @param id of the transaction digest to be retrieved
+     * @return the deserialize transaction digest that can be applied to the local SQL database
+     * @throws MDBCServiceException
+     */
+	StagingTable getTxDigest(MusicTxDigestId id) throws MDBCServiceException;
 
     /**
      * Use this functions to verify ownership, and own new ranges
@@ -313,7 +316,7 @@ public interface MusicInterface {
      * @param digest this contain all the changes that were perfomed in this digest
      * @throws MDBCServiceException
      */
-    void replayTransaction(HashMap<Range,StagingTable> digest) throws MDBCServiceException;
+    void replayTransaction(StagingTable digest) throws MDBCServiceException;
 
     /**
      * This function is in charge of deleting old mri rows that are not longer contain

@@ -75,7 +75,7 @@ public class MdbcConnection implements Connection {
     private final MusicInterface mi;
     private final TxCommitProgress progressKeeper;
     private final DBInterface dbi;
-    private final HashMap<Range,StagingTable> transactionDigest;
+    private final StagingTable transactionDigest;
     private final Set<String> table_set;
     private final StateManager statemanager;
     private DatabasePartition partition;
@@ -84,8 +84,7 @@ public class MdbcConnection implements Connection {
             TxCommitProgress progressKeeper, DatabasePartition partition, StateManager statemanager) throws MDBCServiceException {
         this.id = id;
         this.table_set = Collections.synchronizedSet(new HashSet<String>());
-        this.transactionDigest = new HashMap<Range,StagingTable>();
-
+        this.transactionDigest = new StagingTable(new HashSet<>(statemanager.getEventualRanges()));
         if (c == null) {
             throw new MDBCServiceException("Connection is null");
         }
@@ -241,7 +240,11 @@ public class MdbcConnection implements Connection {
     @Override
     public void rollback() throws SQLException {
         logger.debug(EELFLoggerDelegate.applicationLogger, "Rollback");;
-        transactionDigest.clear();
+        try {
+            transactionDigest.clear();
+        } catch (MDBCServiceException e) {
+            throw new SQLException("Failure to clear the transaction digest",e);
+        }
         jdbcConn.rollback();
         progressKeeper.reinitializeTxProgress(id);
     }

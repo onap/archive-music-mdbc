@@ -23,6 +23,7 @@ import java.io.Serializable;
 
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.onap.music.exceptions.MDBCServiceException;
 
 import static java.util.Objects.hash;
 
@@ -31,32 +32,41 @@ public final class Operation implements Serializable{
 	private static final long serialVersionUID = -1215301985078183104L;
 
 	final OperationType TYPE;
-	final String NEW_VAL;
+	final String VAL;
 	final String KEY;
+	final String TABLE;
 
-	public Operation(OperationType type, String newVal, String key) {
+	public Operation(String table,OperationType type, String newVal, String key) {
+	    TABLE = table;
 		TYPE = type;
-		NEW_VAL = newVal;
+		VAL = newVal;
 		KEY = key;
 	}
 
-	public JSONObject getNewVal(){
-        JSONObject newRow  = new JSONObject(new JSONTokener(NEW_VAL));
+	public String getTable(){
+	    return TABLE;
+    }
+
+	public JSONObject getVal(){
+        JSONObject newRow  = new JSONObject(new JSONTokener(VAL));
         return newRow;
     }
 
-	public JSONObject getKey() {
-		JSONObject key  = new JSONObject(new JSONTokener(KEY));
-		return key;
-	}
-	
+	public JSONObject getKey() throws MDBCServiceException {
+	    if(KEY==null){
+            throw new MDBCServiceException("This operation ["+TYPE.toString()+"] doesn't contain a key");
+        }
+        JSONObject keys = new JSONObject(new JSONTokener(KEY));
+        return keys;
+    }
+
     public OperationType getOperationType() {
     	return this.TYPE;
     }
 
     @Override
     public int hashCode(){
-        return hash(TYPE,NEW_VAL);
+        return hash(TYPE,VAL);
     }
 
     @Override
@@ -64,6 +74,6 @@ public final class Operation implements Serializable{
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Operation r = (Operation) o;
-        return TYPE.equals(r.TYPE) && NEW_VAL.equals(r.NEW_VAL);
+        return TABLE.equals(r.TABLE) && TYPE.equals(r.TYPE) && VAL.equals(r.VAL);
     }
 }

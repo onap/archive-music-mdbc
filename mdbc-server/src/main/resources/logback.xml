@@ -344,27 +344,27 @@
   
  
 
-  <logger name="com.att.eelf" level="info" additivity="false">
+  <logger name="com.att.eelf" level="error" additivity="false">
     <appender-ref ref="asyncEELF" />
   </logger>
 
-  <logger name="com.att.eelf" level="info" additivity="false">
+  <logger name="com.att.eelf" level="error" additivity="false">
     <appender-ref ref="asyncEELFAudit" />
   </logger>
   
-  <logger name="com.att.eelf" level="debug" additivity="false">
+  <logger name="com.att.eelf" level="error" additivity="false">
     <appender-ref ref="asyncEELFDebug" />
   </logger>
 	
-  <logger name="com.att.eelf.error" level="info" additivity="false">
+  <logger name="com.att.eelf.error" level="error" additivity="false">
     <appender-ref ref="asyncEELFError" />
   </logger>
 
-  <logger name="com.att.eelf.metrics" level="info" additivity="false">
+  <logger name="com.att.eelf.metrics" level="error" additivity="false">
     <appender-ref ref="asyncEELFMetrics" />
   </logger>      
     
-  <root level="DEBUG">
+  <root level="ERROR">
     <appender-ref ref="asyncEELF" />
   </root>
 
