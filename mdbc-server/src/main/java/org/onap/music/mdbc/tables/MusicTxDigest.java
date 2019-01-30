@@ -88,7 +88,7 @@ public class MusicTxDigest {
 
     //Step 3: ReplayDigest() for E.C conditions
 			try {
-				replayDigest(mi,dbi);
+				replayDigest(mi,dbi, stateManager.getEventualRanges());
 			} catch (MDBCServiceException e) {
 				logger.error("Unable to perform Eventual Consistency operations" + e.getMessage());
 				continue;
@@ -100,35 +100,34 @@ public class MusicTxDigest {
 	/**
 	 * Replay the digest for eventual consistency.
 	 * @param mi music interface
-	 * @param partitionId the partition to be replayed
 	 * @param dbi interface to the database that will replay the operations
+     * @param ranges only these ranges will be applied from the digests
 	 * @throws MDBCServiceException
 	 */
-   public void replayDigest(MusicInterface mi, DBInterface dbi) throws MDBCServiceException {
-             HashMap<Range, StagingTable> transaction;
-             String nodeName = stateManager.getMdbcServerName();
-             logger.info("Node Name: "+nodeName);
-             LinkedHashMap<UUID, HashMap<Range,StagingTable>> ecDigestInformation = mi.getEveTxDigest(nodeName);
-             Set<UUID> keys = ecDigestInformation.keySet();
-             
-             for(UUID txTimeID:keys){
-                 transaction = (HashMap<Range,StagingTable>) ecDigestInformation.get(txTimeID);
-                 
-                 try {
-                     dbi.replayTransaction(transaction); // I think this Might change if the data is coming from a new table.. ( what is the new table structure??)
-                 } catch (SQLException e) {
-                     logger.error("EC:Rolling back the entire digest replay.");
-                     return;
-                 }
-                 logger.info("EC: Successfully replayed transaction for txTimeID key: "+txTimeID);
-                
-                 try {
-                     mi.updateNodeInfoTableWithTxTimeIDKey(txTimeID, nodeName);
-                 } catch (MDBCServiceException e) {
-                     logger.error("EC:Rolling back the entire digest replay.");
-                 }
-             }
-         }
+        public void replayDigest(MusicInterface mi, DBInterface dbi, List<Range> ranges) throws MDBCServiceException {
+			StagingTable transaction;
+			String nodeName = stateManager.getMdbcServerName();
+
+			LinkedHashMap<UUID,StagingTable> ecDigestInformation = mi.getEveTxDigest(nodeName);
+			Set<UUID> keys = ecDigestInformation.keySet();
+			for(UUID txTimeID:keys){
+				transaction = ecDigestInformation.get(txTimeID);
+				try {
+					dbi.replayTransaction(transaction, ranges); // I think this Might change if the data is coming from a new table.. ( what is the new table structure??)
+				} catch (SQLException e) {
+					logger.error("EC:Rolling back the entire digest replay.");
+					return;
+				}
+				logger.info("EC: Successfully replayed transaction ");
+
+				try {
+					mi.updateNodeInfoTableWithTxTimeIDKey(txTimeID, nodeName);
+				} catch (MDBCServiceException e) {
+					logger.error("EC:Rolling back the entire digest replay.");
+				}
+			}
+;
+	}
 
 	
 	/**
@@ -139,12 +138,13 @@ public class MusicTxDigest {
 	 * @throws MDBCServiceException
 	 */
 	public static void replayDigestForPartition(MusicInterface mi, UUID partitionId, DBInterface dbi) throws MDBCServiceException {
-        List<MusicTxDigestId> partitionsRedoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
+        final MusicRangeInformationRow row = mi.getMusicRangeInformation(partitionId);
+        List<MusicTxDigestId> partitionsRedoLogTxIds = row.getRedoLog();
         for (MusicTxDigestId txId: partitionsRedoLogTxIds) {
-            HashMap<Range, StagingTable> transaction = mi.getTxDigest(txId);
+            StagingTable transaction = mi.getTxDigest(txId);
             try {
                 //\TODO do this two operations in parallel
-                dbi.replayTransaction(transaction);
+                dbi.replayTransaction(transaction, row.getDBPartition().getSnapshot());
                 mi.replayTransaction(transaction);
             } catch (SQLException e) {
                 logger.error("Rolling back the entire digest replay. " + partitionId);

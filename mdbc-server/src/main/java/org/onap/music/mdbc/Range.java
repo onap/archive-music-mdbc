@@ -20,6 +20,7 @@
 package org.onap.music.mdbc;
 
 import java.io.Serializable;
+import java.util.List;
 import java.util.Objects;
 
 
@@ -72,6 +73,12 @@ public class Range implements Serializable, Cloneable{
         return newRange;
 
     }
+
+    public static boolean overlaps(List<Range> ranges, String table){
+		//\TODO check if parallel stream makes sense here
+        return ranges.stream().map((Range r) -> r.table.equals(table)).anyMatch((Boolean b) -> b);
+	}
+
 	public boolean overlaps(Range other) {
 		return table.equals(other.table);
 	}

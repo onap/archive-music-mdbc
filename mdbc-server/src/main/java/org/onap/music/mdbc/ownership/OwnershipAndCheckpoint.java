@@ -150,10 +150,10 @@ public class OwnershipAndCheckpoint{
         }
     }
 
-    private void applyTxDigest(DBInterface di, HashMap<Range, StagingTable> txDigest)
+    private void applyTxDigest(List<Range> ranges, DBInterface di, StagingTable txDigest)
         throws MDBCServiceException {
         try {
-            di.applyTxDigest(txDigest);
+            di.applyTxDigest(txDigest,ranges);
         } catch (SQLException e) {
             throw new MDBCServiceException("Error applying tx digest in local SQL",e);
         }
@@ -185,8 +185,8 @@ public class OwnershipAndCheckpoint{
                             checkpointLock.unlock();
                             break;
                         } else {
-                            final HashMap<Range, StagingTable> txDigest = mi.getTxDigest(pair.getKey());
-                            applyTxDigest(di, txDigest);
+                            final StagingTable txDigest = mi.getTxDigest(pair.getKey());
+                            applyTxDigest(ranges,di, txDigest);
                             for (Range r : pair.getValue()) {
                                 MusicRangeInformationRow row = node.getRow();
                                 alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
@@ -213,8 +213,8 @@ public class OwnershipAndCheckpoint{
             if(node!=null) {
                 Pair<MusicTxDigestId, List<Range>> pair = node.nextNotAppliedTransaction(rangeSet);
                 while (pair != null) {
-                    final HashMap<Range, StagingTable> txDigest = mi.getTxDigest(pair.getKey());
-                    applyTxDigest(db, txDigest);
+                    final StagingTable txDigest = mi.getTxDigest(pair.getKey());
+                    applyTxDigest(ranges, db, txDigest);
                     for (Range r : pair.getValue()) {
                         MusicRangeInformationRow row = node.getRow();
                         alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));

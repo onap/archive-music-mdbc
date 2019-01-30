@@ -77,11 +77,11 @@ public class MusicMixinTest {
         } catch (Exception e) {
             System.out.println(e);
         }
-
-        cluster = new Cluster.Builder().addContactPoint(cassaHost).withPort(9142).build();
+        cluster=EmbeddedCassandraServerHelper.getCluster();
+        //cluster = new Cluster.Builder().addContactPoint(cassaHost).withPort(9142).build();
         cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(20000);
         assertNotNull("Invalid configuration for cassandra", cluster);
-        session = cluster.connect();
+        session = EmbeddedCassandraServerHelper.getSession();
         assertNotNull("Invalid configuration for cassandra", session);
 
         MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
@@ -92,8 +92,12 @@ public class MusicMixinTest {
     @AfterClass
     public static void close() throws MusicServiceException, MusicQueryException {
         //TODO: shutdown cassandra
-        session.close();
-        cluster.close();
+        mixin=null;
+        try {
+            EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
+        }
+        catch(NullPointerException e){
+        }
     }
 
     @Before
@@ -146,7 +150,7 @@ public class MusicMixinTest {
         return partition;
     }
 
-    @Test(timeout=1000)
+    @Test(timeout=10000)
     public void own2() throws InterruptedException, MDBCServiceException {
         List<Range> range12 = new ArrayList<>( Arrays.asList(
             new Range("RANGE1"),

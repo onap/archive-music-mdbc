@@ -37,6 +37,7 @@ import java.util.TreeSet;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
@@ -72,7 +73,7 @@ public class MySQLMixin implements DBInterface {
 	public static final String TRANS_TBL = "MDBC_TRANSLOG";
 	private static final String CREATE_TBL_SQL =
 		"CREATE TABLE IF NOT EXISTS "+TRANS_TBL+
-		" (IX INT AUTO_INCREMENT, OP CHAR(1), TABLENAME VARCHAR(255), NEWROWDATA VARCHAR(1024), KEYDATA VARCHAR(1024), CONNECTION_ID INT,PRIMARY KEY (IX))";
+		" (IX INT AUTO_INCREMENT, OP CHAR(1), TABLENAME VARCHAR(255),KEYDATA VARCHAR(1024), ROWDATA VARCHAR(1024), CONNECTION_ID INT,PRIMARY KEY (IX))";
 
 	private final MusicInterface mi;
 	private final int connId;
@@ -290,6 +291,7 @@ mysql> describe tables;
 			// No SELECT trigger
 			executeSQLWrite(generateTrigger(tableName, "INSERT"));
 			executeSQLWrite(generateTrigger(tableName, "UPDATE"));
+			//\TODO: save key row instead of the whole row for delete
 			executeSQLWrite(generateTrigger(tableName, "DELETE"));
 		} catch (SQLException e) {
 			if (e.getMessage().equals("Trigger already exists")) {
@@ -311,46 +313,47 @@ NEW.field refers to the new value
 */
 	private String generateTrigger(String tableName, String op) {
 		boolean isdelete = op.equals("DELETE");
-		boolean isinsert = op.equals("INSERT");
+		boolean isupdate = op.equals("UPDATE");
 		TableInfo ti = getTableInfo(tableName);
 		StringBuilder newJson = new StringBuilder("JSON_OBJECT(");		// JSON_OBJECT(key, val, key, val) page 1766
-		StringBuilder keyJson = new StringBuilder("JSON_OBJECT(");
+		StringBuilder keyJson = new StringBuilder("JSON_OBJECT(");		// JSON_OBJECT(key, val, key, val) page 1766
 		String pfx = "";
-		String keypfx = "";
+		String kfx = "";
 		for (String col : ti.columns) {
 			newJson.append(pfx)
 			.append("'").append(col).append("', ")
 			.append(isdelete ? "OLD." : "NEW.")
 			.append(col);
-			if (ti.iskey(col) || !ti.hasKey()) {
-				keyJson.append(keypfx)
-				.append("'").append(col).append("', ")
-				.append(isinsert ? "NEW." : "OLD.")
-				.append(col);
-				keypfx = ", ";
+			if (isupdate && (ti.iskey(col) || !ti.hasKey())) {
+				keyJson.append(kfx)
+					.append("'").append(col).append("', ")
+					.append("OLD.")
+					.append(col);
+				kfx = ", ";
 			}
 			pfx = ", ";
 		}
 		newJson.append(")");
 		keyJson.append(")");
 		//\TODO check if using mysql driver, so instead check the exception
+        //\TODO add conditional for update, if primary key is still the same, use null in the KEYDATA col
 		StringBuilder sb = new StringBuilder()
 		  .append("CREATE TRIGGER ")		// IF NOT EXISTS not supported by MySQL!
 		  .append(String.format("%s_%s", op.substring(0, 1), tableName))
 		  .append(" AFTER ")
 		  .append(op)
 		  .append(" ON ")
-		  .append(tableName)
+		  .append(tableName.toUpperCase())
 		  .append(" FOR EACH ROW INSERT INTO ")
 		  .append(TRANS_TBL)
-		  .append(" (TABLENAME, OP, NEWROWDATA, KEYDATA, CONNECTION_ID) VALUES('")
-		  .append(tableName)
+		  .append(" (TABLENAME, OP, KEYDATA, ROWDATA, CONNECTION_ID) VALUES('")
+		  .append(tableName.toUpperCase())
 		  .append("', ")
 		  .append(isdelete ? "'D'" : (op.equals("INSERT") ? "'I'" : "'U'"))
 		  .append(", ")
-		  .append(newJson.toString())
+		  .append(isupdate ? keyJson.toString() : "NULL")
 		  .append(", ")
-		  .append(keyJson.toString())
+		  .append(newJson.toString())
 		  .append(", ")
 		  .append("CONNECTION_ID()")
 		  .append(")");
@@ -528,14 +531,14 @@ NEW.field refers to the new value
 	 * @param sql the SQL statement that was executed
 	 */
 	@Override
-	public void postStatementHook(final String sql,Map<Range,StagingTable> transactionDigest) {
+	public void postStatementHook(final String sql,StagingTable transactionDigest) {
 		if (sql != null) {
 			String[] parts = sql.trim().split(" ");
 			String cmd = parts[0].toLowerCase();
 			if ("delete".equals(cmd) || "insert".equals(cmd) || "update".equals(cmd)) {
 				try {
 					this.updateStagingTable(transactionDigest);
-				} catch (NoSuchFieldException e) {
+				} catch (NoSuchFieldException|MDBCServiceException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
@@ -564,10 +567,11 @@ NEW.field refers to the new value
 	 * @param transactionDigests
 	 * @throws NoSuchFieldException 
 	 */
-	private void updateStagingTable(Map<Range,StagingTable> transactionDigests) throws NoSuchFieldException {
+	private void updateStagingTable(StagingTable transactionDigests)
+		throws NoSuchFieldException, MDBCServiceException {
 		// copy from DB.MDBC_TRANSLOG where connid == myconnid
 		// then delete from MDBC_TRANSLOG
-		String sql2 = "SELECT IX, TABLENAME, OP, KEYDATA, NEWROWDATA FROM "+TRANS_TBL +" WHERE CONNECTION_ID = " + this.connId;
+		String sql2 = "SELECT IX, TABLENAME, OP, ROWDATA,KEYDATA FROM "+TRANS_TBL +" WHERE CONNECTION_ID = " + this.connId;
 		try {
 			ResultSet rs = executeSQLRead(sql2);
 			Set<Integer> rows = new TreeSet<Integer>();
@@ -576,43 +580,15 @@ NEW.field refers to the new value
 				String op   = rs.getString("OP");
 				OperationType opType = toOpEnum(op);
 				String tbl  = rs.getString("TABLENAME");
-				JSONObject keydataStr = new JSONObject(new JSONTokener(rs.getString("KEYDATA")));
-				String newRowStr = rs.getString("NEWROWDATA");
-				JSONObject newRow  = new JSONObject(new JSONTokener(newRowStr));
-				TableInfo ti = getTableInfo(tbl);
-				if (!ti.hasKey()) {
-					//create music key
-                    //\TODO fix, this is completely broken
-					//if (op.startsWith("I")) {
-						//\TODO Improve the generation of primary key, it should be generated using 
-						// the actual columns, otherwise performance when doing range queries are going 
-						// to be even worse (see the else bracket down)
-                        //
-						String musicKey = MDBCUtils.generateUniqueKey().toString();
-					/*} else {
-						//get key from data
-						musicKey = msm.getMusicKeyFromRowWithoutPrimaryIndexes(tbl,newRow);
-					}*/
-					newRow.put(mi.getMusicDefaultPrimaryKeyName(), musicKey);
-					keydataStr.put(mi.getMusicDefaultPrimaryKeyName(), musicKey);
-				}
-				/*else {
-					//Use the keys 
-					musicKey = msm.getMusicKeyFromRow(tbl, newRow);
-					if(musicKey.isEmpty()) {
-						logger.error(EELFLoggerDelegate.errorLogger,"Primary key is invalid: ["+tbl+","+op+"]");
-						throw new NoSuchFieldException("Invalid operation enum");
-					}
-				}*/
+				String newRowStr = rs.getString("ROWDATA");
+				String rowStr = rs.getString("KEYDATA");
 				Range range = new Range(tbl);
-				if(!transactionDigests.containsKey(range)) {
-					transactionDigests.put(range, new StagingTable());
-				}
-				transactionDigests.get(range).addOperation(opType, newRow.toString(), keydataStr.toString());
+				transactionDigests.addOperation(range,opType,newRowStr,rowStr);
 				rows.add(ix);
 			}
 			rs.getStatement().close();
 			if (rows.size() > 0) {
+				//TODO: DO batch deletion
 				sql2 = "DELETE FROM "+TRANS_TBL+" WHERE IX = ?";
 				PreparedStatement ps = jdbcConn.prepareStatement(sql2);
 				logger.debug("Executing: "+sql2);
@@ -817,28 +793,26 @@ NEW.field refers to the new value
 	 * Parse the transaction digest into individual events
 	 * @param transaction - base 64 encoded, serialized digest
 	 */
-	public void replayTransaction(HashMap<Range,StagingTable> transaction) throws SQLException {
+	public void replayTransaction(StagingTable transaction, List<Range> ranges) throws SQLException {
 		boolean autocommit = jdbcConn.getAutoCommit();
 		jdbcConn.setAutoCommit(false);
 		Statement jdbcStmt = jdbcConn.createStatement();
-		for (Map.Entry<Range,StagingTable> entry: transaction.entrySet()) {
-    		Range r = entry.getKey();
-    		StagingTable st = entry.getValue();
-    		ArrayList<Operation> opList = st.getOperationList();
+		ArrayList<Operation> opList = transaction.getOperationList();
 
-    		for (Operation op: opList) {
-    			try {
-    				replayOperationIntoDB(jdbcStmt, r, op);
-    			} catch (SQLException e) {
-    				//rollback transaction
-    				logger.error("Unable to replay: " + op.getOperationType() + "->" + op.getNewVal() + "."
-    						+ "Rolling back the entire digest replay.");
-    				jdbcConn.rollback();
-    				throw e;
-    			}
-    		}
-    	}
-		
+		for (Operation op: opList) {
+			if(Range.overlaps(ranges,op.getTable())) {
+				try {
+					replayOperationIntoDB(jdbcStmt, op);
+				} catch (SQLException e) {
+					//rollback transaction
+					logger.error("Unable to replay: " + op.getOperationType() + "->" + op.getVal() + "."
+						+ "Rolling back the entire digest replay.");
+					jdbcConn.rollback();
+					throw e;
+				}
+			}
+		}
+
 		clearReplayedOperations(jdbcStmt);
 		jdbcConn.commit();
 		jdbcStmt.close();
@@ -861,8 +835,8 @@ NEW.field refers to the new value
 	}
 
 	@Override
-	public void applyTxDigest(HashMap<Range, StagingTable> txDigest) throws SQLException {
-		replayTransaction(txDigest);
+	public void applyTxDigest(StagingTable txDigest,List<Range> ranges) throws SQLException {
+		replayTransaction(txDigest,ranges);
 	}
 
 	/**
@@ -872,11 +846,10 @@ NEW.field refers to the new value
 	 * @param op
 	 * @throws SQLException 
 	 */
-	private void replayOperationIntoDB(Statement jdbcStmt, Range r, Operation op) throws SQLException {
-		logger.info("Replaying Operation: " + op.getOperationType() + "->" + op.getNewVal());
-		JSONObject jsonOp = op.getNewVal();
-		JSONObject key = op.getKey();
-		
+	private void replayOperationIntoDB(Statement jdbcStmt, Operation op) throws SQLException {
+		logger.info("Replaying Operation: " + op.getOperationType() + "->" + op.getVal());
+		JSONObject jsonOp = op.getVal();
+
 		ArrayList<String> cols = new ArrayList<String>();
 		ArrayList<Object> vals = new ArrayList<Object>();
 		Iterator<String> colIterator = jsonOp.keys();
@@ -897,7 +870,7 @@ NEW.field refers to the new value
 		switch (op.getOperationType()) {
 		case INSERT:
 			sql.append(op.getOperationType() + " INTO ");
-			sql.append(r.getTable() + " (") ;
+			sql.append(op.getTable() + " (") ;
 			sep = "";
 			for (String col: cols) {
 				sql.append(sep + col);
@@ -913,20 +886,24 @@ NEW.field refers to the new value
 			break;
 		case UPDATE:
 			sql.append(op.getOperationType() + " ");
-			sql.append(r.getTable() + " SET ");
+			sql.append(op.getTable() + " SET ");
 			sep="";
 			for (int i=0; i<cols.size(); i++) {
 				sql.append(sep + cols.get(i) + "=\"" + vals.get(i) +"\"");
 				sep = ", ";
 			}
 			sql.append(" WHERE ");
-			sql.append(getPrimaryKeyConditional(op.getKey()));
+			try {
+				sql.append(getPrimaryKeyConditional(op.getKey()));
+			} catch (MDBCServiceException e) {
+			    throw new SQLException("Update operatoin doesn't contain the required primary key",e);
+			}
 			sql.append(";");
 			break;
 		case DELETE:
 			sql.append(op.getOperationType() + " FROM ");
-			sql.append(r.getTable() + " WHERE ");
-			sql.append(getPrimaryKeyConditional(op.getKey()));
+			sql.append(op.getTable() + " WHERE ");
+			sql.append(getPrimaryKeyConditional(op.getVal()));
 			sql.append(";");
 			break;
 		case SELECT:
