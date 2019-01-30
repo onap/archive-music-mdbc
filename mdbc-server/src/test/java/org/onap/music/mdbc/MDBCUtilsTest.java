@@ -23,73 +23,35 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 
+import java.util.HashSet;
 import org.json.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.tables.OperationType;
 import org.onap.music.mdbc.tables.StagingTable;
 
-@Ignore
 public class MDBCUtilsTest {
 
-        @Test
+    @Test
     public void toStringTest1() {
         StagingTable table = new StagingTable();
-        table.addOperation(OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString(),
-        		(new JSONObject(new String[]{"test_key", "test_value"})).toString());
-        String output=null;
         try {
-            output = MDBCUtils.toString(table);
-        } catch (IOException e) {
+            table.addOperation(new Range("TABLE1"),OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString(),null);
+        } catch (MDBCServiceException e) {
+            fail();
+        }
+        ByteBuffer output=null;
+        try {
+            output = table.getSerializedStagingAndClean();
+        } catch (MDBCServiceException e) {
             e.printStackTrace();
             fail();
         }
         assertTrue(output!=null);
-        assertTrue(!output.isEmpty());
+        assertTrue(output.toString().length() > 0);
     }
-
-    @Test
-    public void toStringTest2() {
-        HashMap<String,StagingTable> mapToSerialize = new HashMap<>();
-        StagingTable table = new StagingTable();
-        table.addOperation(OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"}).toString()),
-        		(new JSONObject(new String[]{"test_key", "test_value"})).toString());
-        mapToSerialize.put("table",table);
-        String output=null;
-        try {
-            output = MDBCUtils.toString(mapToSerialize);
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-        assertTrue(output!=null);
-        assertTrue(!output.isEmpty());
-    }
-
-    @Test
-    public void toStringTest3() {
-        String testStr = "test";
-        OperationType typeTest = OperationType.INSERT;
-        String output=null;
-        try {
-            output = MDBCUtils.toString(testStr);
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-        assertTrue(output!=null);
-        assertTrue(!output.isEmpty());
-        output=null;
-        try {
-            output = MDBCUtils.toString(typeTest);
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail();
-        }
-        assertTrue(output!=null);
-        assertTrue(!output.isEmpty());
-    }
-  
 }
