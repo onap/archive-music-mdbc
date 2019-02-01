@@ -20,11 +20,7 @@
 package org.onap.music.mdbc.mixins;
 
 import com.datastax.driver.core.ResultSet;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
@@ -259,6 +255,15 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
 	HashMap<Range,StagingTable> getTxDigest(MusicTxDigestId id) throws MDBCServiceException;
+	
+	/**
+     * Function used to retrieve a given eventual transaction digest for the current node and deserialize it
+     * @param nodeName that identifies a node
+     * @return the deserialize transaction digest that can be applied to the local SQL database
+     * @throws MDBCServiceException
+     */
+	
+	public LinkedHashMap<UUID, HashMap<Range,StagingTable>> getEveTxDigest(String nodeName) throws MDBCServiceException;
 
     /**
      * Use this functions to verify ownership, and own new ranges
@@ -320,9 +325,9 @@ public interface MusicInterface {
     List<MusicRangeInformationRow> getAllMriRows() throws MDBCServiceException;
 
     OwnershipAndCheckpoint getOwnAndCheck();
-    
-    ArrayList<HashMap<Range, StagingTable>> getEveTxDigest() throws MDBCServiceException;
 
     void reloadAlreadyApplied(DatabasePartition partition) throws MDBCServiceException;
+    
+    public void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
 }
 

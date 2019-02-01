@@ -198,6 +198,14 @@ public class StateManager {
             eventualLock.unlock();
         }
     }
+    
+    public String getMdbcServerName() {
+        return mdbcServerName;
+    }
+
+    public void setMdbcServerName(String mdbcServerName) {
+        this.mdbcServerName = mdbcServerName;
+    }
 
     public void closeConnection(String connectionId){
         //\TODO check if there is a race condition

@@ -89,7 +89,7 @@ public class MdbcEventualTestClient {
 
         final String insertSQL = "INSERT INTO audit_log VALUES (1, 123, 123456789);";
         final String insertSQL1 = "DELETE FROM audit_log WHERE PersonID=1;";
-        final String insertSQL2 = "INSERT INTO audit_log VALUES (1, 123, 123456789);";
+        final String insertSQL2 = "INSERT INTO audit_log VALUES (3, 123, 123456789);";
         final String insertSQL3 = "UPDATE audit_log SET PersonID=124 where id=1;";
         final String insertSQL4 = "INSERT INTO audit_log VALUES (2, 234, 123456789);";
 

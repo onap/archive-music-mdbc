@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -38,7 +39,6 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiFunction;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 import org.onap.music.datastore.Condition;
@@ -58,7 +58,12 @@ import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
-import org.onap.music.mdbc.tables.*;
+import org.onap.music.mdbc.tables.MriReference;
+import org.onap.music.mdbc.tables.MusicRangeInformationRow;
+import org.onap.music.mdbc.tables.MusicTxDigestId;
+import org.onap.music.mdbc.tables.RangeDependency;
+import org.onap.music.mdbc.tables.StagingTable;
+import org.onap.music.mdbc.tables.TxCommitProgress;
 import com.datastax.driver.core.BoundStatement;
 import com.datastax.driver.core.ColumnDefinitions;
 import com.datastax.driver.core.DataType;
@@ -119,6 +124,7 @@ public class MusicMixin implements MusicInterface {
     private String musicEventualTxDigestTableName = "musicevetxdigest";
     private String musicRangeInformationTableName = "musicrangeinformation";
     private String musicRangeDependencyTableName = "musicrangedependency";
+    private String musicNodeInfoTableName = "nodeinfo";
 
     private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MusicMixin.class);
 
@@ -336,6 +342,7 @@ public class MusicMixin implements MusicInterface {
         try {
             createMusicTxDigest();//\TODO If we start partitioning the data base, we would need to use the redotable number
             createMusicEventualTxDigest();
+            createMusicNodeInfoTable();
             createMusicRangeInformationTable(this.music_ns,this.musicRangeInformationTableName);
             createMusicRangeDependencyTable();
         }
@@ -982,12 +989,7 @@ public class MusicMixin implements MusicInterface {
         if(rt.getResult().getResult().toLowerCase().equals("failure")) {
             logger.error(EELFLoggerDelegate.errorLogger, "Failure while eventualPut...: "+rt.getMessage());
         }
-		/*Session sess = getMusicSession();
-		SimpleStatement s = new SimpleStatement(cql);
-		s.setReadTimeoutMillis(60000);
-		synchronized (sess) {
-			sess.execute(s);
-		}*/
+		
     }
 
     /**
@@ -1319,6 +1321,9 @@ public class MusicMixin implements MusicInterface {
     @Override
     public void commitLog(DatabasePartition partition,List<Range> eventualRanges,  HashMap<Range,StagingTable> transactionDigest,
                           String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException{
+        // first deal with commit for eventually consistent tables
+        filterAndAddEventualTxDigest(eventualRanges, transactionDigest, txId, progressKeeper);
+        
         if(partition==null){
             logger.warn("Trying tcommit log with null partition");
             return;
@@ -1328,8 +1333,7 @@ public class MusicMixin implements MusicInterface {
             logger.warn("Trying to commit log with empty ranges");
             return;
         }
-        // first deal with commit for eventually consistent tables
-        filterAndAddEventualTxDigest(eventualRanges, transactionDigest, txId, progressKeeper);
+        
  
         UUID mriIndex = partition.getMRIIndex();
         String fullyQualifiedMriKey = music_ns+"."+ this.musicRangeInformationTableName+"."+mriIndex;
@@ -1916,28 +1920,36 @@ public class MusicMixin implements MusicInterface {
     
     
     @Override
-    public ArrayList<HashMap<Range,StagingTable>> getEveTxDigest() throws MDBCServiceException {
+    public LinkedHashMap<UUID, HashMap<Range,StagingTable>> getEveTxDigest(String nodeName) throws MDBCServiceException {
         HashMap<Range,StagingTable> changes;
-        ArrayList<HashMap<Range,StagingTable>> ecDigestList = new ArrayList<HashMap<Range,StagingTable>>();
+        String cql;
+        LinkedHashMap<UUID, HashMap<Range,StagingTable>> ecDigestInformation = new LinkedHashMap<UUID, HashMap<Range,StagingTable>>();
+        String musicevetxdigestNodeinfoTimeID = getTxTimeIdFromNodeInfo(nodeName);
+        PreparedQueryObject pQueryObject = new PreparedQueryObject();
+        
+        if (musicevetxdigestNodeinfoTimeID != null && !musicevetxdigestNodeinfoTimeID.isEmpty() ) {
+            // this will fetch only few records based on the time-stamp condition.
+            cql = String.format("SELECT * FROM %s.%s WHERE txtimeid > ?;", music_ns, this.musicEventualTxDigestTableName);
+            pQueryObject.appendQueryString(cql);
+            pQueryObject.addValue(musicevetxdigestNodeinfoTimeID);
             
-            //but was this timestamp is getting added as per post: https://dev.mysql.com/doc/refman/8.0/en/time-zone-leap-seconds.html
-            //Ex1: SELECT uuid, txDigest, UNIX_TIMESTAMP(ts) FROM ectxdigest ORDER by ts;
-            //Ex2: SELECT * FROM ectxdigest ORDER by ts; or SELECT * FROM ectxdigest
-          //####### this will pull all records.. but REPLAY will be against specific records once the NODE it back ON-Line.
-            // I should get the last record timestamp so that I can put a where condition.
-            //EX3: SELECT uuid, txDigest, UNIX_TIMESTAMP(ts) FROM ectxdigest where UNIX_TIMESTAMP(ts)>UNIX_TIMESTAMP(<<Date/Time value from others>>) ORDER by ts;
-        String cql = String.format("SELECT * FROM %s.%s ;", music_ns, this.musicEventualTxDigestTableName);  
-            // Ex 1 & 2 might return millions of records!! things to consider outOfMemory issue, performance issue etc.. How to overcome??
-            // Ex 3: will return less records compare to Ex:1 and Ex:2.
-
-            // I need to get a ResultSet of all the records and give each row to the below HashMap.
-        ResultSet rs = executeMusicRead(cql);
+        } else {
+            // This is going to Fetch all the Transactiondigest records from the musicevetxdigest table.
+            cql = String.format("SELECT * FROM %s.%s ;", music_ns, this.musicEventualTxDigestTableName);
+            pQueryObject.appendQueryString(cql);
+        }
+        
+        // I need to get a ResultSet of all the records and give each row to the below HashMap.
+        ResultSet rs = executeMusicRead(pQueryObject.getQuery());
         while (!rs.isExhausted()) {
             Row row = rs.one();
-            String digest = row.getString("transactiondigest");
+            String digest = row.getString("transactiondigest");        
+            //String txTimeId = row.getString("txtimeid"); //???
+            UUID txTimeId = row.getUUID("txtimeid");    
             
             try {
                 changes = (HashMap<Range, StagingTable>) MDBCUtils.fromString(digest);
+                
             } catch (IOException e) {
                 logger.error("IOException when deserializing digest");
                 throw new MDBCServiceException("Deserializng digest failed with ioexception", e);
@@ -1946,10 +1958,10 @@ public class MusicMixin implements MusicInterface {
                 throw new MDBCServiceException("Deserializng digest failed with an invalid class", e);
             }
 
-            ecDigestList.add(changes);
+            ecDigestInformation.put(txTimeId, changes);
+
         }      
-            
-        return ecDigestList;
+        return ecDigestInformation;
     }
 
     @Override
@@ -2477,8 +2489,7 @@ public class MusicMixin implements MusicInterface {
         return result.one();
     }
 
-    private static Row executeMusicUnlockedQuorumGet(PreparedQueryObject cqlObject)
-        throws MDBCServiceException{
+    private static Row executeMusicUnlockedQuorumGet(PreparedQueryObject cqlObject) throws MDBCServiceException{
         ResultSet result = MusicCore.quorumGet(cqlObject);
         if(result == null || result.isExhausted()){
             throw new MDBCServiceException("There is not a row that matches the query: ["+cqlObject.getQuery()+"]");
@@ -2546,5 +2557,89 @@ public class MusicMixin implements MusicInterface {
     public OwnershipAndCheckpoint getOwnAndCheck(){
         return ownAndCheck;
     }
+    
+    @Override
+    public void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException{
+        
+           String cql = String.format("UPDATE %s.%s SET txtimeid = (%s), txupdatedatetime = now() WHERE nodename = ?;", music_ns, this.musicEventualTxDigestTableName, txTimeID);
+            PreparedQueryObject pQueryObject = new PreparedQueryObject();
+            pQueryObject.appendQueryString(cql);
+            pQueryObject.addValue(nodeName);
+        
+            executeMusicWriteQuery(pQueryObject.getQuery());
+            logger.info("Successfully updated nodeinfo table with txtimeid value: " + txTimeID + " against the node:" + nodeName);
+            
+        
+    }
+    
+    public void createMusicNodeInfoTable() throws MDBCServiceException {
+        createMusicNodeInfoTable(-1);
+    }
+    
+    /**
+     * This function creates the NodeInfo table. It contain information related
+     * to the nodes along with the updated transactionDigest details.
+     *   * The schema of the table is
+     *      * nodeId, uuid. 
+     *      * nodeName, text or varchar?? for now I am going ahead with "text".
+     *      * createDateTime, TIMEUUID.
+     *      * TxUpdateDateTime, TIMEUUID.
+     *      * TxTimeID, TIMEUUID.
+     *      * LastTxDigestID, uuid. (not needed as of now!!)
+     */
+    private void createMusicNodeInfoTable(int nodeInfoTableNumber) throws MDBCServiceException {
+        String tableName = this.musicNodeInfoTableName;
+        if(nodeInfoTableNumber >= 0) {
+            tableName = tableName +
+                "-" +
+                Integer.toString(nodeInfoTableNumber);
+        }
+
+        String priKey = "nodename";
+        StringBuilder fields = new StringBuilder();
+        fields.append("nodename text, ");
+        fields.append("createdatetime TIMEUUID, ");
+        fields.append("txupdatedatetime TIMEUUID, ");
+        fields.append("txtimeid TIMEUUID ");
+        //fields.append("LastTxDigestID uuid ");// Not needed as of now!     
+        
+        String cql = String.format(
+                "CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));",
+                this.music_ns,
+                tableName,
+                fields,
+                priKey);
+        
+        try {
+            executeMusicWriteQuery(this.music_ns,tableName,cql);
+        } catch (MDBCServiceException e) {
+            logger.error("Initialization error: Failure to create node information table");
+            throw(e);
+        }
+    }
+    
+    public String getTxTimeIdFromNodeInfo(String nodeName) throws MDBCServiceException {
+            // expecting NodeName from base-0.json file: which is : NJNode
+            //String nodeName = MdbcServer.stateManager.getMdbcServerName(); 
+            // this retrieves the NJNode row from Cassandra's NodeInfo table so that I can retrieve TimeStamp for further processing.
+        String cql = String.format("SELECT txtimeid FROM %s.%s WHERE nodeName = ?;", music_ns, musicNodeInfoTableName);  
+        PreparedQueryObject pQueryObject = new PreparedQueryObject();
+        pQueryObject.appendQueryString(cql);
+        pQueryObject.addValue(nodeName);
+        Row newRow;
+        try {
+            newRow = executeMusicUnlockedQuorumGet(pQueryObject);
+        } catch (MDBCServiceException e) {
+            logger.error("Get operation error: Failure to get row from nodeinfo with nodename:"+nodeName);
+            // TODO check underlying exception if no data and return empty string
+            return "";
+            //throw new MDBCServiceException("error:Failure to retrive nodeinfo details information", e);
+        }
+        
+        String txtimeid = newRow.getString("txtimeid");
+
+        return txtimeid;
+    }
+
 
 }

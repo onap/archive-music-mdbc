@@ -104,26 +104,31 @@ public class MusicTxDigest {
 	 * @param dbi interface to the database that will replay the operations
 	 * @throws MDBCServiceException
 	 */
-	public static void replayDigest(MusicInterface mi, DBInterface dbi) throws MDBCServiceException {
-					//List<MusicTxDigestId> partitionsRedoLogTxIds = mi.getMusicRangeInformation(partitionId).getRedoLog();
-					//From where should I fetch TransactionsIDs ??? from NEW TABLE ?? or EXISING TABLE ?? << what the new SITE_TABLE details??
-					// --> It is a new table called ECTxDigest
-					//I should sort/ call a method which gives all the entires of  a table based on the time-stamp from Low to High
-
-		ArrayList<HashMap<Range, StagingTable>> ecTxDigest = mi.getEveTxDigest();
-		
-					//for (MusicTxDigestId txId: partitionsRedoLogTxIds) { // partitionsRedoLogTxIds --> this comes from new table where timeStamp > currentTimeStamp  ( THIS SHOULD BE lessthan.. which is ASC order)
-					//HashMap<Range, StagingTable> transaction = mi2.getEcTxDigest();  // Getting records from musictxdigest TABLE.
-		for (HashMap<Range, StagingTable> transaction: ecTxDigest) {
-			try {
-				dbi.replayTransaction(transaction); // I think this Might change if the data is coming from a new table.. ( what is the new table structure??)
-			} catch (SQLException e) {
-				logger.error("EC:Rolling back the entire digest replay.");
-				return;
-			}
-			logger.info("EC: Successfully replayed transaction ");
-		}
-	}
+   public void replayDigest(MusicInterface mi, DBInterface dbi) throws MDBCServiceException {
+             HashMap<Range, StagingTable> transaction;
+             String nodeName = stateManager.getMdbcServerName();
+             logger.info("Node Name: "+nodeName);
+             LinkedHashMap<UUID, HashMap<Range,StagingTable>> ecDigestInformation = mi.getEveTxDigest(nodeName);
+             Set<UUID> keys = ecDigestInformation.keySet();
+             
+             for(UUID txTimeID:keys){
+                 transaction = (HashMap<Range,StagingTable>) ecDigestInformation.get(txTimeID);
+                 
+                 try {
+                     dbi.replayTransaction(transaction); // I think this Might change if the data is coming from a new table.. ( what is the new table structure??)
+                 } catch (SQLException e) {
+                     logger.error("EC:Rolling back the entire digest replay.");
+                     return;
+                 }
+                 logger.info("EC: Successfully replayed transaction for txTimeID key: "+txTimeID);
+                
+                 try {
+                     mi.updateNodeInfoTableWithTxTimeIDKey(txTimeID, nodeName);
+                 } catch (MDBCServiceException e) {
+                     logger.error("EC:Rolling back the entire digest replay.");
+                 }
+             }
+         }
 
 	
 	/**
