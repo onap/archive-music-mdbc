@@ -182,7 +182,7 @@
         <dependency>
             <groupId>org.onap.music</groupId>
             <artifactId>dev-MUSIC-cassandra</artifactId>
-            <version>3.2.1-SNAPSHOT</version>
+            <version>3.2.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.netty</groupId>

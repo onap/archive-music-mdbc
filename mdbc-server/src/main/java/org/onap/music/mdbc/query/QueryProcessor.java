@@ -29,6 +29,7 @@ import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.avatica.util.Quoting;
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlInsert;
+import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.SqlNodeList;
 import org.apache.calcite.sql.SqlSelect;
@@ -55,209 +56,193 @@ import net.sf.jsqlparser.util.TablesNamesFinder;
 
 public class QueryProcessor {
 
-	private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(QueryProcessor.class);
+    private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(QueryProcessor.class);
 
-	public List<String> tables = null;
+    public List<String> tables = null;
 
-	public QueryProcessor() {
+    public QueryProcessor() {
 
-	}
+    }
 
-	protected static SqlParserImplFactory parserImplFactory() {
-		return SqlParserImpl.FACTORY;
-	}
+    protected static SqlParserImplFactory parserImplFactory() {
+        return SqlParserImpl.FACTORY;
+    }
 
-	protected static SqlParser getSqlParser(String sql) {
-		Quoting quoting = Quoting.DOUBLE_QUOTE;
-		Casing unquotedCasing = Casing.TO_UPPER;
-		Casing quotedCasing = Casing.UNCHANGED;
-		SqlConformance conformance = SqlConformanceEnum.DEFAULT;
-		
-		return SqlParser.create(sql, SqlParser.configBuilder().setParserFactory(parserImplFactory()).setQuoting(quoting)
-				.setUnquotedCasing(unquotedCasing).setQuotedCasing(quotedCasing).setConformance(conformance).build());
-	}
+    protected static SqlParser getSqlParser(String sql) {
+        Quoting quoting = Quoting.DOUBLE_QUOTE;
+        Casing unquotedCasing = Casing.TO_UPPER;
+        Casing quotedCasing = Casing.UNCHANGED;
+        SqlConformance conformance = SqlConformanceEnum.DEFAULT;
 
-	public static Map<String, List<String>> parseSqlQuery(String query) throws SqlParseException {
-		logger.info(EELFLoggerDelegate.applicationLogger, "Parsing query: "+query);
-		Map<String, List<String>> tableOpsMap = new HashMap<>();
-		//for Create no need to check locks.
-		if(query.toUpperCase().startsWith("CREATE"))  {
-			logger.error(EELFLoggerDelegate.errorLogger, "CREATE TABLE DDL not currently supported currently.");
-			return tableOpsMap;
-		}
-		
-		/*SqlParser parser = SqlParser.create(query);
+        return SqlParser.create(sql, SqlParser.configBuilder().setParserFactory(parserImplFactory()).setQuoting(quoting)
+                .setUnquotedCasing(unquotedCasing).setQuotedCasing(quotedCasing).setConformance(conformance).build());
+    }
+
+    /**
+     * 
+     * @param query
+     * @return map of table name to {@link org.onap.music.mdbc.query.Operation}
+     * @throws SqlParseException
+     */
+    public static Map<String, List<Operation>> parseSqlQuery(String query) throws SqlParseException {
+        logger.info(EELFLoggerDelegate.applicationLogger, "Parsing query: "+query);
+        Map<String, List<Operation>> tableOpsMap = new HashMap<>();
+        //for Create no need to check locks.
+        if(query.toUpperCase().startsWith("CREATE"))  {
+            logger.error(EELFLoggerDelegate.errorLogger, "CREATE TABLE DDL not currently supported currently.");
+            return tableOpsMap;
+        }
+
+        /*SqlParser parser = SqlParser.create(query);
 		SqlNode sqlNode = parser.parseQuery();*/
-		SqlNode sqlNode = getSqlParser(query).parseStmt();
+        SqlNode sqlNode = getSqlParser(query).parseStmt();
 
-		SqlBasicVisitor<Void> visitor = new SqlBasicVisitor<Void>() {
+        SqlBasicVisitor<Void> visitor = new SqlBasicVisitor<Void>() {
 
-			public Void visit(SqlCall call) {
-				if (call.getOperator() instanceof SqlInOperator) {
-					throw new Util.FoundOne(call);
-				}
-				return super.visit(call);
-			}
+            public Void visit(SqlCall call) {
+                if (call.getOperator() instanceof SqlInOperator) {
+                    throw new Util.FoundOne(call);
+                }
+                return super.visit(call);
+            }
 
-		};
+        };
 
-		// sqlNode.accept(new SqlAnalyzer());
-		sqlNode.accept(visitor);
+        // sqlNode.accept(new SqlAnalyzer());
+        sqlNode.accept(visitor);
+        switch (sqlNode.getKind()) {
+            case INSERT:
+                parseInsert((SqlInsert) sqlNode, tableOpsMap);
+                break;
+            case UPDATE:
+                parseUpdate((SqlUpdate) sqlNode, tableOpsMap);
+                break;
+            case SELECT:
+                parseSelect((SqlSelect) sqlNode, tableOpsMap);
+                break;
+            default:
+                logger.error("Unhandled sql query type " + sqlNode.getKind() +" for query " + query);
+        }
+        return tableOpsMap;
+    }
 
-		if (sqlNode instanceof SqlInsert) {
-			SqlInsert sqlInsert = (SqlInsert) sqlNode;
-			SqlNodeList targetColumnList = sqlInsert.getTargetColumnList();
-			System.out.println("targetColumnList: "+targetColumnList);
-			String tableName = sqlInsert.getTargetTable().toString();
-			List<String> Ops = tableOpsMap.get(tableName);
-			if (Ops == null)
-				Ops = new ArrayList<>();
-			Ops.add(Operation.INSERT.getOperation());
-			tableOpsMap.put(tableName, Ops);
-		} else if (sqlNode instanceof SqlUpdate) {
-			SqlUpdate sqlUpdate = (SqlUpdate) sqlNode;
-			String tableName = sqlUpdate.getTargetTable().toString();
-			List<String> Ops = tableOpsMap.get(tableName);
-			if (Ops == null)
-				Ops = new ArrayList<>();
-			Ops.add(Operation.UPDATE.getOperation());
-			tableOpsMap.put(tableName, Ops);
-		} else if (sqlNode instanceof SqlSelect) {
-			SqlSelect sqlSelect = (SqlSelect) sqlNode;
-			SqlNodeList selectList = sqlSelect.getSelectList();
-			String tables = sqlSelect.getFrom().toString();
-			String[] tablesArr = tables.split(",");
-			
-			SqlNode where = sqlSelect.getWhere();
-			
-			for (String table : tablesArr) {
-				
-				String tableName = null;
-					if(table.contains("`")) {
-						String[] split = table.split("`");
-						tableName = split[1];
-					} else
-						tableName = table;
+    private static void parseInsert(SqlInsert sqlNode, Map<String, List<Operation>> tableOpsMap) {
+        SqlInsert sqlInsert = (SqlInsert) sqlNode;
+        String tableName = sqlInsert.getTargetTable().toString();
+        //handle insert into select query
+        if (sqlInsert.getSource().getKind()==SqlKind.SELECT) {
+            parseSelect((SqlSelect) sqlInsert.getSource(), tableOpsMap);
+        }
+        List<Operation> Ops = tableOpsMap.get(tableName);
+        if (Ops == null)
+            Ops = new ArrayList<>();
+        Ops.add(Operation.INSERT);
+        tableOpsMap.put(tableName, Ops);
+    }
+    
+    private static void parseUpdate(SqlUpdate sqlNode, Map<String, List<Operation>> tableOpsMap) {
+        SqlUpdate sqlUpdate = (SqlUpdate) sqlNode;
+        String tableName = sqlUpdate.getTargetTable().toString();
+        List<Operation> Ops = tableOpsMap.get(tableName);
+        if (Ops == null)
+            Ops = new ArrayList<>();
+        Ops.add(Operation.UPDATE);
+        tableOpsMap.put(tableName, Ops);
+    }
+    
+    private static void parseSelect(SqlSelect sqlNode, Map<String, List<Operation>> tableOpsMap ) {
+        SqlSelect sqlSelect = (SqlSelect) sqlNode;
+        SqlNodeList selectList = sqlSelect.getSelectList();
+        String tables = sqlSelect.getFrom().toString();
+        String[] tablesArr = tables.split(",");
 
-				List<String> Ops = tableOpsMap.get(tableName);
-				if (Ops == null) Ops = new ArrayList<>();
-				if (where == null) {
-					Ops.add(Operation.TABLE.getOperation());
-					tableOpsMap.put(tableName, Ops);
-				} else {
-					Ops.add(Operation.SELECT.getOperation());
-					tableOpsMap.put(tableName, Ops);
-				}
-			}
-		}
+        for (String table : tablesArr) {
 
-		return tableOpsMap;
-	}
+            String tableName = null;
+            if(table.contains("`")) {
+                String[] split = table.split("`");
+                tableName = split[1];
+            } else {
+                tableName = table;
+            }
+            List<Operation> Ops = tableOpsMap.get(tableName);
+            if (Ops == null) Ops = new ArrayList<>();
+            Ops.add(Operation.SELECT);
+            tableOpsMap.put(tableName, Ops);
+        }
+    }
 
-	@Deprecated
-	public static Map<String, List<String>> extractTableFromQuery(String sqlQuery) {
-		List<String> tables = null;
-		Map<String, List<String>> tableOpsMap = new HashMap<>();
-		try {
-			net.sf.jsqlparser.statement.Statement stmt = CCJSqlParserUtil.parse(sqlQuery);
-			if (stmt instanceof Insert) {
-				Insert s = (Insert) stmt;
-				String tbl = s.getTable().getName();
-				List<String> Ops = tableOpsMap.get(tbl);
-				if (Ops == null)
-					Ops = new ArrayList<>();
-				Ops.add(Operation.INSERT.getOperation());
-				tableOpsMap.put(tbl, Ops);
-				logger.debug(EELFLoggerDelegate.applicationLogger, "Inserting into table: " + tbl);
-			} else {
-				String tbl;
-				String where = "";
-				if (stmt instanceof Update) {
-					Update u = (Update) stmt;
-					tbl = u.getTables().get(0).getName();
-					List<String> Ops = tableOpsMap.get(tbl);
-					if (Ops == null)
-						Ops = new ArrayList<>();
-					if (u.getWhere() != null) {
-						where = u.getWhere().toString();
-						logger.debug(EELFLoggerDelegate.applicationLogger, "Updating table: " + tbl);
-						Ops.add(Operation.UPDATE.getOperation());
-					} else {
-						Ops.add(Operation.TABLE.getOperation());
-					}
-					tableOpsMap.put(tbl, Ops);
-				} else if (stmt instanceof Delete) {
-					Delete d = (Delete) stmt;
-					tbl = d.getTable().getName();
-					List<String> Ops = tableOpsMap.get(tbl);
-					if (Ops == null)
-						Ops = new ArrayList<>();
-					if (d.getWhere() != null) {
-						where = d.getWhere().toString();
-						Ops.add(Operation.DELETE.getOperation());
-					} else {
-						Ops.add(Operation.TABLE.getOperation());
-					}
-					tableOpsMap.put(tbl, Ops);
-					logger.debug(EELFLoggerDelegate.applicationLogger, "Deleting from table: " + tbl);
-				} else if (stmt instanceof Select) {
-					TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
-					tables = tablesNamesFinder.getTableList(stmt);
-					for (String table : tables) {
-						List<String> Ops = tableOpsMap.get(table);
-						if (Ops == null)
-							Ops = new ArrayList<>();
-						Ops.add(Operation.SELECT.getOperation());
-						tableOpsMap.put(table, Ops);
-					}
-				} else if (stmt instanceof CreateTable) {
-					CreateTable ct = (CreateTable) stmt;
-					List<String> Ops = new ArrayList<>();
-					Ops.add(Operation.TABLE.getOperation());
-					tableOpsMap.put(ct.getTable().getName(), Ops);
-				} else {
-					logger.error(EELFLoggerDelegate.errorLogger, "Not recognized sql type:" + stmt.getClass());
-					tbl = "";
-				}
-			}
-		} catch (JSQLParserException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return tableOpsMap;
-	}
-
-	public static void main(String[] args) throws SqlParseException {
-		
-		String sqlQuery = "CREATE TABLE pet (name VARCHAR(20), owner VARCHAR(20))";
-		System.out.println(parseSqlQuery(sqlQuery));
-		
-		sqlQuery = "SELECT name, age FROM table1 t1, table2 t2 WHERE t1.id = t2.id";
-		//Map<String, List<String>> tableOpsMap = extractTableFromQuery(sqlQuery);
-		System.out.println(parseSqlQuery(sqlQuery));
-
-		sqlQuery = "SELECT name, age FROM table1, table2 t2 WHERE id = t2.id";
-		// Map<String, List<String>> tableOpsMap = extractTableFromQuery(sqlQuery);
-		System.out.println(parseSqlQuery(sqlQuery));
-
-		sqlQuery = "SELECT name, age FROM table1 t1";
-		// Map<String, List<String>> tableOpsMap = extractTableFromQuery(sqlQuery);
-		System.out.println(parseSqlQuery(sqlQuery));
-
-		sqlQuery = "INSERT INTO Employees (id, name) values ('1','Vikram')";
-		// tableOpsMap = extractTableFromQuery(sqlQuery);
-		// System.out.println(tableOpsMap);
-		System.out.println(parseSqlQuery(sqlQuery));
-
-		sqlQuery = "UPDATE Employees SET id = 1 WHERE id = 2";
-		System.out.println(parseSqlQuery(sqlQuery));
-
-		sqlQuery = "UPDATE Employees SET id = 1";
-		System.out.println(parseSqlQuery(sqlQuery));
-
-		sqlQuery = "UPDATE table1 SET id = 1";
-		System.out.println(parseSqlQuery(sqlQuery));
-
-	}
+    @Deprecated
+    public static Map<String, List<String>> extractTableFromQuery(String sqlQuery) {
+        List<String> tables = null;
+        Map<String, List<String>> tableOpsMap = new HashMap<>();
+        try {
+            net.sf.jsqlparser.statement.Statement stmt = CCJSqlParserUtil.parse(sqlQuery);
+            if (stmt instanceof Insert) {
+                Insert s = (Insert) stmt;
+                String tbl = s.getTable().getName();
+                List<String> Ops = tableOpsMap.get(tbl);
+                if (Ops == null)
+                    Ops = new ArrayList<>();
+                Ops.add(Operation.INSERT.getOperation());
+                tableOpsMap.put(tbl, Ops);
+                logger.debug(EELFLoggerDelegate.applicationLogger, "Inserting into table: " + tbl);
+            } else {
+                String tbl;
+                String where = "";
+                if (stmt instanceof Update) {
+                    Update u = (Update) stmt;
+                    tbl = u.getTables().get(0).getName();
+                    List<String> Ops = tableOpsMap.get(tbl);
+                    if (Ops == null)
+                        Ops = new ArrayList<>();
+                    if (u.getWhere() != null) {
+                        where = u.getWhere().toString();
+                        logger.debug(EELFLoggerDelegate.applicationLogger, "Updating table: " + tbl);
+                        Ops.add(Operation.UPDATE.getOperation());
+                    } else {
+                        Ops.add(Operation.TABLE.getOperation());
+                    }
+                    tableOpsMap.put(tbl, Ops);
+                } else if (stmt instanceof Delete) {
+                    Delete d = (Delete) stmt;
+                    tbl = d.getTable().getName();
+                    List<String> Ops = tableOpsMap.get(tbl);
+                    if (Ops == null)
+                        Ops = new ArrayList<>();
+                    if (d.getWhere() != null) {
+                        where = d.getWhere().toString();
+                        Ops.add(Operation.DELETE.getOperation());
+                    } else {
+                        Ops.add(Operation.TABLE.getOperation());
+                    }
+                    tableOpsMap.put(tbl, Ops);
+                    logger.debug(EELFLoggerDelegate.applicationLogger, "Deleting from table: " + tbl);
+                } else if (stmt instanceof Select) {
+                    TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
+                    tables = tablesNamesFinder.getTableList(stmt);
+                    for (String table : tables) {
+                        List<String> Ops = tableOpsMap.get(table);
+                        if (Ops == null)
+                            Ops = new ArrayList<>();
+                        Ops.add(Operation.SELECT.getOperation());
+                        tableOpsMap.put(table, Ops);
+                    }
+                } else if (stmt instanceof CreateTable) {
+                    CreateTable ct = (CreateTable) stmt;
+                    List<String> Ops = new ArrayList<>();
+                    Ops.add(Operation.TABLE.getOperation());
+                    tableOpsMap.put(ct.getTable().getName(), Ops);
+                } else {
+                    logger.error(EELFLoggerDelegate.errorLogger, "Not recognized sql type:" + stmt.getClass());
+                    tbl = "";
+                }
+            }
+        } catch (JSQLParserException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return tableOpsMap;
+    }
 
 }
