@@ -110,7 +110,7 @@ public class MusicMixinTest {
 
     }
 
-    @Test(timeout=1000)
+    @Test(timeout=10000)
     public void own() {
         Range range = new Range("TABLE1");
         List<Range> ranges = new ArrayList<>();
