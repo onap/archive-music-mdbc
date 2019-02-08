@@ -998,7 +998,7 @@ public class MusicMixin implements MusicInterface {
      * @return a ResultSet containing the rows returned from the query
      */
     protected ResultSet executeMusicRead(String cql) throws MDBCServiceException {
-        logger.debug(EELFLoggerDelegate.applicationLogger, "Executing MUSIC write:"+ cql);
+        logger.debug(EELFLoggerDelegate.applicationLogger, "Executing MUSIC read:"+ cql);
         PreparedQueryObject pQueryObject = new PreparedQueryObject();
         pQueryObject.appendQueryString(cql);
         ResultSet results = null;
@@ -1006,6 +1006,23 @@ public class MusicMixin implements MusicInterface {
             results = MusicCore.get(pQueryObject);
         } catch (MusicServiceException e) {
             logger.error("Error executing music get operation for query: ["+cql+"]");
+            throw new MDBCServiceException("Error executing get: "+e.getMessage(), e);
+        }
+        return results;
+    }
+    
+    /**
+     * This method executes a read query in Music
+     * @param pQueryObject the PreparedQueryObject to be sent to Cassandra
+     * @return a ResultSet containing the rows returned from the query
+     */
+    protected ResultSet executeMusicRead(PreparedQueryObject pQueryObject) throws MDBCServiceException {
+        logger.debug(EELFLoggerDelegate.applicationLogger, "Executing MUSIC read:"+ pQueryObject.getQuery());
+        ResultSet results = null;
+        try {
+            results = MusicCore.get(pQueryObject);
+        } catch (MusicServiceException e) {
+            logger.error("Error executing music get operation for query: ["+pQueryObject.getQuery()+"]");
             throw new MDBCServiceException("Error executing get: "+e.getMessage(), e);
         }
         return results;
@@ -1924,23 +1941,23 @@ public class MusicMixin implements MusicInterface {
         HashMap<Range,StagingTable> changes;
         String cql;
         LinkedHashMap<UUID, HashMap<Range,StagingTable>> ecDigestInformation = new LinkedHashMap<UUID, HashMap<Range,StagingTable>>();
-        String musicevetxdigestNodeinfoTimeID = getTxTimeIdFromNodeInfo(nodeName);
+        UUID musicevetxdigestNodeinfoTimeID = getTxTimeIdFromNodeInfo(nodeName);
         PreparedQueryObject pQueryObject = new PreparedQueryObject();
         
-        if (musicevetxdigestNodeinfoTimeID != null && !musicevetxdigestNodeinfoTimeID.isEmpty() ) {
+        if (musicevetxdigestNodeinfoTimeID != null) {
             // this will fetch only few records based on the time-stamp condition.
-            cql = String.format("SELECT * FROM %s.%s WHERE txtimeid > ?;", music_ns, this.musicEventualTxDigestTableName);
+            cql = String.format("SELECT * FROM %s.%s WHERE txtimeid > ? LIMIT 10 ALLOW FILTERING;", music_ns, this.musicEventualTxDigestTableName);
             pQueryObject.appendQueryString(cql);
             pQueryObject.addValue(musicevetxdigestNodeinfoTimeID);
             
         } else {
             // This is going to Fetch all the Transactiondigest records from the musicevetxdigest table.
-            cql = String.format("SELECT * FROM %s.%s ;", music_ns, this.musicEventualTxDigestTableName);
+            cql = String.format("SELECT * FROM %s.%s LIMIT 10;", music_ns, this.musicEventualTxDigestTableName);
             pQueryObject.appendQueryString(cql);
         }
         
         // I need to get a ResultSet of all the records and give each row to the below HashMap.
-        ResultSet rs = executeMusicRead(pQueryObject.getQuery());
+        ResultSet rs = executeMusicRead(pQueryObject);
         while (!rs.isExhausted()) {
             Row row = rs.one();
             String digest = row.getString("transactiondigest");        
@@ -2561,13 +2578,16 @@ public class MusicMixin implements MusicInterface {
     @Override
     public void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException{
         
-           String cql = String.format("UPDATE %s.%s SET txtimeid = (%s), txupdatedatetime = now() WHERE nodename = ?;", music_ns, this.musicEventualTxDigestTableName, txTimeID);
+           String cql = String.format("UPDATE %s.%s SET txtimeid = %s, txupdatedatetime = now() WHERE nodename = ?;", music_ns, this.musicNodeInfoTableName, txTimeID);
             PreparedQueryObject pQueryObject = new PreparedQueryObject();
             pQueryObject.appendQueryString(cql);
             pQueryObject.addValue(nodeName);
-        
-            executeMusicWriteQuery(pQueryObject.getQuery());
-            logger.info("Successfully updated nodeinfo table with txtimeid value: " + txTimeID + " against the node:" + nodeName);
+            
+            ReturnType rt = MusicCore.eventualPut(pQueryObject);
+            if(rt.getResult().getResult().toLowerCase().equals("failure")) {
+                logger.error(EELFLoggerDelegate.errorLogger, "Failure while eventualPut...: "+rt.getMessage());
+            }
+            else logger.info("Successfully updated nodeinfo table with txtimeid value: " + txTimeID + " against the node:" + nodeName);
             
         
     }
@@ -2618,7 +2638,7 @@ public class MusicMixin implements MusicInterface {
         }
     }
     
-    public String getTxTimeIdFromNodeInfo(String nodeName) throws MDBCServiceException {
+    public UUID getTxTimeIdFromNodeInfo(String nodeName) throws MDBCServiceException {
             // expecting NodeName from base-0.json file: which is : NJNode
             //String nodeName = MdbcServer.stateManager.getMdbcServerName(); 
             // this retrieves the NJNode row from Cassandra's NodeInfo table so that I can retrieve TimeStamp for further processing.
@@ -2632,13 +2652,12 @@ public class MusicMixin implements MusicInterface {
         } catch (MDBCServiceException e) {
             logger.error("Get operation error: Failure to get row from nodeinfo with nodename:"+nodeName);
             // TODO check underlying exception if no data and return empty string
-            return "";
+            return null;
             //throw new MDBCServiceException("error:Failure to retrive nodeinfo details information", e);
         }
         
-        String txtimeid = newRow.getString("txtimeid");
+        return newRow.getUUID("txtimeid");
 
-        return txtimeid;
     }
 
 

@@ -81,13 +81,13 @@ public class MdbcTestClient {
             return;
         }
 
-        boolean execute;
-        try {
-            execute = stmt.execute(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return;
-        }
+        boolean execute = true;
+//        try {
+//            execute = stmt.execute(sql);
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//            return;
+//        }
 
         if (execute) {
             try {
