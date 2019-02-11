@@ -36,8 +36,6 @@ import java.sql.Statement;
 import java.sql.Struct;
 import java.util.*;
 import java.util.concurrent.Executor;
-
-import org.apache.commons.lang3.NotImplementedException;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.QueryException;
 import org.onap.music.logging.EELFLoggerDelegate;
@@ -52,8 +50,9 @@ import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
+import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.query.QueryProcessor;
-import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
@@ -485,14 +484,15 @@ public class MdbcConnection implements Connection {
      * Code to be run within the DB driver before a SQL statement is executed.  This is where tables
      * can be synchronized before a SELECT, for those databases that do not support SELECT triggers.
      * @param sql the SQL statement that is about to be executed
+     * @throws SQLException 
      */
-    public void preStatementHook(final String sql) throws MDBCServiceException {
+    public void preStatementHook(final String sql) throws MDBCServiceException, SQLException {
         //TODO: verify ownership of keys here
         //Parse tables from the sql query
-        Map<String, List<String>> tableToInstruction = QueryProcessor.extractTableFromQuery(sql);
+        Map<String, List<SQLOperation>> tableToQueryType = QueryProcessor.parseSqlQuery(sql);
         //Check ownership of keys
-        List<Range> queryTables = MDBCUtils.getTables(tableToInstruction);
-        if(this.partition!=null ){
+        List<Range> queryTables = MDBCUtils.getTables(tableToQueryType);
+        if (this.partition!=null) {
             List<Range> snapshot = this.partition.getSnapshot();
             if(snapshot!=null){
                 queryTables.addAll(snapshot);
@@ -500,13 +500,13 @@ public class MdbcConnection implements Connection {
         }
         // filter out ranges that fall under Eventually consistent
         // category as these tables do not need ownership
-        List<Range> scQueryTables = filterEveTables( queryTables);
-        DatabasePartition tempPartition = own(scQueryTables);
+        List<Range> scQueryTables = filterEveTables(queryTables);
+        DatabasePartition tempPartition = own(scQueryTables, MDBCUtils.getOperationType(tableToQueryType));
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
             mi.reloadAlreadyApplied(this.partition);
         }
-      dbi.preStatementHook(sql);
+        dbi.preStatementHook(sql);
     }
 
 
@@ -561,7 +561,7 @@ public class MdbcConnection implements Connection {
         return this.dbi;
     }
 
-    private DatabasePartition own(List<Range> ranges) throws MDBCServiceException {
+    private DatabasePartition own(List<Range> ranges, SQLOperationType lockType) throws MDBCServiceException {
         if(ranges==null||ranges.isEmpty()){
             return null;
         }
@@ -569,7 +569,7 @@ public class MdbcConnection implements Connection {
         OwnershipAndCheckpoint ownAndCheck = mi.getOwnAndCheck();
         UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
         try {
-            final OwnershipReturn ownershipReturn = mi.own(ranges, partition, ownOpId);
+            final OwnershipReturn ownershipReturn = mi.own(ranges, partition, ownOpId, lockType);
             if(ownershipReturn==null){
                 return null;
             }

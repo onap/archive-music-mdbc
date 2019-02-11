@@ -23,18 +23,18 @@ import java.io.Serializable;
 
 import org.json.JSONObject;
 import org.json.JSONTokener;
-
+import org.onap.music.mdbc.query.SQLOperation;
 import static java.util.Objects.hash;
 
 public final class Operation implements Serializable{
 
 	private static final long serialVersionUID = -1215301985078183104L;
 
-	final OperationType TYPE;
+	final SQLOperation TYPE;
 	final String NEW_VAL;
 	final String KEY;
 
-	public Operation(OperationType type, String newVal, String key) {
+	public Operation(SQLOperation type, String newVal, String key) {
 		TYPE = type;
 		NEW_VAL = newVal;
 		KEY = key;
@@ -50,7 +50,7 @@ public final class Operation implements Serializable{
 		return key;
 	}
 	
-    public OperationType getOperationType() {
+    public SQLOperation getOperationType() {
     	return this.TYPE;
     }
 

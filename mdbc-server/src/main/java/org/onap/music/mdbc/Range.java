@@ -21,6 +21,8 @@ package org.onap.music.mdbc;
 
 import java.io.Serializable;
 import java.util.Objects;
+import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 
 
 /**
@@ -31,50 +33,56 @@ import java.util.Objects;
  */
 public class Range implements Serializable, Cloneable{
 
-	private static final long serialVersionUID = 1610744496930800088L;
+    private static final long serialVersionUID = 1610744496930800088L;
 
-	private String table;
+    private String table;
 
-	public Range(String table) {
-		this.table = table.toUpperCase();
-	}
+    /**
+     * Create a range of db indexes that mdbc can hold.
+     * For now this range is at table level
+     *
+     * @param table - name of the table in the range
+     */
+    public Range(String table) {
+        this.table = table.toUpperCase();
+    }
 
-	public String toString(){return table.toUpperCase();}
+    public String toString(){return table.toUpperCase();}
 
-	/**
-	 * Compares to Range types
-	 * @param o the other range against which this is compared
-	 * @return the equality result
-	 */
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-		Range r = (Range) o;
+    /**
+     * Compares to Range types
+     * @param o the other range against which this is compared
+     * @return the equality result
+     */
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Range r = (Range) o;
         return (this.overlaps(r)) && (r.overlaps(this));
-	}
+    }
 
-	@Override
-	public int hashCode(){
+    @Override
+    public int hashCode(){
         return table.hashCode();
-	}
+    }
 
-	@Override
+    @Override
     protected Range clone() {
-	    Range newRange = null;
-	    try{
+        Range newRange = null;
+        try{
             newRange = (Range) super.clone();
             newRange.table = this.table;
         }
         catch(CloneNotSupportedException cns){
-	        //\TODO add logging
+            //\TODO add logging
         }
         return newRange;
 
     }
-	public boolean overlaps(Range other) {
-		return table.equals(other.table);
-	}
+    public boolean overlaps(Range other) {
+        return table.equals(other.table);
+    }
 
     public String getTable() {
         return table;

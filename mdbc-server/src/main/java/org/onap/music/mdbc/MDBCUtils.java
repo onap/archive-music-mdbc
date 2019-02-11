@@ -39,6 +39,8 @@ import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.Utils;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;
+import org.onap.music.mdbc.query.SQLOperationType;
+import org.onap.music.mdbc.query.QueryProcessor;
 
 import com.datastax.driver.core.utils.UUIDs;
 
@@ -130,11 +132,28 @@ public class MDBCUtils {
 		return prop;
 	}
 
-	public static List<Range> getTables(Map<String,List<String>> queryParsed){
+	public static List<Range> getTables(Map<String, List<org.onap.music.mdbc.query.SQLOperation>> tableToInstruction){
 	    List<Range> ranges = new ArrayList<>();
-	    for(String table: queryParsed.keySet()){
+	    for (String table: tableToInstruction.keySet()) {
 	       ranges.add(new Range(table));
         }
 	    return ranges;
+    }
+
+	/**
+	 * determine the type of operation contained in the table to query map
+	 * 
+	 * @param tableToQueryType
+	 * @return write if any table has a write query. Read otherwise
+	 */
+    public static SQLOperationType getOperationType(Map<String, List<org.onap.music.mdbc.query.SQLOperation>> tableToQueryType) {
+        for (List<org.onap.music.mdbc.query.SQLOperation> tablesOps: tableToQueryType.values()) {
+            for (org.onap.music.mdbc.query.SQLOperation op: tablesOps) {
+                if (op.getOperationType()!=SQLOperationType.READ) {
+                    return SQLOperationType.WRITE;
+                }
+            }
+        }
+        return SQLOperationType.READ;
     }
 }

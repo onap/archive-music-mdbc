@@ -20,18 +20,18 @@
 
 package org.onap.music.mdbc.query;
 
-public enum Operation {
-	
-	    INSERT("W"), SELECT("R"), UPDATE("W"), DELETE("W"), TABLE("T");
-		
-	    String operation; 
-	  
-	    String getOperation() { 
-	        return this.operation; 
-	    } 
-	  
-	    Operation(String operation) { 
-	        this.operation = operation; 
-	    } 
-	    
-	}
+public enum SQLOperation {
+    INSERT(SQLOperationType.WRITE), SELECT(SQLOperationType.READ), UPDATE(SQLOperationType.WRITE),
+    DELETE(SQLOperationType.WRITE), TABLE(SQLOperationType.TABLE);
+
+    SQLOperationType opType;
+
+    public SQLOperationType getOperationType() {
+        return this.opType;
+    }
+
+    SQLOperation(SQLOperationType operation) {
+        this.opType = operation;
+    }
+
+}

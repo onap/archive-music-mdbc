@@ -52,7 +52,7 @@ public class TestUtils {
         List<Range> ranges = new ArrayList<>();
         ranges.add(range);
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
-        MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
+        MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), "",
             mdbcServerName, true);
         DatabasePartition partition=null;
         try {

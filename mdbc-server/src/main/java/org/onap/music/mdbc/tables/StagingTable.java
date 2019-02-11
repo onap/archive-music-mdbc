@@ -29,6 +29,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 
 import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.mdbc.query.SQLOperation;
 
 public class StagingTable implements Serializable{
 	/**
@@ -43,7 +44,7 @@ public class StagingTable implements Serializable{
 		operations = new ArrayList<Operation>();
 	}
 	
-	synchronized public void addOperation(OperationType type, String newVal, String key) {
+	synchronized public void addOperation(SQLOperation type, String newVal, String key) {
 		operations.add(new Operation(type,newVal, key));
 	}
 	
