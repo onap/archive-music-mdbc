@@ -16,6 +16,24 @@
       "revId": "1359bbd68acb27e47e32b5dff8b7f35354584366",
       "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "62dc1190_db7a9468",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1946,
+      "author": {
+        "id": 679
+      },
+      "writtenOn": "2019-02-11T17:22:22Z",
+      "side": 1,
+      "message": "Yes, Doesn\u0027t Cassandra automatically order by primary key which in this case is timestamp. I tested some scenarios. Let me know if that\u0027s not the case.",
+      "parentUuid": "b930c926_67b7fc15",
+      "revId": "1359bbd68acb27e47e32b5dff8b7f35354584366",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
     }
   ]
 }
