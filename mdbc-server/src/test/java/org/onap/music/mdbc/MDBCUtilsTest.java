@@ -28,7 +28,7 @@ import java.util.HashMap;
 import org.json.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.onap.music.mdbc.tables.OperationType;
+import org.onap.music.mdbc.query.SQLOperation;
 import org.onap.music.mdbc.tables.StagingTable;
 
 @Ignore
@@ -37,7 +37,7 @@ public class MDBCUtilsTest {
         @Test
     public void toStringTest1() {
         StagingTable table = new StagingTable();
-        table.addOperation(OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString(),
+        table.addOperation(SQLOperation.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString(),
         		(new JSONObject(new String[]{"test_key", "test_value"})).toString());
         String output=null;
         try {
@@ -54,7 +54,7 @@ public class MDBCUtilsTest {
     public void toStringTest2() {
         HashMap<String,StagingTable> mapToSerialize = new HashMap<>();
         StagingTable table = new StagingTable();
-        table.addOperation(OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"}).toString()),
+        table.addOperation(SQLOperation.INSERT,(new JSONObject(new String[]{"test3", "Test4"}).toString()),
         		(new JSONObject(new String[]{"test_key", "test_value"})).toString());
         mapToSerialize.put("table",table);
         String output=null;
@@ -71,7 +71,7 @@ public class MDBCUtilsTest {
     @Test
     public void toStringTest3() {
         String testStr = "test";
-        OperationType typeTest = OperationType.INSERT;
+        SQLOperation typeTest = SQLOperation.INSERT;
         String output=null;
         try {
             output = MDBCUtils.toString(testStr);

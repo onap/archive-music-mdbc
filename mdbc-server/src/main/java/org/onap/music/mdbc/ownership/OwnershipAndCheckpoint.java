@@ -84,7 +84,7 @@ public class OwnershipAndCheckpoint{
         return false;
     }
 
-    public List<MusicRangeInformationRow> getRows(List<MusicRangeInformationRow> allMriRows, List<Range> ranges,
+    public List<MusicRangeInformationRow> getOverlappingRows(List<MusicRangeInformationRow> allMriRows, List<Range> ranges,
                                                   boolean onlyIsLatest){
         List<MusicRangeInformationRow> rows = new ArrayList<>();
         for(MusicRangeInformationRow row : allMriRows){
@@ -107,10 +107,10 @@ public class OwnershipAndCheckpoint{
         return rows;
     }
 
-    private List<MusicRangeInformationRow> getRows(MusicInterface music, List<Range> ranges, boolean onlyIsLatest)
+    private List<MusicRangeInformationRow> getOverlappingRows(MusicInterface music, List<Range> ranges, boolean onlyIsLatest)
         throws MDBCServiceException {
         final List<MusicRangeInformationRow> allMriRows = music.getAllMriRows();
-        return getRows(allMriRows,ranges,onlyIsLatest);
+        return getOverlappingRows(allMriRows,ranges,onlyIsLatest);
     }
 
     public void checkpoint(MusicInterface mi, DBInterface di, Dag extendedDag, List<Range> ranges,
@@ -170,7 +170,7 @@ public class OwnershipAndCheckpoint{
         while(!ready){
             if(change.get()){
                 change.set(false);
-                final List<MusicRangeInformationRow> rows = getRows(mi, ranges,false);
+                final List<MusicRangeInformationRow> rows = getOverlappingRows(mi, ranges,false);
                 dag = Dag.getDag(rows,ranges);
             }
             else if(!dag.applied()){

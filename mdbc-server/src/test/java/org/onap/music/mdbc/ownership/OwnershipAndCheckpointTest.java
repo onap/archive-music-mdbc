@@ -50,6 +50,7 @@ import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.MySQLMixin;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
@@ -168,7 +169,7 @@ public class OwnershipAndCheckpointTest {
 
         OwnershipReturn own=null;
         try {
-            own = musicMixin.own(ranges, currentPartition, ownOpId);
+            own = musicMixin.own(ranges, currentPartition, ownOpId, SQLOperationType.WRITE);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
