@@ -34,6 +34,24 @@
       "revId": "1359bbd68acb27e47e32b5dff8b7f35354584366",
       "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "eba580a2_e7e3f830",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 1946,
+      "author": {
+        "id": 679
+      },
+      "writtenOn": "2019-02-11T17:24:54Z",
+      "side": 1,
+      "message": "\u003e Yes, Doesn\u0027t Cassandra automatically order by primary key which in\n \u003e this case is timestamp. I tested some scenarios. Let me know if\n \u003e that\u0027s not the case.\n\n\n\nsorry, I meant it sorts based on the hashed value of the insert which I believe is the order we want.",
+      "parentUuid": "62dc1190_db7a9468",
+      "revId": "1359bbd68acb27e47e32b5dff8b7f35354584366",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
     }
   ]
 }
