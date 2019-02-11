@@ -21,6 +21,8 @@ package org.onap.music.mdbc;
 
 import java.io.Serializable;
 import java.util.Objects;
+import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 
 
 /**
@@ -35,8 +37,16 @@ public class Range implements Serializable, Cloneable{
 
 	private String table;
 
+	/**
+	 * Create a range of db indexes that mdbc can hold.
+	 * For now this range is at table level
+	 * 
+	 * Assumed operation type is write
+	 * @param table - name of the table in the range
+	 */
 	public Range(String table) {
 		this.table = table.toUpperCase();
+		//default to update (or write operations)
 	}
 
 	public String toString(){return table.toUpperCase();}

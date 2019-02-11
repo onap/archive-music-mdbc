@@ -27,15 +27,13 @@ import org.onap.music.mdbc.DatabasePartition;
 
 public final class MusicRangeInformationRow implements Comparable<MusicRangeInformationRow>{
 	private final DatabasePartition dbPartition;
-	private final UUID partitionIndex;
 	private final List<MusicTxDigestId> redoLog;
 	private String ownerId;
 	private final String metricProcessId;
 	private boolean isLatest;
 
-	public MusicRangeInformationRow (UUID partitionIndex, DatabasePartition dbPartition, List<MusicTxDigestId> redoLog,
+	public MusicRangeInformationRow (DatabasePartition dbPartition, List<MusicTxDigestId> redoLog,
 		String ownerId, String metricProcessId, boolean isLatest) {
-	    this.partitionIndex=partitionIndex;
 		this.dbPartition = dbPartition;
 		this.redoLog = redoLog;
 		this.ownerId = ownerId;
@@ -68,7 +66,7 @@ public final class MusicRangeInformationRow implements Comparable<MusicRangeInfo
 	}
 
 	public long getTimestamp(){
-	    return partitionIndex.timestamp();
+	    return dbPartition.getMRIIndex().timestamp();
     }
 
     public void setOwnerId(String newOwnerId){
@@ -95,6 +93,6 @@ public final class MusicRangeInformationRow implements Comparable<MusicRangeInfo
 
     @Override
     public int hashCode(){
-        return partitionIndex.hashCode();
+        return dbPartition.getMRIIndex().hashCode();
     }
 }

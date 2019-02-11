@@ -41,8 +41,8 @@ import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.query.SQLOperation;
 import org.onap.music.mdbc.tables.Operation;
-import org.onap.music.mdbc.tables.OperationType;
 import org.onap.music.mdbc.tables.StagingTable;
 
 import net.sf.jsqlparser.JSQLParserException;
@@ -543,16 +543,16 @@ NEW.field refers to the new value
 		}
 	}
 
-	private OperationType toOpEnum(String operation) throws NoSuchFieldException {
+	private SQLOperation toOpEnum(String operation) throws NoSuchFieldException {
 		switch (operation.toLowerCase()) {
 			case "i":
-				return OperationType.INSERT;
+				return SQLOperation.INSERT;
 			case "d":
-				return OperationType.DELETE;
+				return SQLOperation.DELETE;
 			case "u":
-				return OperationType.UPDATE;
+				return SQLOperation.UPDATE;
 			case "s":
-				return OperationType.SELECT;
+				return SQLOperation.SELECT;
 			default:
 				logger.error(EELFLoggerDelegate.errorLogger,"Invalid operation selected: ["+operation+"]");
 				throw new NoSuchFieldException("Invalid operation enum");
@@ -574,7 +574,7 @@ NEW.field refers to the new value
 			while (rs.next()) {
 				int ix      = rs.getInt("IX");
 				String op   = rs.getString("OP");
-				OperationType opType = toOpEnum(op);
+				SQLOperation opType = toOpEnum(op);
 				String tbl  = rs.getString("TABLENAME");
 				JSONObject keydataStr = new JSONObject(new JSONTokener(rs.getString("KEYDATA")));
 				String newRowStr = rs.getString("NEWROWDATA");

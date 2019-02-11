@@ -28,6 +28,7 @@ import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -271,10 +272,11 @@ public interface MusicInterface {
      * @param partition current information of the ownership in the system
      * @param ownOpId is the id used to describe this ownership operation (it is not used to create the new row, if any is
      *                required
+     * @param lockType - the type of ownership that is needed, read or write lock
 	 * @return an object indicating the status of the own function result
      * @throws MDBCServiceException
      */
-	OwnershipReturn own(List<Range> ranges, DatabasePartition partition, UUID ownOpId) throws MDBCServiceException;
+	public OwnershipReturn own(List<Range> ranges, DatabasePartition partition, UUID ownOpId, SQLOperationType lockType) throws MDBCServiceException;
 
     /**
      * This function relinquish ownership, if it is time to do it, it should be used at the end of a commit operation

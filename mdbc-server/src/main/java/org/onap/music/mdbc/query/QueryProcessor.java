@@ -20,6 +20,7 @@
 
 package org.onap.music.mdbc.query;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -81,12 +82,13 @@ public class QueryProcessor {
     /**
      * 
      * @param query
-     * @return map of table name to {@link org.onap.music.mdbc.query.Operation}
+     * @return map of table name to {@link org.onap.music.mdbc.query.SQLOperation}
+     * @throws SQLException 
      * @throws SqlParseException
      */
-    public static Map<String, List<Operation>> parseSqlQuery(String query) throws SqlParseException {
+    public static Map<String, List<SQLOperation>> parseSqlQuery(String query) throws SQLException {
         logger.info(EELFLoggerDelegate.applicationLogger, "Parsing query: "+query);
-        Map<String, List<Operation>> tableOpsMap = new HashMap<>();
+        Map<String, List<SQLOperation>> tableOpsMap = new HashMap<>();
         //for Create no need to check locks.
         if(query.toUpperCase().startsWith("CREATE"))  {
             logger.error(EELFLoggerDelegate.errorLogger, "CREATE TABLE DDL not currently supported currently.");
@@ -95,7 +97,13 @@ public class QueryProcessor {
 
         /*SqlParser parser = SqlParser.create(query);
 		SqlNode sqlNode = parser.parseQuery();*/
-        SqlNode sqlNode = getSqlParser(query).parseStmt();
+        SqlNode sqlNode;
+        try {
+            sqlNode = getSqlParser(query).parseStmt();
+        } catch (SqlParseException e) {
+            logger.error(EELFLoggerDelegate.errorLogger, "Unable to parse query: " + query +". " + e.getMessage());
+            throw new SQLException("Unable to parse query: " + query);
+        }
 
         SqlBasicVisitor<Void> visitor = new SqlBasicVisitor<Void>() {
 
@@ -126,31 +134,31 @@ public class QueryProcessor {
         return tableOpsMap;
     }
 
-    private static void parseInsert(SqlInsert sqlNode, Map<String, List<Operation>> tableOpsMap) {
+    private static void parseInsert(SqlInsert sqlNode, Map<String, List<SQLOperation>> tableOpsMap) {
         SqlInsert sqlInsert = (SqlInsert) sqlNode;
         String tableName = sqlInsert.getTargetTable().toString();
         //handle insert into select query
         if (sqlInsert.getSource().getKind()==SqlKind.SELECT) {
             parseSelect((SqlSelect) sqlInsert.getSource(), tableOpsMap);
         }
-        List<Operation> Ops = tableOpsMap.get(tableName);
+        List<SQLOperation> Ops = tableOpsMap.get(tableName);
         if (Ops == null)
             Ops = new ArrayList<>();
-        Ops.add(Operation.INSERT);
+        Ops.add(SQLOperation.INSERT);
         tableOpsMap.put(tableName, Ops);
     }
     
-    private static void parseUpdate(SqlUpdate sqlNode, Map<String, List<Operation>> tableOpsMap) {
+    private static void parseUpdate(SqlUpdate sqlNode, Map<String, List<SQLOperation>> tableOpsMap) {
         SqlUpdate sqlUpdate = (SqlUpdate) sqlNode;
         String tableName = sqlUpdate.getTargetTable().toString();
-        List<Operation> Ops = tableOpsMap.get(tableName);
+        List<SQLOperation> Ops = tableOpsMap.get(tableName);
         if (Ops == null)
             Ops = new ArrayList<>();
-        Ops.add(Operation.UPDATE);
+        Ops.add(SQLOperation.UPDATE);
         tableOpsMap.put(tableName, Ops);
     }
     
-    private static void parseSelect(SqlSelect sqlNode, Map<String, List<Operation>> tableOpsMap ) {
+    private static void parseSelect(SqlSelect sqlNode, Map<String, List<SQLOperation>> tableOpsMap ) {
         SqlSelect sqlSelect = (SqlSelect) sqlNode;
         SqlNodeList selectList = sqlSelect.getSelectList();
         String tables = sqlSelect.getFrom().toString();
@@ -165,84 +173,28 @@ public class QueryProcessor {
             } else {
                 tableName = table;
             }
-            List<Operation> Ops = tableOpsMap.get(tableName);
+            List<SQLOperation> Ops = tableOpsMap.get(tableName);
             if (Ops == null) Ops = new ArrayList<>();
-            Ops.add(Operation.SELECT);
+            Ops.add(SQLOperation.SELECT);
             tableOpsMap.put(tableName, Ops);
         }
     }
 
-    @Deprecated
-    public static Map<String, List<String>> extractTableFromQuery(String sqlQuery) {
-        List<String> tables = null;
-        Map<String, List<String>> tableOpsMap = new HashMap<>();
-        try {
-            net.sf.jsqlparser.statement.Statement stmt = CCJSqlParserUtil.parse(sqlQuery);
-            if (stmt instanceof Insert) {
-                Insert s = (Insert) stmt;
-                String tbl = s.getTable().getName();
-                List<String> Ops = tableOpsMap.get(tbl);
-                if (Ops == null)
-                    Ops = new ArrayList<>();
-                Ops.add(Operation.INSERT.getOperation());
-                tableOpsMap.put(tbl, Ops);
-                logger.debug(EELFLoggerDelegate.applicationLogger, "Inserting into table: " + tbl);
-            } else {
-                String tbl;
-                String where = "";
-                if (stmt instanceof Update) {
-                    Update u = (Update) stmt;
-                    tbl = u.getTables().get(0).getName();
-                    List<String> Ops = tableOpsMap.get(tbl);
-                    if (Ops == null)
-                        Ops = new ArrayList<>();
-                    if (u.getWhere() != null) {
-                        where = u.getWhere().toString();
-                        logger.debug(EELFLoggerDelegate.applicationLogger, "Updating table: " + tbl);
-                        Ops.add(Operation.UPDATE.getOperation());
-                    } else {
-                        Ops.add(Operation.TABLE.getOperation());
-                    }
-                    tableOpsMap.put(tbl, Ops);
-                } else if (stmt instanceof Delete) {
-                    Delete d = (Delete) stmt;
-                    tbl = d.getTable().getName();
-                    List<String> Ops = tableOpsMap.get(tbl);
-                    if (Ops == null)
-                        Ops = new ArrayList<>();
-                    if (d.getWhere() != null) {
-                        where = d.getWhere().toString();
-                        Ops.add(Operation.DELETE.getOperation());
-                    } else {
-                        Ops.add(Operation.TABLE.getOperation());
-                    }
-                    tableOpsMap.put(tbl, Ops);
-                    logger.debug(EELFLoggerDelegate.applicationLogger, "Deleting from table: " + tbl);
-                } else if (stmt instanceof Select) {
-                    TablesNamesFinder tablesNamesFinder = new TablesNamesFinder();
-                    tables = tablesNamesFinder.getTableList(stmt);
-                    for (String table : tables) {
-                        List<String> Ops = tableOpsMap.get(table);
-                        if (Ops == null)
-                            Ops = new ArrayList<>();
-                        Ops.add(Operation.SELECT.getOperation());
-                        tableOpsMap.put(table, Ops);
-                    }
-                } else if (stmt instanceof CreateTable) {
-                    CreateTable ct = (CreateTable) stmt;
-                    List<String> Ops = new ArrayList<>();
-                    Ops.add(Operation.TABLE.getOperation());
-                    tableOpsMap.put(ct.getTable().getName(), Ops);
-                } else {
-                    logger.error(EELFLoggerDelegate.errorLogger, "Not recognized sql type:" + stmt.getClass());
-                    tbl = "";
-                }
+    /**
+     * Get the maximum operation level in a list of operations.
+     * If multiple write operations, this list will return write operation.
+     * Multiple write and read operations returns write
+     * Multiple read operations return read
+     * @param list
+     * @return
+     */
+    public static SQLOperationType getOperationType(List<SQLOperation> list) { 
+        for (SQLOperation op: list) {
+            if (op.getOperationType()!= SQLOperationType.READ) {
+                return op.getOperationType();
             }
-        } catch (JSQLParserException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
         }
-        return tableOpsMap;
+        return SQLOperationType.READ;
     }
 
 }

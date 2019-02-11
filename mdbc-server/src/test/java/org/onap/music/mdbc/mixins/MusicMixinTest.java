@@ -53,6 +53,7 @@ import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TestUtils;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.service.impl.MusicCassaCore;
@@ -120,7 +121,7 @@ public class MusicMixinTest {
 
         DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
         try {
-            mixin.own(ranges,currentPartition, MDBCUtils.generateTimebasedUniqueKey());
+            mixin.own(ranges,currentPartition, MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.WRITE);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
@@ -129,7 +130,7 @@ public class MusicMixinTest {
     private DatabasePartition addRow(List<Range> ranges,boolean isLatest){
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
-        MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
+        MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), "",
             mdbcServerName, isLatest);
         DatabasePartition partition=null;
         try {
@@ -146,7 +147,7 @@ public class MusicMixinTest {
         return partition;
     }
 
-    @Test(timeout=1000)
+    @Test(timeout=10000)
     public void own2() throws InterruptedException, MDBCServiceException {
         List<Range> range12 = new ArrayList<>( Arrays.asList(
             new Range("RANGE1"),
@@ -175,7 +176,8 @@ public class MusicMixinTest {
         DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
         MusicInterface.OwnershipReturn own = null;
         try {
-            own = mixin.own(range123, currentPartition, MDBCUtils.generateTimebasedUniqueKey());
+            own = mixin.own(range123, currentPartition, MDBCUtils.generateTimebasedUniqueKey(),
+                    SQLOperationType.WRITE);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
@@ -222,6 +224,28 @@ public class MusicMixinTest {
     }
 
 
+    @Test(timeout=10000)
+    public void readOwn() {
+        Range range = new Range("TABLE1");
+        List<Range> ranges = new ArrayList<>();
+        ranges.add(range);
+        final DatabasePartition partition = TestUtils.createBasicRow(range, mixin, mdbcServerName);
+        TestUtils.unlockRow(keyspace,mriTableName,partition);
+
+        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+        MusicInterface.OwnershipReturn own1, own2;
+        try {
+            own1 = mixin.own(ranges,currentPartition, MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.READ);
+            //acquire the table again, should be allowed since they're both reads
+            own2 = mixin.own(ranges,currentPartition, MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.READ);
+        } catch (MDBCServiceException e) {
+            fail("failure when running own function");
+            return;
+        }
+        
+        System.out.println(own1.toString());
+    }
+    
     @Test
     public void relinquish() {
     }
