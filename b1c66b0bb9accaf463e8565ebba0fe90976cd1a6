@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "636b8270_868ec2f5",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2217,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-02-11T22:23:59Z",
+      "side": 1,
+      "message": "Shouldn\u0027t this be a log?",
+      "revId": "b1c66b0bb9accaf463e8565ebba0fe90976cd1a6",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0075f5dd_f490a98c",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 2223,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-02-11T22:23:59Z",
+      "side": 1,
+      "message": "Even if there is only one row, there are some steps in this operation that still need to be executed, at least the \"recover from failure\" operation.\nThis fixes the DAG in case the previous owner failed while trying to own the row. This may be fine only for read locks, but a write lock definitively needs to fix the other ones, and delete duplicate isLatest flags.",
+      "revId": "b1c66b0bb9accaf463e8565ebba0fe90976cd1a6",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
