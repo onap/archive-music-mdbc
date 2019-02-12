@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5f8dd8e9_e01f9cdf",
+        "filename": "mdbc-server/src/main/resources/logback.xml",
+        "patchSetId": 1
+      },
+      "lineNbr": 347,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-02-12T17:00:02Z",
+      "side": 0,
+      "message": "can you remove this file from the commit? the logs should be kept in for now",
+      "revId": "1359bbd68acb27e47e32b5dff8b7f35354584366",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
