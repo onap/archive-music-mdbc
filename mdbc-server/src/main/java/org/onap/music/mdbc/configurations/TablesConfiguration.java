@@ -27,6 +27,7 @@ import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.RedoRow;
 import org.onap.music.mdbc.mixins.MusicMixin;
+import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigest;
 
 import com.google.gson.Gson;
@@ -48,11 +49,9 @@ public class TablesConfiguration {
 
     private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(TablesConfiguration.class);
     private List<PartitionInformation> partitions;
-    private String internalNamespace;
-    private int internalReplicationFactor;
+    private List<String> eventual;
+    String tableToPartitionName;
     private String musicNamespace;
-    private int musicReplicationFactor;
-    private String tableToPartitionName;
     private String partitionInformationTableName;
     private String redoHistoryTableName;
     private String sqlDatabaseName;
@@ -67,8 +66,6 @@ public class TablesConfiguration {
      */
     public List<NodeConfiguration> initializeAndCreateNodeConfigurations() throws MDBCServiceException {
         logger.info("initializing the required spaces");
-        createKeyspaces();
-        initInternalNamespace();
 
         List<NodeConfiguration> nodeConfigs = new ArrayList<>();
         if(partitions == null){
@@ -77,10 +74,7 @@ public class TablesConfiguration {
         }
         for(PartitionInformation partitionInfo : partitions){
             String mriTableName = partitionInfo.mriTableName;
-            checkIfMriIsEmpty(mriTableName);
-            //0) Create the corresponding Music Range Information table
-            MusicMixin.createMusicRangeInformationTable(musicNamespace,mriTableName);
-
+            checkIfMriDoesNotExists(mriTableName,partitionInfo);
             String partitionId;
             if(partitionInfo.partitionId==null || partitionInfo.partitionId.isEmpty()){
                 //1) Create a row in the partition info table
@@ -93,39 +87,23 @@ public class TablesConfiguration {
 
             logger.info("Creating empty row with id "+partitionId);
             MusicMixin.createEmptyMriRow(musicNamespace,partitionInfo.mriTableName,UUID.fromString(partitionId),
-                partitionInfo.owner,null,partitionInfo.getTables(),true);
+                partitionInfo.owner,null,
+                partitionInfo.getTables(),true);
 
             //3) Create config for this node
             StringBuilder newStr = new StringBuilder();
             for(Range r: partitionInfo.tables){
-                newStr.append(r.toString().toUpperCase()).append(",");
+                newStr.append(r.toString()).append(",");
             }
 
             logger.info("Appending row to configuration "+partitionId);
-            nodeConfigs.add(new NodeConfiguration(newStr.toString(),"",UUID.fromString(partitionId),
+            nodeConfigs.add(new NodeConfiguration(newStr.toString(),eventual,UUID.fromString(partitionId),
             		sqlDatabaseName, partitionInfo.owner));
         }
         return nodeConfigs;
     }
 
-    private void createKeyspaces() throws MDBCServiceException {
-        MusicMixin.createKeyspace(internalNamespace,internalReplicationFactor);
-        MusicMixin.createKeyspace(musicNamespace,musicReplicationFactor);
-
-    }
-
-    private void checkIfMriIsEmpty(String mriTableName) throws MDBCServiceException {
-        //First check if table exists
-        StringBuilder checkTableExistsString = new StringBuilder("SELECT table_name FROM system_schema.tables WHERE keyspace_name='")
-            .append(musicNamespace)
-            .append("';");
-        PreparedQueryObject checkTableExists = new PreparedQueryObject();
-        checkTableExists.appendQueryString(checkTableExistsString.toString());
-        final ResultSet resultSet = MusicCore.quorumGet(checkTableExists);
-        if(resultSet.isExhausted()){
-            //Table doesn't exist
-            return;
-        }
+    private void checkIfMriDoesNotExists(String mriTableName, PartitionInformation partition) throws MDBCServiceException {
         //If exists, check if empty
         StringBuilder checkRowsInTableString = new StringBuilder("SELECT * FROM ")
             .append(musicNamespace)
@@ -134,27 +112,19 @@ public class TablesConfiguration {
             .append("';");
         PreparedQueryObject checkRowsInTable = new PreparedQueryObject();
         checkRowsInTable.appendQueryString(checkRowsInTableString.toString());
-        final ResultSet resultSet2 = MusicCore.quorumGet(checkTableExists);
-        if(!resultSet2.isExhausted()) {
-            throw new MDBCServiceException("When initializing the configuration of the system, the MRI should not exits "
-                + "be empty");
+        final ResultSet resultSet = MusicCore.quorumGet(checkRowsInTable);
+        while(resultSet!=null && !resultSet.isExhausted()){
+            final MusicRangeInformationRow mriRowFromCassandraRow = MusicMixin.getMRIRowFromCassandraRow(resultSet.one());
+            List<Range> ranges = mriRowFromCassandraRow.getDBPartition().getSnapshot();
+            for(Range range: partition.getTables()) {
+                if (Range.overlaps(ranges,range.getTable())){
+                    throw new MDBCServiceException("MRI row already exists");
+                }
+            }
         }
     }
 
 
-    private void initInternalNamespace() throws MDBCServiceException {
-        StringBuilder createKeysTableCql = new StringBuilder("CREATE TABLE IF NOT EXISTS ")
-        .append(internalNamespace)
-        .append(".unsynced_keys (key text PRIMARY KEY);");
-        PreparedQueryObject queryObject = new PreparedQueryObject();
-        queryObject.appendQueryString(createKeysTableCql.toString());
-        try {
-            MusicCore.createTable(internalNamespace,"unsynced_keys", queryObject,"critical");
-        } catch (MusicServiceException e) {
-            logger.error("Error creating unsynced keys table" );
-            throw new MDBCServiceException("Error creating unsynced keys table", e);
-        }
-    }
 
     public static TablesConfiguration readJsonFromFile(String filepath) throws FileNotFoundException {
         BufferedReader br;
@@ -174,7 +144,6 @@ public class TablesConfiguration {
         private List<Range> tables;
         private String owner;
         private String mriTableName;
-        private String mtxdTableName;
         private String partitionId;
 
         public List<Range> getTables() {
@@ -209,12 +178,5 @@ public class TablesConfiguration {
             this.partitionId = partitionId;
         }
 
-        public String getMtxdTableName(){
-           return mtxdTableName;
-        }
-
-        public void setMtxdTableName(String mtxdTableName) {
-            this.mtxdTableName = mtxdTableName;
-        }
     }
 }

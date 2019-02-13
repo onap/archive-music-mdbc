@@ -30,17 +30,20 @@ import java.util.Objects;
  * In the future we may decide to partition ranges differently
  * @author Enrique Saurez 
  */
-public class Range implements Serializable, Cloneable{
-
-	private static final long serialVersionUID = 1610744496930800088L;
+public class Range implements Cloneable{
 
 	private String table;
 
 	public Range(String table) {
-		this.table = table.toUpperCase();
+		final String[] split = table.split("\\.");
+		if(split.length!=2){
+			throw new IllegalArgumentException("Table should always contain the schema, table received in "
+				+ "constructor is "+table);
+		}
+		this.table = table;
 	}
 
-	public String toString(){return table.toUpperCase();}
+	public String toString(){return table;}
 
 	/**
 	 * Compares to Range types
@@ -57,11 +60,11 @@ public class Range implements Serializable, Cloneable{
 
 	@Override
 	public int hashCode(){
-        return table.hashCode();
+        return table.toUpperCase().hashCode();
 	}
 
 	@Override
-    protected Range clone() {
+	public Range clone() {
 	    Range newRange = null;
 	    try{
             newRange = (Range) super.clone();
@@ -76,11 +79,11 @@ public class Range implements Serializable, Cloneable{
 
     public static boolean overlaps(List<Range> ranges, String table){
 		//\TODO check if parallel stream makes sense here
-        return ranges.stream().map((Range r) -> r.table.equals(table)).anyMatch((Boolean b) -> b);
+        return ranges.stream().map((Range r) -> r.table.toUpperCase().equals(table.toUpperCase())).anyMatch((Boolean b) -> b);
 	}
 
 	public boolean overlaps(Range other) {
-		return table.equals(other.table);
+		return table.toUpperCase().equals(other.table.toUpperCase());
 	}
 
     public String getTable() {

@@ -3,21 +3,19 @@
     {
       "tables": [
         {
-          "table": "PERSONS"
+          "table": "public.PERSONS"
         }
       ],
       "owner": "",
       "mriTableName": "musicrangeinformation",
-      "mtxdTableName": "musictxdigest",
       "partitionId": ""
     }
   ],
-  "internalNamespace": "music_internal",
-  "internalReplicationFactor": 1,
+  "eventual": ["public.eventualPERSONS"],
   "musicNamespace": "namespace",
-  "musicReplicationFactor": 1,
   "tableToPartitionName": "tabletopartition",
   "partitionInformationTableName": "partitioninfo",
   "redoHistoryTableName": "redohistory",
   "sqlDatabaseName": "test"
 }
+

@@ -43,6 +43,18 @@ public final class Operation implements Serializable{
 		KEY = key;
 	}
 
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        Operation clone = null;
+        try {
+            clone = (Operation) super.clone();
+        }
+        catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        return clone;
+    }
+
 	public String getTable(){
 	    return TABLE;
     }
@@ -53,7 +65,7 @@ public final class Operation implements Serializable{
     }
 
 	public JSONObject getKey() throws MDBCServiceException {
-	    if(KEY==null){
+	    if(KEY==null||KEY.isEmpty()){
             throw new MDBCServiceException("This operation ["+TYPE.toString()+"] doesn't contain a key");
         }
         JSONObject keys = new JSONObject(new JSONTokener(KEY));
