@@ -40,7 +40,7 @@ public class MDBCUtilsTest {
     public void toStringTest1() {
         StagingTable table = new StagingTable();
         try {
-            table.addOperation(new Range("TABLE1"),OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString(),null);
+            table.addOperation(new Range("TEST.TABLE1"),OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString(),null);
         } catch (MDBCServiceException e) {
             fail();
         }

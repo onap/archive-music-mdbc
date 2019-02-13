@@ -19,6 +19,7 @@
  */
 package org.onap.music.mdbc.mixins;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -104,6 +106,13 @@ public interface DBInterface {
 	 * @return a ResultSet containing the rows returned from the query
 	 */
 	ResultSet executeSQLRead(String sql);
+
+	/**
+	 * This method is used to verify that all data structures needed for commit are ready for commit
+	 * Either for the MusicMixin (e.g. staging table) or internally for the DBMixin
+	 * Important this is not for actual commit operation, it should be treated as a signal.
+	 */
+	void preCommitHook();
 	
 	void synchronizeData(String tableName);
 	
@@ -116,11 +125,15 @@ public interface DBInterface {
 	 * @param digest
 	 * @throws SQLException if replay cannot occur correctly
 	 */
-	void replayTransaction(StagingTable digest, List<Range> ranges) throws SQLException;
+	void replayTransaction(StagingTable digest, List<Range> ranges) throws SQLException, MDBCServiceException;
 
 	void disableForeignKeyChecks() throws SQLException;
 
 	void enableForeignKeyChecks() throws SQLException;
 
-	void applyTxDigest(StagingTable txDigest, List<Range> ranges) throws SQLException;
+	void applyTxDigest(StagingTable txDigest, List<Range> ranges) throws SQLException, MDBCServiceException;
+
+	Connection getSQLConnection();
+
+	String getSchema();
 }

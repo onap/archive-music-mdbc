@@ -96,11 +96,22 @@ public class MDBCUtils {
 		return prop;
 	}
 
-	public static List<Range> getTables(Map<String,List<String>> queryParsed){
+	public static List<Range> getTables(String defaultDatabaseName, Map<String,List<String>> queryParsed){
 	    List<Range> ranges = new ArrayList<>();
 	    for(String table: queryParsed.keySet()){
-	       ranges.add(new Range(table));
-        }
+	        String[] parts = table.split("\\.");
+	        if(parts.length==2){
+				ranges.add(new Range(table));
+			}
+			else if(parts.length==1){
+				ranges.add(new Range(defaultDatabaseName+"."+table));
+	        }
+	        else{
+	        	throw new IllegalArgumentException("Table should either have only one '.' or none at all, the table "
+					+ "received is "+table);
+			}
+
+		}
 	    return ranges;
     }
 }

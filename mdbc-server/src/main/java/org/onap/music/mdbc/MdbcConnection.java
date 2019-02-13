@@ -115,6 +115,10 @@ public class MdbcConnection implements Connection {
         logger.debug("Mdbc connection created with id: "+id);
     }
 
+    public DBInterface getDatabaseInterface(){
+       return this.dbi;
+    }
+
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
         logger.error(EELFLoggerDelegate.errorLogger, "proxyconn unwrap: " + iface.getName());
@@ -155,18 +159,7 @@ public class MdbcConnection implements Connection {
             if(progressKeeper!=null) progressKeeper.commitRequested(id);
             logger.debug(EELFLoggerDelegate.applicationLogger,"autocommit changed to "+b);
             if (b) {
-                // My reading is that turning autoCOmmit ON should automatically commit any outstanding transaction
-                if(id == null || id.isEmpty()) {
-                    logger.error(EELFLoggerDelegate.errorLogger, "Connection ID is null",AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
-                    throw new SQLException("tx id is null");
-                }
-                try {
-                    mi.commitLog(partition, statemanager.getEventualRanges(), transactionDigest, id, progressKeeper);
-                } catch (MDBCServiceException e) {
-                    // TODO Auto-generated catch block
-                    logger.error("Cannot commit log to music" + e.getStackTrace());
-                    throw new SQLException(e.getMessage(), e);
-                }
+                musicCommit();
             }
             if(progressKeeper!=null) {
                 progressKeeper.setMusicDone(id);
@@ -186,13 +179,7 @@ public class MdbcConnection implements Connection {
         return jdbcConn.getAutoCommit();
     }
 
-    /**
-     * Perform a commit, as requested by the JDBC driver.  If any row updates have been delayed,
-     * they are performed now and copied into MUSIC.
-     * @throws SQLException
-     */
-    @Override
-    public void commit() throws SQLException {
+    private void musicCommit() throws SQLException {
         if(progressKeeper.isComplete(id)) {
             return;
         }
@@ -200,6 +187,7 @@ public class MdbcConnection implements Connection {
             progressKeeper.commitRequested(id);
         }
 
+        dbi.preCommitHook();
         try {
             logger.debug(EELFLoggerDelegate.applicationLogger, " commit ");
             // transaction was committed -- add all the updates into the REDO-Log in MUSIC
@@ -209,6 +197,16 @@ public class MdbcConnection implements Connection {
             logger.error(EELFLoggerDelegate.errorLogger, "Commit to music failed", AppMessages.UNKNOWNERROR, ErrorTypes.UNKNOWN, ErrorSeverity.FATAL);
             throw new SQLException("Failure commiting to MUSIC", e);
         }
+    }
+
+    /**
+     * Perform a commit, as requested by the JDBC driver.  If any row updates have been delayed,
+     * they are performed now and copied into MUSIC.
+     * @throws SQLException
+     */
+    @Override
+    public void commit() throws SQLException {
+        musicCommit();
 
         if(progressKeeper != null) {
             progressKeeper.setMusicDone(id);
@@ -263,6 +261,12 @@ public class MdbcConnection implements Connection {
             jdbcConn.close();
             logger.debug("Connection was closed for id:" + id);
         }
+        try {
+            mi.relinquish(partition.getLockId(),partition.getMRIIndex().toString());
+        } catch (MDBCServiceException e) {
+            throw new SQLException("Failure during relinquish of partition",e);
+        }
+        statemanager.closeConnection(id);
     }
 
     @Override
@@ -494,7 +498,8 @@ public class MdbcConnection implements Connection {
         //Parse tables from the sql query
         Map<String, List<String>> tableToInstruction = QueryProcessor.extractTableFromQuery(sql);
         //Check ownership of keys
-        List<Range> queryTables = MDBCUtils.getTables(tableToInstruction);
+        String defaultSchema = dbi.getSchema();
+        List<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToInstruction);
         if(this.partition!=null ){
             List<Range> snapshot = this.partition.getSnapshot();
             if(snapshot!=null){
@@ -537,18 +542,15 @@ public class MdbcConnection implements Connection {
         logger.debug(EELFLoggerDelegate.applicationLogger, "synchronizing tables:" + set1);
         for (String tableName : set1) {
             // This map will be filled in if this table was previously discovered
-            tableName = tableName.toUpperCase();
-            if (!table_set.contains(tableName) && !dbi.getReservedTblNames().contains(tableName)) {
+            if (!table_set.contains(tableName.toUpperCase()) && !dbi.getReservedTblNames().contains(tableName.toUpperCase())) {
                 logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+tableName);
                 try {
                     TableInfo ti = dbi.getTableInfo(tableName);
-                    mi.initializeMusicForTable(ti,tableName);
-                    //\TODO Verify if table info can be modify in the previous step, if not this step can be deleted
-                    ti = dbi.getTableInfo(tableName);
-                    mi.createDirtyRowTable(ti,tableName);
+                    //mi.initializeMusicForTable(ti,tableName);
+                    //mi.createDirtyRowTable(ti,tableName);
                     dbi.createSQLTriggers(tableName);
-                    table_set.add(tableName);
-                    dbi.synchronizeData(tableName);
+                    table_set.add(tableName.toUpperCase());
+                    //dbi.synchronizeData(tableName);
                     logger.debug(EELFLoggerDelegate.applicationLogger, "synchronized tables:" +
                         table_set.size() + "/" + set1.size() + "tables uploaded");
                 } catch (Exception e) {
@@ -595,6 +597,18 @@ public class MdbcConnection implements Connection {
 
     public void relinquishIfRequired(DatabasePartition partition) throws MDBCServiceException {
         mi.relinquishIfRequired(partition);
+    }
+
+    public Connection getConnection(){
+        return jdbcConn;
+    }
+
+    public DatabasePartition getPartition() {
+       return partition;
+    }
+
+    public StagingTable getTransactionDigest(){
+        return transactionDigest;
     }
 
 }

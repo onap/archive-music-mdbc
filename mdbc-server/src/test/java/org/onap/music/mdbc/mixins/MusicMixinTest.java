@@ -23,7 +23,6 @@ package org.onap.music.mdbc.mixins;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 
-import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 
 import java.util.*;
@@ -34,59 +33,34 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.rules.Timeout;
-import org.onap.music.datastore.MusicDataStore;
-import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
-import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.main.MusicCore;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.MdbcTestUtils;
 import org.onap.music.mdbc.TestUtils;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
-import org.onap.music.mdbc.tables.MusicTxDigestId;
-import org.onap.music.service.impl.MusicCassaCore;
 
 public class MusicMixinTest {
 	
-    final private static String keyspace="metricmusictest";
-    final private static String mriTableName = "musicrangeinformation";
-    final private static String mtdTableName = "musictxdigest";
-    final private static String mdbcServerName = "name";
+
 
     //Properties used to connect to music
-    private static Cluster cluster;
     private static Session session;
-    private static String cassaHost = "localhost";
     private static MusicMixin mixin = null;
 
     @BeforeClass
-    public static void init() throws MusicServiceException {
-        try {
-            EmbeddedCassandraServerHelper.startEmbeddedCassandra();
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-        cluster=EmbeddedCassandraServerHelper.getCluster();
-        //cluster = new Cluster.Builder().addContactPoint(cassaHost).withPort(9142).build();
-        cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(20000);
-        assertNotNull("Invalid configuration for cassandra", cluster);
-        session = EmbeddedCassandraServerHelper.getSession();
-        assertNotNull("Invalid configuration for cassandra", session);
+    public static void init() throws MDBCServiceException {
+        MdbcTestUtils.initCassandra();
 
-        MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
-        CassaLockStore store = new CassaLockStore(MusicDataStoreHandle.mDstoreHandle);
-        assertNotNull("Invalid configuration for music", store);
     }
 
     @AfterClass
@@ -101,26 +75,30 @@ public class MusicMixinTest {
     }
 
     @Before
-    public void initTest(){
-        session.execute("DROP KEYSPACE IF EXISTS "+keyspace);
-        try {
-            Properties properties = new Properties();
-            properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
-            properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
-            mixin=new MusicMixin(mdbcServerName,properties);
-        } catch (MDBCServiceException e) {
-            fail("error creating music mixin");
-        }
-
+    public void initTest() throws MDBCServiceException {
+        session = MdbcTestUtils.getSession();
+        session.execute("DROP KEYSPACE IF EXISTS "+ MdbcTestUtils.getKeyspace());
+        mixin=MdbcTestUtils.getMusicMixin();
     }
 
-    @Test(timeout=10000)
+    //@Test(timeout=10000)
+    @Test
     public void own() {
-        Range range = new Range("TABLE1");
+        Range range = new Range("TEST.TABLE1");
         List<Range> ranges = new ArrayList<>();
         ranges.add(range);
-        final DatabasePartition partition = TestUtils.createBasicRow(range, mixin, mdbcServerName);
-        TestUtils.unlockRow(keyspace,mriTableName,partition);
+        DatabasePartition partition=null;
+        try {
+            partition = TestUtils.createBasicRow(range, mixin, MdbcTestUtils.getServerName());
+        }
+        catch(Exception e){
+            fail("fail to create partition");
+        }
+        try {
+            TestUtils.unlockRow(MdbcTestUtils.getKeyspace(),MdbcTestUtils.getMriTableName(),partition);
+        } catch (MusicLockingException e) {
+            fail(e.getMessage());
+        }
 
         DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
         try {
@@ -134,14 +112,14 @@ public class MusicMixinTest {
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
-            mdbcServerName, isLatest);
+            MdbcTestUtils.getServerName(), isLatest);
         DatabasePartition partition=null;
         try {
             partition = mixin.createMusicRangeInformation(newRow);
         } catch (MDBCServiceException e) {
             fail("failure when creating new row");
         }
-        String fullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+partition.getMRIIndex().toString();
+        String fullyQualifiedMriKey = MdbcTestUtils.getKeyspace()+"."+ MdbcTestUtils.getMriTableName()+"."+partition.getMRIIndex().toString();
         try {
             MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
         } catch (MusicLockingException e) {
@@ -153,21 +131,21 @@ public class MusicMixinTest {
     @Test(timeout=1000)
     public void own2() throws InterruptedException, MDBCServiceException {
         List<Range> range12 = new ArrayList<>( Arrays.asList(
-            new Range("RANGE1"),
-            new Range("RANGE2")
+            new Range("TEST.RANGE1"),
+            new Range("TEST.RANGE2")
         ));
         List<Range> range34 = new ArrayList<>( Arrays.asList(
-            new Range("RANGE3"),
-            new Range("RANGE4")
+            new Range("TEST.RANGE3"),
+            new Range("TEST.RANGE4")
         ));
         List<Range> range24 = new ArrayList<>( Arrays.asList(
-            new Range("RANGE2"),
-            new Range("RANGE4")
+            new Range("TEST.RANGE2"),
+            new Range("TEST.RANGE4")
         ));
         List<Range> range123 = new ArrayList<>( Arrays.asList(
-            new Range("RANGE1"),
-            new Range("RANGE2"),
-            new Range("RANGE3")
+            new Range("TEST.RANGE1"),
+            new Range("TEST.RANGE2"),
+            new Range("TEST.RANGE3")
         ));
         DatabasePartition db1 = addRow(range12, false);
         DatabasePartition db2 = addRow(range34, false);
@@ -193,8 +171,8 @@ public class MusicMixinTest {
         DagNode missing = outgoingEdges.get(0);
         Set<Range> missingRanges = missing.getRangeSet();
         assertEquals(2,missingRanges.size());
-        assertTrue(missingRanges.contains(new Range("RANGE1")));
-        assertTrue(missingRanges.contains(new Range("RANGE3")));
+        assertTrue(missingRanges.contains(new Range("TEST.RANGE1")));
+        assertTrue(missingRanges.contains(new Range("TEST.RANGE3")));
         List<DagNode> outgoingEdges1 = missing.getOutgoingEdges();
         assertEquals(1,outgoingEdges1.size());
 
@@ -202,9 +180,9 @@ public class MusicMixinTest {
         assertFalse(finalNode.hasNotIncomingEdges());
         Set<Range> finalSet = finalNode.getRangeSet();
         assertEquals(3,finalSet.size());
-        assertTrue(finalSet.contains(new Range("RANGE1")));
-        assertTrue(finalSet.contains(new Range("RANGE2")));
-        assertTrue(finalSet.contains(new Range("RANGE3")));
+        assertTrue(finalSet.contains(new Range("TEST.RANGE1")));
+        assertTrue(finalSet.contains(new Range("TEST.RANGE2")));
+        assertTrue(finalSet.contains(new Range("TEST.RANGE3")));
 
         DagNode node5 = dag.getNode(db5.getMRIIndex());
         List<DagNode> toRemoveOutEdges = node5.getOutgoingEdges();

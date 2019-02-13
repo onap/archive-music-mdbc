@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.sf.jsqlparser.schema.Table;
+import net.sf.jsqlparser.statement.drop.Drop;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.avatica.util.Quoting;
 import org.apache.calcite.sql.SqlCall;
@@ -172,6 +174,16 @@ public class QueryProcessor {
         }
     }
 
+    protected static String getTableWithSchemaIfExists(Table table){
+        StringBuilder tableName=new StringBuilder();
+        if(table.getSchemaName()!=null && !table.getSchemaName().isEmpty()){
+            tableName.append(table.getSchemaName())
+                .append(".");
+        }
+        tableName.append(table.getName());
+        return tableName.toString();
+    }
+
     @Deprecated
     public static Map<String, List<String>> extractTableFromQuery(String sqlQuery) {
         List<String> tables = null;
@@ -180,7 +192,7 @@ public class QueryProcessor {
             net.sf.jsqlparser.statement.Statement stmt = CCJSqlParserUtil.parse(sqlQuery);
             if (stmt instanceof Insert) {
                 Insert s = (Insert) stmt;
-                String tbl = s.getTable().getName();
+                String tbl = getTableWithSchemaIfExists(s.getTable());
                 List<String> Ops = tableOpsMap.get(tbl);
                 if (Ops == null)
                     Ops = new ArrayList<>();
@@ -192,7 +204,7 @@ public class QueryProcessor {
                 String where = "";
                 if (stmt instanceof Update) {
                     Update u = (Update) stmt;
-                    tbl = u.getTables().get(0).getName();
+                    tbl = getTableWithSchemaIfExists(u.getTables().get(0));
                     List<String> Ops = tableOpsMap.get(tbl);
                     if (Ops == null)
                         Ops = new ArrayList<>();
@@ -206,7 +218,7 @@ public class QueryProcessor {
                     tableOpsMap.put(tbl, Ops);
                 } else if (stmt instanceof Delete) {
                     Delete d = (Delete) stmt;
-                    tbl = d.getTable().getName();
+                    tbl = getTableWithSchemaIfExists(d.getTable());
                     List<String> Ops = tableOpsMap.get(tbl);
                     if (Ops == null)
                         Ops = new ArrayList<>();
@@ -232,7 +244,14 @@ public class QueryProcessor {
                     CreateTable ct = (CreateTable) stmt;
                     List<String> Ops = new ArrayList<>();
                     Ops.add(Operation.TABLE.getOperation());
-                    tableOpsMap.put(ct.getTable().getName(), Ops);
+                    tbl = getTableWithSchemaIfExists(ct.getTable());
+                    tableOpsMap.put(tbl, Ops);
+                } else if (stmt instanceof Drop) {
+                    Drop ct = (Drop) stmt;
+                    List<String> Ops = new ArrayList<>();
+                    Ops.add(Operation.TABLE.getOperation());
+                    tbl = getTableWithSchemaIfExists(ct.getName());
+                    tableOpsMap.put(tbl, Ops);
                 } else {
                     logger.error(EELFLoggerDelegate.errorLogger, "Not recognized sql type:" + stmt.getClass());
                     tbl = "";

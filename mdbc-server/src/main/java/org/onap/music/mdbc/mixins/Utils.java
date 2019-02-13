@@ -190,28 +190,6 @@ public class Utils {
 		}
 		return list;
 	}
-	
-	public static void registerDefaultDrivers() {
-		Properties pr = null;
-		try {
-			pr = new Properties();
-			pr.load(Utils.class.getResourceAsStream("/mdbc.properties"));
-		}
-		catch (IOException e) {
-			logger.error("Could not load property file > " + e.getMessage());
-		}
-		
-		@SuppressWarnings("unused")
-		List<Class<?>> list = new ArrayList<Class<?>>();
-		String drivers = pr.getProperty("DEFAULT_DRIVERS");
-		for (String driver: drivers.split("[ ,]")) {
-			logger.info(EELFLoggerDelegate.applicationLogger, "Registering jdbc driver '" + driver + "'");
-			try {
-				@SuppressWarnings("unused")
-				Class<?> cl = Class.forName(driver.trim());
-			} catch (ClassNotFoundException e) {
-				logger.error(EELFLoggerDelegate.errorLogger,"Driver class "+driver+" not found.");
-			}
-		}		
-	}
+
+
 }
