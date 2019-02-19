@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "883ed7bc_fb9aad36",
+        "filename": "mdbc-benchmark/pom.xml",
+        "patchSetId": 3
+      },
+      "lineNbr": 68,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-02-19T20:47:54Z",
+      "side": 1,
+      "message": "need to remove this dependency",
+      "revId": "4e1465a72477c7c732b86816248d2e8c300fb937",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
