@@ -24,6 +24,9 @@ import java.util.Comparator;
 
 public class MriRowComparator implements Comparator<MusicRangeInformationRow> {
 
+    /**
+     * compare timestamps
+     */
     @Override
     public int compare(MusicRangeInformationRow o1, MusicRangeInformationRow o2) {
         return Long.compare(o1.getTimestamp(),o2.getTimestamp());

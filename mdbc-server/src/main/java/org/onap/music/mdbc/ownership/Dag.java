@@ -65,6 +65,7 @@ public class Dag {
     private void createDag(List<MusicRangeInformationRow> rows, List<Range> ranges){
         this.ranges = new ArrayList<>(ranges);
         Map<Range,DagNode> latestRow = new HashMap<>();
+        //sort to make sure rows are in chronological order
         Collections.sort(rows, new MriRowComparator());
         for(MusicRangeInformationRow row : rows){
             if(!nodes.containsKey(row.getPartitionIndex())){

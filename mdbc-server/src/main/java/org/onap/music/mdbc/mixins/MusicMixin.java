@@ -2120,7 +2120,13 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
-    private List<Range> getExtendedRanges(List<Range> range) throws MDBCServiceException{
+    /**
+     * Get a list of ranges and their range dependencies
+     * @param range
+     * @return
+     * @throws MDBCServiceException
+     */
+    private List<Range> getRangeDependencies(List<Range> range) throws MDBCServiceException{
         Set<Range> extendedRange = new HashSet<>();
         for(Range r: range){
             extendedRange.add(r);
@@ -2238,11 +2244,18 @@ public class MusicMixin implements MusicInterface {
         return rowsPerLatestRange;
     }
 
+    /**
+     * Take locking ownership of each range
+     * @param ranges - ranges that need to be owned
+     * @param partition - current partition owned
+     * @param opId
+     */
     @Override
     public OwnershipReturn own(List<Range> ranges, DatabasePartition partition, UUID opId) throws MDBCServiceException {
     	
-    	if(ranges == null || ranges.isEmpty()) 
+    	if(ranges == null || ranges.isEmpty()) {
               return null;
+    	}
 
     	Map<UUID,LockResult> newLocks = new HashMap<>();
         //Init timeout clock
@@ -2251,62 +2264,75 @@ public class MusicMixin implements MusicInterface {
             return new OwnershipReturn(opId,partition.getLockId(),partition.getMRIIndex(),partition.getSnapshot(),null);
         }
         //Find
-        List<Range> extendedRanges = getExtendedRanges(ranges);
+        List<Range> rangesToOwn = getRangeDependencies(ranges);
         List<MusicRangeInformationRow> allMriRows = getAllMriRows();
-        List<MusicRangeInformationRow> rows = ownAndCheck.getRows(allMriRows,extendedRanges, false);
-        Dag dag =  Dag.getDag(rows,extendedRanges);
-        Dag prev = new Dag();
-        while( (dag.isDifferent(prev) || !prev.isOwned() ) &&
+        List<MusicRangeInformationRow> rows = ownAndCheck.extractRowsForRange(allMriRows,rangesToOwn, false);
+        Dag toOwn =  Dag.getDag(rows,rangesToOwn);
+        Dag currentlyOwn = new Dag();
+        while( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
                 !ownAndCheck.timeout(opId)
             ){
-            while(dag.hasNextToOwn()){
-                DagNode node = dag.nextToOwn();
-                MusicRangeInformationRow row = node.getRow();
-                UUID uuid = row.getPartitionIndex();
-                if(partition.isLocked()&&partition.getMRIIndex().equals(uuid)||
-                    newLocks.containsKey(uuid) ||
-                    !row.getIsLatest()){
-                    dag.setOwn(node);
-                }
-                else{
-                    LockResult lockResult = null;
-                    boolean owned = false;
-                    while(!owned && !ownAndCheck.timeout(opId)){
-                        try {
-                            LockRequest request = new LockRequest(musicRangeInformationTableName,uuid,
-                                new ArrayList(node.getRangeSet()));
-                            lockResult = waitForLock(request);
-                            owned = true;
-                        }
-                        catch (MDBCServiceException e){
-                            logger.warn("Locking failed, retrying",e);
-                        }
-                    }
-                    if(owned){
-                        dag.setOwn(node);
-                        newLocks.put(uuid,lockResult);
-                    }
-                    else{
-                        break;
-                    }
-                }
-            }
-            prev=dag;
+            takeOwnershipOfDag(partition, opId, newLocks, toOwn);
+            currentlyOwn=toOwn;
             //TODO instead of comparing dags, compare rows
             allMriRows = getAllMriRows();
-            rows = ownAndCheck.getRows(allMriRows,extendedRanges,false);
-            dag =  Dag.getDag(rows,extendedRanges);
+            rows = ownAndCheck.extractRowsForRange(allMriRows,rangesToOwn,false);
+            toOwn =  Dag.getDag(rows,rangesToOwn);
         }
-        if(!prev.isOwned() || dag.isDifferent(prev)){
+        if(!currentlyOwn.isOwned() || toOwn.isDifferent(currentlyOwn)){
            releaseLocks(newLocks);
            ownAndCheck.stopOwnershipTimeoutClock(opId);
            logger.error("Error when owning a range: Timeout");
            throw new MDBCServiceException("Ownership timeout");
         }
-        Set<Range> allRanges = prev.getAllRanges();
-        List<MusicRangeInformationRow> isLatestRows = ownAndCheck.getRows(allMriRows, new ArrayList<>(allRanges), true);
-        prev.setRowsPerLatestRange(getIsLatestPerRange(dag,isLatestRows));
-        return mergeLatestRows(prev,rows,ranges,newLocks,opId);
+        Set<Range> allRanges = currentlyOwn.getAllRanges();
+        List<MusicRangeInformationRow> isLatestRows = ownAndCheck.extractRowsForRange(allMriRows, new ArrayList<>(allRanges), true);
+        currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,isLatestRows));
+        return mergeLatestRows(currentlyOwn,rows,ranges,newLocks,opId);
+    }
+
+    /**
+     * Step through dag and take lock ownership of each range
+     * @param partition
+     * @param opId
+     * @param newLocks
+     * @param toOwn
+     * @throws MDBCServiceException
+     */
+    private void takeOwnershipOfDag(DatabasePartition partition, UUID opId, Map<UUID, LockResult> newLocks, Dag toOwn)
+            throws MDBCServiceException {
+        while(toOwn.hasNextToOwn()){
+            DagNode node = toOwn.nextToOwn();
+            MusicRangeInformationRow row = node.getRow();
+            UUID uuid = row.getPartitionIndex();
+            if(partition.isLocked()&&partition.getMRIIndex().equals(uuid)||
+                newLocks.containsKey(uuid) ||
+                !row.getIsLatest()){
+                toOwn.setOwn(node);
+            }
+            else{
+                LockResult lockResult = null;
+                boolean owned = false;
+                while(!owned && !ownAndCheck.timeout(opId)){
+                    try {
+                        LockRequest request = new LockRequest(musicRangeInformationTableName,uuid,
+                            new ArrayList(node.getRangeSet()));
+                        lockResult = waitForLock(request);
+                        owned = true;
+                    }
+                    catch (MDBCServiceException e){
+                        logger.warn("Locking failed, retrying",e);
+                    }
+                }
+                if(owned){
+                    toOwn.setOwn(node);
+                    newLocks.put(uuid,lockResult);
+                }
+                else{
+                    break;
+                }
+            }
+        }
     }
 
     /**

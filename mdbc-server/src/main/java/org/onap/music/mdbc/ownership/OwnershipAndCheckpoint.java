@@ -84,7 +84,14 @@ public class OwnershipAndCheckpoint{
         return false;
     }
 
-    public List<MusicRangeInformationRow> getRows(List<MusicRangeInformationRow> allMriRows, List<Range> ranges,
+    /**
+     * Extracts all the rows that match any of the ranges.
+     * @param allMriRows
+     * @param ranges - ranges interested in
+     * @param onlyIsLatest - only return the "latest" rows
+     * @return
+     */
+    public List<MusicRangeInformationRow> extractRowsForRange(List<MusicRangeInformationRow> allMriRows, List<Range> ranges,
                                                   boolean onlyIsLatest){
         List<MusicRangeInformationRow> rows = new ArrayList<>();
         for(MusicRangeInformationRow row : allMriRows){
@@ -107,12 +114,22 @@ public class OwnershipAndCheckpoint{
         return rows;
     }
 
-    private List<MusicRangeInformationRow> getRows(MusicInterface music, List<Range> ranges, boolean onlyIsLatest)
+    private List<MusicRangeInformationRow> extractRowsForRange(MusicInterface music, List<Range> ranges, boolean onlyIsLatest)
         throws MDBCServiceException {
         final List<MusicRangeInformationRow> allMriRows = music.getAllMriRows();
-        return getRows(allMriRows,ranges,onlyIsLatest);
+        return extractRowsForRange(allMriRows,ranges,onlyIsLatest);
     }
 
+    /**
+     * make sure data is up to date for list of ranges
+     * @param mi
+     * @param di
+     * @param extendedDag
+     * @param ranges
+     * @param locks
+     * @param ownOpId
+     * @throws MDBCServiceException
+     */
     public void checkpoint(MusicInterface mi, DBInterface di, Dag extendedDag, List<Range> ranges,
         Map<MusicRangeInformationRow, LockResult> locks, UUID ownOpId) throws MDBCServiceException {
         if(ranges.isEmpty()){
@@ -170,7 +187,7 @@ public class OwnershipAndCheckpoint{
         while(!ready){
             if(change.get()){
                 change.set(false);
-                final List<MusicRangeInformationRow> rows = getRows(mi, ranges,false);
+                final List<MusicRangeInformationRow> rows = extractRowsForRange(mi, ranges,false);
                 dag = Dag.getDag(rows,ranges);
             }
             else if(!dag.applied()){

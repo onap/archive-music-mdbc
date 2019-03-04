@@ -564,6 +564,12 @@ public class MdbcConnection implements Connection {
         return this.dbi;
     }
 
+    /**
+     * Take ownership of ranges given, and replay the transactions
+     * @param ranges
+     * @return
+     * @throws MDBCServiceException
+     */
     private DatabasePartition own(List<Range> ranges) throws MDBCServiceException {
         if(ranges==null||ranges.isEmpty()){
             return null;
