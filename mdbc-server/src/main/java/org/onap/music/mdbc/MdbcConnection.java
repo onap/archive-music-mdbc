@@ -507,7 +507,7 @@ public class MdbcConnection implements Connection {
         DatabasePartition tempPartition = own(scQueryTables);
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
-            mi.reloadAlreadyApplied(this.partition);
+            statemanager.getOwnAndCheck().reloadAlreadyApplied(this.partition);
         }
       dbi.preStatementHook(sql);
     }
@@ -575,10 +575,10 @@ public class MdbcConnection implements Connection {
             return null;
         }
         DatabasePartition newPartition = null;
-        OwnershipAndCheckpoint ownAndCheck = mi.getOwnAndCheck();
+        OwnershipAndCheckpoint ownAndCheck = statemanager.getOwnAndCheck();
         UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
         try {
-            final OwnershipReturn ownershipReturn = mi.own(ranges, partition, ownOpId);
+            final OwnershipReturn ownershipReturn = ownAndCheck.own(mi, ranges, partition, ownOpId);
             if(ownershipReturn==null){
                 return null;
             }

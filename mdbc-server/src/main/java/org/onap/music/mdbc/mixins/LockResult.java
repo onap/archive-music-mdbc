@@ -25,24 +25,68 @@ import java.util.UUID;
 import org.onap.music.mdbc.Range;
 
 public class LockResult{
-    private final UUID musicRangeInformationIndex;
-    private final String ownerId;
+    private boolean successful;
+    private UUID musicRangeInformationIndex;
+    private String ownerId;
     private List<Range> ranges;
-    private final boolean newLock;
+    private boolean newLock;
+    private long backOffPeriodS;
 
-    public LockResult(UUID rowId, String ownerId, boolean newLock, List<Range> ranges){
+    public LockResult(boolean succesful, UUID rowId, String ownerId, boolean newLock, List<Range> ranges){
+        this.successful = true;
         this.musicRangeInformationIndex = rowId;
         this.ownerId=ownerId;
         this.newLock=newLock;
         this.ranges=ranges;
     }
+    /**
+     * Please use constructor which specifies whether lock result was succesful
+     * @param rowId
+     * @param ownerId
+     * @param newLock
+     * @param ranges
+     */
+    @Deprecated
+    public LockResult(UUID rowId, String ownerId, boolean newLock, List<Range> ranges){
+        this.successful = true;
+        this.musicRangeInformationIndex = rowId;
+        this.ownerId=ownerId;
+        this.newLock=newLock;
+        this.ranges=ranges;
+    }
+    public LockResult(boolean successful, long backOffTimems) {
+        this.successful = successful;
+        this.backOffPeriodS = backOffTimems;
+    }
+    
+    public boolean wasSuccessful() {
+        return successful;
+    }
+    
     public String getOwnerId(){
         return ownerId;
     }
     public boolean isNewLock(){
         return newLock;
     }
-    public UUID getIndex() {return musicRangeInformationIndex;}
-    public List<Range> getRanges() {return ranges;}
-    public void addRange(Range range){ranges.add(range);}
+    public UUID getIndex() {
+        return musicRangeInformationIndex;
+    }
+    
+    public List<Range> getRanges() {
+        return ranges;
+    }
+    
+    public void addRange(Range range) {
+        ranges.add(range);
+    }
+    
+    /**
+     * Get the backOffPeriod, in milliseconds, requested by mixin
+     * @return
+     */
+    public long getBackOffPeriod() {
+        return this.backOffPeriodS;
+    }
+    
 }

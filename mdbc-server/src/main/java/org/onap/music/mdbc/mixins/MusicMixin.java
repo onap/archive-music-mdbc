@@ -56,6 +56,7 @@ import org.onap.music.main.ReturnType;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
@@ -105,16 +106,12 @@ public class MusicMixin implements MusicInterface {
     public static final String KEY_MUSIC_RFACTOR      = "music_rfactor";
     /** The property name to use to provide the replication factor for Cassandra. */
     public static final String KEY_MUSIC_NAMESPACE = "music_namespace";
-    /**  The property name to use to provide a timeout to mdbc (ownership) */
-    public static final String KEY_TIMEOUT = "mdbc_timeout";
     /** Namespace for the tables in MUSIC (Cassandra) */
     public static final String DEFAULT_MUSIC_NAMESPACE = "namespace";
     /** The default property value to use for the Cassandra IP address. */
     public static final String DEFAULT_MUSIC_ADDRESS  = "localhost";
     /** The default property value to use for the Cassandra replication factor. */
     public static final int    DEFAULT_MUSIC_RFACTOR  = 1;
-    /** The default property value to use for the MDBC timeout */
-    public static final long DEFAULT_TIMEOUT = 5*60*60*1000;//default of 5 hours
     /** The default primary string column, if none is provided. */
     public static final String MDBC_PRIMARYKEY_NAME = "mdbc_cuid";
     /** Type of the primary key, if none is defined by the user */
@@ -124,7 +121,7 @@ public class MusicMixin implements MusicInterface {
     //\TODO Add logic to change the names when required and create the tables when necessary
     private String musicTxDigestTableName = "musictxdigest";
     private String musicEventualTxDigestTableName = "musicevetxdigest";
-    private String musicRangeInformationTableName = "musicrangeinformation";
+    public static final String musicRangeInformationTableName = "musicrangeinformation";
     private String musicRangeDependencyTableName = "musicrangedependency";
     private String musicNodeInfoTableName = "nodeinfo";
 
@@ -157,27 +154,6 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
-    private class LockRequest{
-        private final String table;
-        private final UUID id;
-        private final List<Range> toLockRanges;
-        public LockRequest(String table, UUID id, List<Range> toLockRanges){
-            this.table=table;
-            this.id=id;
-            this.toLockRanges=toLockRanges;
-        }
-        public UUID getId() {
-            return id;
-        }
-        public List<Range> getToLockRanges() {
-            return toLockRanges;
-        }
-
-        public String getTable() {
-            return table;
-        }
-    }
-
 
     private static final Map<Integer, String> typemap         = new HashMap<>();
     static {
@@ -207,14 +183,13 @@ public class MusicMixin implements MusicInterface {
     protected final String[] allReplicaIds;
     private final String musicAddress;
     private final int    music_rfactor;
-    protected long timeout;
     private MusicConnector mCon        = null;
     private Session musicSession       = null;
     private boolean keyspace_created   = false;
     private Map<String, PreparedStatement> ps_cache = new HashMap<>();
     private Set<String> in_progress    = Collections.synchronizedSet(new HashSet<String>());
-    private Map<Range, Pair<MriReference, Integer>> alreadyApplied;
-    private OwnershipAndCheckpoint ownAndCheck;
+    private StateManager stateManager;
+    
 
     public MusicMixin() {
 
@@ -226,7 +201,7 @@ public class MusicMixin implements MusicInterface {
         this.allReplicaIds  = null;
     }
 
-    public MusicMixin(String mdbcServerName, Properties info) throws MDBCServiceException {
+    public MusicMixin(StateManager stateManager, String mdbcServerName, Properties info) throws MDBCServiceException {
         // Default values -- should be overridden in the Properties
         // Default to using the host_ids of the various peers as the replica IDs (this is probably preferred)
         this.musicAddress   = info.getProperty(KEY_MUSIC_ADDRESS, DEFAULT_MUSIC_ADDRESS);
@@ -245,12 +220,8 @@ public class MusicMixin implements MusicInterface {
         this.music_ns       = info.getProperty(KEY_MUSIC_NAMESPACE,DEFAULT_MUSIC_NAMESPACE);
         logger.info(EELFLoggerDelegate.applicationLogger,"MusicSqlManager: music_ns="+music_ns);
 
-        String t = info.getProperty(KEY_TIMEOUT);
-        this.timeout = (t == null) ? DEFAULT_TIMEOUT : Integer.parseInt(t);
-
-        alreadyApplied = new ConcurrentHashMap<>();
-        ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied,timeout);
-
+        this.stateManager = stateManager;
+        
         initializeMetricTables();
     }
 
@@ -1354,7 +1325,7 @@ public class MusicMixin implements MusicInterface {
      */
     @Override
     public void commitLog(DatabasePartition partition,List<Range> eventualRanges,  StagingTable transactionDigest,
-                          String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException{
+                          String txId ,TxCommitProgress progressKeeper) throws MDBCServiceException {
         // first deal with commit for eventually consistent tables
         filterAndAddEventualTxDigest(eventualRanges, transactionDigest, txId, progressKeeper);
         
@@ -1374,8 +1345,7 @@ public class MusicMixin implements MusicInterface {
         //0. See if reference to lock was already created
         String lockId = partition.getLockId();
         if(mriIndex==null || lockId == null || lockId.isEmpty()) {
-            //\TODO fix this
-            own(partition.getSnapshot(),partition, MDBCUtils.generateTimebasedUniqueKey());
+            throw new MDBCServiceException("Not able to commit, as you are no longer the lock-holder for this partition");
         }
 
         UUID commitId;
@@ -1407,6 +1377,7 @@ public class MusicMixin implements MusicInterface {
             appendToRedoLog(partition, digestId);
             List<Range> ranges = partition.getSnapshot();
             for(Range r : ranges) {
+                Map<Range, Pair<MriReference, Integer>> alreadyApplied = stateManager.getOwnAndCheck().getAlreadyApplied();
                 if(!alreadyApplied.containsKey(r)){
                     throw new MDBCServiceException("already applied data structure was not updated correctly and range "
                     +r+" is not contained");
@@ -1420,12 +1391,7 @@ public class MusicMixin implements MusicInterface {
                 alreadyApplied.put(r, Pair.of(new MriReference(mriIndex), rowAndIndex.getValue()+1));
             }
         }
-    }
-
-    public void cleanAlreadyApplied(){
-        logger.warn("Use this only in test environments");
-        alreadyApplied.clear();
-    }
+    }    
 
     private void filterAndAddEventualTxDigest(List<Range> eventualRanges,
             StagingTable transactionDigest, String txId,
@@ -1585,7 +1551,7 @@ public class MusicMixin implements MusicInterface {
     }
 
     @Override
-    public RangeDependency getMusicRangeDependency(Range baseRange) throws MDBCServiceException{
+    public RangeDependency getMusicRangeDependency(Range baseRange) throws MDBCServiceException {
         String cql = String.format("SELECT * FROM %s.%s WHERE range = ?;", music_ns, musicRangeDependencyTableName);
         PreparedQueryObject pQueryObject = new PreparedQueryObject();
         pQueryObject.appendQueryString(cql);
@@ -1964,15 +1930,7 @@ public class MusicMixin implements MusicInterface {
         return ecDigestInformation;
     }
 
-    @Override
-    public void reloadAlreadyApplied(DatabasePartition partition) throws MDBCServiceException {
-        List<Range> snapshot = partition.getSnapshot();
-        UUID row = partition.getMRIIndex();
-        for(Range r : snapshot){
-            alreadyApplied.put(r,Pair.of(new MriReference(row),-1));
-        }
-
-    }
+    
 
 
     ResultSet getAllMriCassandraRows() throws MDBCServiceException {
@@ -2076,13 +2034,13 @@ public class MusicMixin implements MusicInterface {
 
     private List<Range> lockRow(LockRequest request, DatabasePartition partition,Map<UUID, LockResult> rowLock)
         throws MDBCServiceException {
-        if(partition.getMRIIndex().equals(request.id) && partition.isLocked()){
+        if(partition.getMRIIndex().equals(request.getId()) && partition.isLocked()){
             return new ArrayList<>();
         }
         //\TODO: this function needs to be improved, to track possible changes in the owner of a set of ranges
-        String fullyQualifiedMriKey = music_ns+"."+ this.musicRangeInformationTableName+"."+request.id.toString();
+        String fullyQualifiedMriKey = music_ns+"."+ this.musicRangeInformationTableName+"."+request.getId().toString();
         //return List<Range> knownRanges, UUID mriIndex, String lockId
-        DatabasePartition newPartition = new DatabasePartition(request.toLockRanges,request.id,null);
+        DatabasePartition newPartition = new DatabasePartition(request.getToLockRanges(),request.getId(),null);
         return waitForLock(request,newPartition,rowLock);
     }
 
@@ -2091,7 +2049,8 @@ public class MusicMixin implements MusicInterface {
         MusicCore.destroyLockRef(fullyQualifiedKey,lockref);
     }
 
-    private void releaseLocks(Map<UUID,LockResult> newLocks) throws MDBCServiceException{
+    @Override
+    public void releaseLocks(Map<UUID,LockResult> newLocks) throws MDBCServiceException{
         for(Map.Entry<UUID,LockResult> lock : newLocks.entrySet()) {
             unlockKeyInMusic(musicRangeInformationTableName, lock.getKey().toString(), lock.getValue().getOwnerId());
         }
@@ -2126,7 +2085,8 @@ public class MusicMixin implements MusicInterface {
      * @return
      * @throws MDBCServiceException
      */
-    private List<Range> getRangeDependencies(List<Range> range) throws MDBCServiceException{
+    @Override
+    public List<Range> getRangeDependencies(List<Range> range) throws MDBCServiceException{
         Set<Range> extendedRange = new HashSet<>();
         for(Range r: range){
             extendedRange.add(r);
@@ -2138,30 +2098,22 @@ public class MusicMixin implements MusicInterface {
         return new ArrayList<>(extendedRange);
     }
 
-    private LockResult waitForLock(LockRequest request) throws MDBCServiceException{
+    @Override
+    public LockResult requestLock(LockRequest request) throws MDBCServiceException{
         String fullyQualifiedKey= music_ns+"."+ request.getTable()+"."+request.getId();
         String lockId = MusicCore.createLockReference(fullyQualifiedKey);
         ReturnType lockReturn = acquireLock(fullyQualifiedKey,lockId);
-        if(lockReturn.getResult().compareTo(ResultType.SUCCESS) != 0 ) {
+        if(lockReturn.getResult() == ResultType.FAILURE) {
             //\TODO Improve the exponential backoff
-            int n = 1;
+            int n = request.getNumOfAttempts();
             int low = 1;
             int high = 1000;
             Random r = new Random();
-            while(MusicCore.whoseTurnIsIt(fullyQualifiedKey) != lockId){
-                try {
-                    Thread.sleep(((int) Math.round(Math.pow(2, n)) * 1000)
-                        + (r.nextInt(high - low) + low));
-                } catch (InterruptedException e) {
-                    continue;
-                }
-                n++;
-                if (n == 20) {
-                    throw new MDBCServiceException("Lock was impossible to obtain, waited for 20 exponential backoffs!");
-                }
-            }
+            long backOffTimems = ((int) Math.round(Math.pow(2, n)) * 1000)
+                    + (r.nextInt(high - low) + low);
+            return new LockResult(false, backOffTimems);
         }
-        return new LockResult(request.id,lockId,true,null);
+        return new LockResult(true, request.getId(),lockId,true,null);
     }
 
     private void recoverFromFailureAndUpdateDag(Dag latestDag,List<MusicRangeInformationRow> rows,List<Range> ranges,
@@ -2197,7 +2149,8 @@ public class MusicMixin implements MusicInterface {
         return newRow;
     }
 
-    private OwnershipReturn mergeLatestRows(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
+    @Override
+    public OwnershipReturn mergeLatestRows(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
                                             Map<UUID,LockResult> locks, UUID ownershipId) throws MDBCServiceException{
         recoverFromFailureAndUpdateDag(extendedDag,latestRows,ranges,locks);
         List<MusicRangeInformationRow> changed = setReadOnlyAnyDoubleRow(extendedDag, latestRows,locks);
@@ -2221,119 +2174,7 @@ public class MusicMixin implements MusicInterface {
         return new OwnershipReturn(ownershipId, ownRow.getOwnerId(), ownRow.getIndex(),ranges,extendedDag);
     }
 
-    // \TODO merge with dag code
-    private Map<Range,Set<DagNode>> getIsLatestPerRange(Dag dag, List<MusicRangeInformationRow> rows) throws MDBCServiceException {
-        Map<Range,Set<DagNode>> rowsPerLatestRange = new HashMap<>();
-        for(MusicRangeInformationRow row : rows){
-            DatabasePartition dbPartition = row.getDBPartition();
-            if (row.getIsLatest()) {
-                for(Range range : dbPartition.getSnapshot()){
-                    if(!rowsPerLatestRange.containsKey(range)){
-                        rowsPerLatestRange.put(range,new HashSet<>());
-                    }
-                    DagNode node = dag.getNode(row.getPartitionIndex());
-                    if(node!=null) {
-                        rowsPerLatestRange.get(range).add(node);
-                    }
-                    else{
-                        rowsPerLatestRange.get(range).add(new DagNode(row));
-                    }
-                }
-            }
-        }
-        return rowsPerLatestRange;
-    }
-
-    /**
-     * Take locking ownership of each range
-     * @param ranges - ranges that need to be owned
-     * @param partition - current partition owned
-     * @param opId
-     */
-    @Override
-    public OwnershipReturn own(List<Range> ranges, DatabasePartition partition, UUID opId) throws MDBCServiceException {
-    	
-    	if(ranges == null || ranges.isEmpty()) {
-              return null;
-    	}
-
-    	Map<UUID,LockResult> newLocks = new HashMap<>();
-        //Init timeout clock
-        ownAndCheck.startOwnershipTimeoutClock(opId);
-        if(partition.isLocked()&&partition.getSnapshot().containsAll(ranges)) {
-            return new OwnershipReturn(opId,partition.getLockId(),partition.getMRIIndex(),partition.getSnapshot(),null);
-        }
-        //Find
-        List<Range> rangesToOwn = getRangeDependencies(ranges);
-        List<MusicRangeInformationRow> allMriRows = getAllMriRows();
-        List<MusicRangeInformationRow> rows = ownAndCheck.extractRowsForRange(allMriRows,rangesToOwn, false);
-        Dag toOwn =  Dag.getDag(rows,rangesToOwn);
-        Dag currentlyOwn = new Dag();
-        while( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
-                !ownAndCheck.timeout(opId)
-            ){
-            takeOwnershipOfDag(partition, opId, newLocks, toOwn);
-            currentlyOwn=toOwn;
-            //TODO instead of comparing dags, compare rows
-            allMriRows = getAllMriRows();
-            rows = ownAndCheck.extractRowsForRange(allMriRows,rangesToOwn,false);
-            toOwn =  Dag.getDag(rows,rangesToOwn);
-        }
-        if(!currentlyOwn.isOwned() || toOwn.isDifferent(currentlyOwn)){
-           releaseLocks(newLocks);
-           ownAndCheck.stopOwnershipTimeoutClock(opId);
-           logger.error("Error when owning a range: Timeout");
-           throw new MDBCServiceException("Ownership timeout");
-        }
-        Set<Range> allRanges = currentlyOwn.getAllRanges();
-        List<MusicRangeInformationRow> isLatestRows = ownAndCheck.extractRowsForRange(allMriRows, new ArrayList<>(allRanges), true);
-        currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,isLatestRows));
-        return mergeLatestRows(currentlyOwn,rows,ranges,newLocks,opId);
-    }
-
-    /**
-     * Step through dag and take lock ownership of each range
-     * @param partition
-     * @param opId
-     * @param newLocks
-     * @param toOwn
-     * @throws MDBCServiceException
-     */
-    private void takeOwnershipOfDag(DatabasePartition partition, UUID opId, Map<UUID, LockResult> newLocks, Dag toOwn)
-            throws MDBCServiceException {
-        while(toOwn.hasNextToOwn()){
-            DagNode node = toOwn.nextToOwn();
-            MusicRangeInformationRow row = node.getRow();
-            UUID uuid = row.getPartitionIndex();
-            if(partition.isLocked()&&partition.getMRIIndex().equals(uuid)||
-                newLocks.containsKey(uuid) ||
-                !row.getIsLatest()){
-                toOwn.setOwn(node);
-            }
-            else{
-                LockResult lockResult = null;
-                boolean owned = false;
-                while(!owned && !ownAndCheck.timeout(opId)){
-                    try {
-                        LockRequest request = new LockRequest(musicRangeInformationTableName,uuid,
-                            new ArrayList(node.getRangeSet()));
-                        lockResult = waitForLock(request);
-                        owned = true;
-                    }
-                    catch (MDBCServiceException e){
-                        logger.warn("Locking failed, retrying",e);
-                    }
-                }
-                if(owned){
-                    toOwn.setOwn(node);
-                    newLocks.put(uuid,lockResult);
-                }
-                else{
-                    break;
-                }
-            }
-        }
-    }
+       
 
     /**
      * This function is used to check if we need to create a new row in MRI, beacause one of the new ranges is not contained
@@ -2577,11 +2418,6 @@ public class MusicMixin implements MusicInterface {
             //\TODO handle music delete correctly so we can delete the other rows
             executeMusicLockedDelete(music_ns,musicRangeInformationTableName,rows.getKey().toString(),rows.getValue());
         }
-    }
-
-    @Override
-    public OwnershipAndCheckpoint getOwnAndCheck(){
-        return ownAndCheck;
     }
     
     @Override

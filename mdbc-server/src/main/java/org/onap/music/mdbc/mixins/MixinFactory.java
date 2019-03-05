@@ -25,6 +25,7 @@ import java.sql.Connection;
 import java.util.Properties;
 
 import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.mdbc.StateManager;
 
 /**
  * This class is used to construct instances of Mixins that implement either the {@link org.onap.music.mdbc.mixins.DBInterface}
@@ -78,7 +79,7 @@ public class MixinFactory {
 	 * @param info the Properties to use as an argument to the constructor
 	 * @return the newly constructed MusicInterface, or null if one cannot be found.
 	 */
-	public static MusicInterface createMusicInterface(String name, String mdbcServerName, Properties info) {
+	public static MusicInterface createMusicInterface(StateManager statemanager, String name, String mdbcServerName, Properties info) {
 		for (Class<?> cl : Utils.getClassesImplementing(MusicInterface.class)) {
 			try {
 				Constructor<?> con = cl.getConstructor();
@@ -87,10 +88,10 @@ public class MixinFactory {
 					String miname = mi.getMixinName();
 					logger.info(EELFLoggerDelegate.applicationLogger, "Checking "+miname);
 					if (miname.equalsIgnoreCase(name)) {
-						con = cl.getConstructor(String.class, Properties.class);
+						con = cl.getConstructor(StateManager.class, String.class, Properties.class);
 						if (con != null) {
 							logger.info(EELFLoggerDelegate.applicationLogger,"Found match: "+miname);
-							return (MusicInterface) con.newInstance(mdbcServerName, info);
+							return (MusicInterface) con.newInstance(statemanager, mdbcServerName, info);
 						}
 					}
 				}

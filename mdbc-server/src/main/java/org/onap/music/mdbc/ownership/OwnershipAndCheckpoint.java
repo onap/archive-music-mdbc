@@ -29,10 +29,14 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.mixins.DBInterface;
+import org.onap.music.mdbc.mixins.LockRequest;
 import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MusicInterface;
+import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
+import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
@@ -84,14 +88,8 @@ public class OwnershipAndCheckpoint{
         return false;
     }
 
-    /**
-     * Extracts all the rows that match any of the ranges.
-     * @param allMriRows
-     * @param ranges - ranges interested in
-     * @param onlyIsLatest - only return the "latest" rows
-     * @return
-     */
-    public List<MusicRangeInformationRow> extractRowsForRange(List<MusicRangeInformationRow> allMriRows, List<Range> ranges,
+    
+    private List<MusicRangeInformationRow> extractRowsForRange(List<MusicRangeInformationRow> allMriRows, List<Range> ranges,
                                                   boolean onlyIsLatest){
         List<MusicRangeInformationRow> rows = new ArrayList<>();
         for(MusicRangeInformationRow row : allMriRows){
@@ -114,6 +112,13 @@ public class OwnershipAndCheckpoint{
         return rows;
     }
 
+    /**
+     * Extracts all the rows that match any of the ranges.
+     * @param allMriRows
+     * @param ranges - ranges interested in
+     * @param onlyIsLatest - only return the "latest" rows
+     * @return
+     */
     private List<MusicRangeInformationRow> extractRowsForRange(MusicInterface music, List<Range> ranges, boolean onlyIsLatest)
         throws MDBCServiceException {
         final List<MusicRangeInformationRow> allMriRows = music.getAllMriRows();
@@ -248,4 +253,141 @@ public class OwnershipAndCheckpoint{
 
     }
 
+    /**
+     * Use this functions to verify ownership, and taking locking ownership of new ranges
+     * @param ranges the ranges that should be own after calling this function
+     * @param partition current information of the ownership in the system
+     * @param ownOpId is the id used to describe this ownership operation (it is not used to create the new row, if any is
+     *                required
+     * @return an object indicating the status of the own function result
+     * @throws MDBCServiceException
+     */
+    public OwnershipReturn own(MusicInterface mi, List<Range> ranges, DatabasePartition partition, UUID opId) throws MDBCServiceException {
+        
+        if(ranges == null || ranges.isEmpty()) {
+              return null;
+        }
+
+        Map<UUID,LockResult> newLocks = new HashMap<>();
+        //Init timeout clock
+        startOwnershipTimeoutClock(opId);
+        if(partition.isLocked()&&partition.getSnapshot().containsAll(ranges)) {
+            return new OwnershipReturn(opId,partition.getLockId(),partition.getMRIIndex(),partition.getSnapshot(),null);
+        }
+        //Find
+        List<Range> rangesToOwn = mi.getRangeDependencies(ranges);
+        List<MusicRangeInformationRow> rows = extractRowsForRange(mi,rangesToOwn, false);
+        Dag toOwn =  Dag.getDag(rows,rangesToOwn);
+        Dag currentlyOwn = new Dag();
+        while( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
+                !timeout(opId)
+            ){
+            takeOwnershipOfDag(mi, partition, opId, newLocks, toOwn);
+            currentlyOwn=toOwn;
+            //TODO instead of comparing dags, compare rows
+            rows = extractRowsForRange(mi, rangesToOwn, false);
+            toOwn =  Dag.getDag(rows,rangesToOwn);
+        }
+        if(!currentlyOwn.isOwned() || toOwn.isDifferent(currentlyOwn)){
+           mi.releaseLocks(newLocks);
+           stopOwnershipTimeoutClock(opId);
+           logger.error("Error when owning a range: Timeout");
+           throw new MDBCServiceException("Ownership timeout");
+        }
+        Set<Range> allRanges = currentlyOwn.getAllRanges();
+        List<MusicRangeInformationRow> isLatestRows = extractRowsForRange(mi, new ArrayList<>(allRanges), true);
+        currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,isLatestRows));
+        return mi.mergeLatestRows(currentlyOwn,rows,ranges,newLocks,opId);
+    }
+    
+    /**
+     * Step through dag and take lock ownership of each range
+     * @param partition
+     * @param opId
+     * @param newLocks
+     * @param toOwn
+     * @throws MDBCServiceException
+     */
+    private void takeOwnershipOfDag(MusicInterface mi, DatabasePartition partition, UUID opId, Map<UUID, LockResult> newLocks, Dag toOwn)
+            throws MDBCServiceException {
+        while(toOwn.hasNextToOwn()){
+            DagNode node = toOwn.nextToOwn();
+            MusicRangeInformationRow row = node.getRow();
+            UUID uuid = row.getPartitionIndex();
+            if(partition.isLocked()&&partition.getMRIIndex().equals(uuid)||
+                newLocks.containsKey(uuid) ||
+                !row.getIsLatest()){
+                toOwn.setOwn(node);
+            }
+            else{
+                LockRequest request = new LockRequest(MusicMixin.musicRangeInformationTableName,uuid,
+                        new ArrayList(node.getRangeSet()));
+                LockResult result = null;
+                boolean owned = false;
+                while(!owned && !timeout(opId)){
+                    try {
+                        result = mi.requestLock(request);
+                        if (result.wasSuccessful()) {
+                            owned = true;
+                            continue;
+                        }
+                        //backOff
+                        try {
+                            Thread.sleep(result.getBackOffPeriod());
+                        } catch (InterruptedException e) {
+                            continue;
+                        }
+                        request.incrementAttempts();
+                    }
+                    catch (MDBCServiceException e){
+                        logger.warn("Locking failed, retrying",e);
+                    }
+                }
+                if(owned){
+                    toOwn.setOwn(node);
+                    newLocks.put(uuid,result);
+                }
+                else{
+                    break;
+                }
+            }
+        }
+    }
+    
+    
+    public void reloadAlreadyApplied(DatabasePartition partition) throws MDBCServiceException {
+        List<Range> snapshot = partition.getSnapshot();
+        UUID row = partition.getMRIIndex();
+        for(Range r : snapshot){
+            alreadyApplied.put(r,Pair.of(new MriReference(row),-1));
+        }
+    }
+    
+    // \TODO merge with dag code
+    private Map<Range,Set<DagNode>> getIsLatestPerRange(Dag dag, List<MusicRangeInformationRow> rows) throws MDBCServiceException {
+        Map<Range,Set<DagNode>> rowsPerLatestRange = new HashMap<>();
+        for(MusicRangeInformationRow row : rows){
+            DatabasePartition dbPartition = row.getDBPartition();
+            if (row.getIsLatest()) {
+                for(Range range : dbPartition.getSnapshot()){
+                    if(!rowsPerLatestRange.containsKey(range)){
+                        rowsPerLatestRange.put(range,new HashSet<>());
+                    }
+                    DagNode node = dag.getNode(row.getPartitionIndex());
+                    if(node!=null) {
+                        rowsPerLatestRange.get(range).add(node);
+                    }
+                    else{
+                        rowsPerLatestRange.get(range).add(new DagNode(row));
+                    }
+                }
+            }
+        }
+        return rowsPerLatestRange;
+    }
+
+    public Map<Range, Pair<MriReference, Integer>> getAlreadyApplied() {
+        return this.alreadyApplied;
+    } 
+    
 }

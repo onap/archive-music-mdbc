@@ -78,7 +78,7 @@ public class MusicTxDigest {
                         warmupRanges.removeAll(partitionRanges);
                     }
                     try {
-                        mi.getOwnAndCheck().warmup(mi, dbi, new ArrayList<>(warmupRanges));
+                        stateManager.getOwnAndCheck().warmup(mi, dbi, new ArrayList<>(warmupRanges));
                     } catch (MDBCServiceException e) {
                         logger.error("Unable to update for partition : " + warmupRanges + ". " + e.getMessage());
                         continue;

@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
@@ -33,6 +34,8 @@ import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.MixinFactory;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
+import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
+import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicTxDigest;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
@@ -79,6 +82,11 @@ public class StateManager {
     String cassandraUrl;
     private Properties info;
     
+    /**  The property name to use to provide a timeout to mdbc (ownership) */
+    public static final String KEY_TIMEOUT = "mdbc_timeout";
+    /** The default property value to use for the MDBC timeout */
+    public static final long DEFAULT_TIMEOUT = 5*60*60*1000;//default of 5 hours
+    
     /** Identifier for this server instance */
     private String mdbcServerName;
     private Map<String,DatabasePartition> connectionRanges;//Each connection owns its own database partition
@@ -86,6 +94,8 @@ public class StateManager {
     private List<Range> eventualRanges;
     private final Lock warmupLock = new ReentrantLock();
     private List<Range> warmupRanges;
+    private Map<Range, Pair<MriReference, Integer>> alreadyApplied;
+    private OwnershipAndCheckpoint ownAndCheck;
 
 	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
         this.sqlDBName = sqlDBName;
@@ -108,6 +118,10 @@ public class StateManager {
         initMusic();
         initSqlDatabase(); 
 
+        String t = info.getProperty(KEY_TIMEOUT);
+        long timeout = (t == null) ? DEFAULT_TIMEOUT : Integer.parseInt(t);
+        alreadyApplied = new ConcurrentHashMap<>();
+        ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied, timeout);
         
         MusicTxDigest txDaemon = new MusicTxDigest(this);
         txDaemon.startBackgroundDaemon(Integer.parseInt(
@@ -119,7 +133,7 @@ public class StateManager {
      * @throws MDBCServiceException
      */
     protected void initMusic() throws MDBCServiceException {
-        this.musicInterface = MixinFactory.createMusicInterface(musicmixin, mdbcServerName, info);
+        this.musicInterface = MixinFactory.createMusicInterface(this, musicmixin, mdbcServerName, info);
         this.mdbcConnections = new HashMap<>();
     }
     
@@ -325,5 +339,9 @@ public class StateManager {
         finally{
             warmupLock.unlock();
         }
+    }
+    
+    public OwnershipAndCheckpoint getOwnAndCheck() {
+        return ownAndCheck;
     }
 }
