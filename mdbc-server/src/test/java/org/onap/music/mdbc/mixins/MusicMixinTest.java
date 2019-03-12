@@ -50,6 +50,7 @@ import org.onap.music.main.MusicCore;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.TestUtils;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
@@ -69,6 +70,7 @@ public class MusicMixinTest {
     private static Session session;
     private static String cassaHost = "localhost";
     private static MusicMixin mixin = null;
+    private StateManager stateManager;
 
     @BeforeClass
     public static void init() throws MusicServiceException {
@@ -107,28 +109,29 @@ public class MusicMixinTest {
             Properties properties = new Properties();
             properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
             properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
-            mixin=new MusicMixin(mdbcServerName,properties);
+            mixin=new MusicMixin(stateManager, mdbcServerName,properties);
         } catch (MDBCServiceException e) {
             fail("error creating music mixin");
         }
 
     }
 
-    @Test(timeout=10000)
-    public void own() {
-        Range range = new Range("TABLE1");
-        List<Range> ranges = new ArrayList<>();
-        ranges.add(range);
-        final DatabasePartition partition = TestUtils.createBasicRow(range, mixin, mdbcServerName);
-        TestUtils.unlockRow(keyspace,mriTableName,partition);
-
-        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
-        try {
-            mixin.own(ranges,currentPartition, MDBCUtils.generateTimebasedUniqueKey());
-        } catch (MDBCServiceException e) {
-            fail("failure when running own function");
-        }
-    }
+    //Own has been removed from musicMixin
+//    @Test(timeout=10000)
+//    public void own() {
+//        Range range = new Range("TABLE1");
+//        List<Range> ranges = new ArrayList<>();
+//        ranges.add(range);
+//        final DatabasePartition partition = TestUtils.createBasicRow(range, mixin, mdbcServerName);
+//        TestUtils.unlockRow(keyspace,mriTableName,partition);
+//
+//        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+//        try {
+//            mixin.own(ranges,currentPartition, MDBCUtils.generateTimebasedUniqueKey());
+//        } catch (MDBCServiceException e) {
+//            fail("failure when running own function");
+//        }
+//    }
 
     private DatabasePartition addRow(List<Range> ranges,boolean isLatest){
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
@@ -150,80 +153,81 @@ public class MusicMixinTest {
         return partition;
     }
 
-    @Test(timeout=10000)
-    public void own2() throws InterruptedException, MDBCServiceException {
-        List<Range> range12 = new ArrayList<>( Arrays.asList(
-            new Range("RANGE1"),
-            new Range("RANGE2")
-        ));
-        List<Range> range34 = new ArrayList<>( Arrays.asList(
-            new Range("RANGE3"),
-            new Range("RANGE4")
-        ));
-        List<Range> range24 = new ArrayList<>( Arrays.asList(
-            new Range("RANGE2"),
-            new Range("RANGE4")
-        ));
-        List<Range> range123 = new ArrayList<>( Arrays.asList(
-            new Range("RANGE1"),
-            new Range("RANGE2"),
-            new Range("RANGE3")
-        ));
-        DatabasePartition db1 = addRow(range12, false);
-        DatabasePartition db2 = addRow(range34, false);
-        MILLISECONDS.sleep(10);
-        DatabasePartition db3 = addRow(range12, true);
-        DatabasePartition db4 = addRow(range34, true);
-        MILLISECONDS.sleep(10);
-        DatabasePartition db5 = addRow(range24, true);
-        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
-        MusicInterface.OwnershipReturn own = null;
-        try {
-            own = mixin.own(range123, currentPartition, MDBCUtils.generateTimebasedUniqueKey());
-        } catch (MDBCServiceException e) {
-            fail("failure when running own function");
-        }
-        Dag dag = own.getDag();
-
-        DagNode node4 = dag.getNode(db4.getMRIIndex());
-        assertFalse(node4.hasNotIncomingEdges());
-        List<DagNode> outgoingEdges = new ArrayList<>(node4.getOutgoingEdges());
-        assertEquals(1,outgoingEdges.size());
-
-        DagNode missing = outgoingEdges.get(0);
-        Set<Range> missingRanges = missing.getRangeSet();
-        assertEquals(2,missingRanges.size());
-        assertTrue(missingRanges.contains(new Range("RANGE1")));
-        assertTrue(missingRanges.contains(new Range("RANGE3")));
-        List<DagNode> outgoingEdges1 = missing.getOutgoingEdges();
-        assertEquals(1,outgoingEdges1.size());
-
-        DagNode finalNode = outgoingEdges1.get(0);
-        assertFalse(finalNode.hasNotIncomingEdges());
-        Set<Range> finalSet = finalNode.getRangeSet();
-        assertEquals(3,finalSet.size());
-        assertTrue(finalSet.contains(new Range("RANGE1")));
-        assertTrue(finalSet.contains(new Range("RANGE2")));
-        assertTrue(finalSet.contains(new Range("RANGE3")));
-
-        DagNode node5 = dag.getNode(db5.getMRIIndex());
-        List<DagNode> toRemoveOutEdges = node5.getOutgoingEdges();
-        assertEquals(1,toRemoveOutEdges.size());
-        toRemoveOutEdges.remove(finalNode);
-        assertEquals(0,toRemoveOutEdges.size());
-
-        MusicRangeInformationRow row = mixin.getMusicRangeInformation(own.getRangeId());
-        assertTrue(row.getIsLatest());
-        DatabasePartition dbPartition = row.getDBPartition();
-        List<Range> snapshot = dbPartition.getSnapshot();
-        assertEquals(3,snapshot.size());
-        MusicRangeInformationRow node5row = mixin.getMusicRangeInformation(node5.getId());
-        assertFalse(node5row.getIsLatest());
-        MusicRangeInformationRow node4Row = mixin.getMusicRangeInformation(db4.getMRIIndex());
-        assertFalse(node4Row.getIsLatest());
-        MusicRangeInformationRow node3Row = mixin.getMusicRangeInformation(db3.getMRIIndex());
-        assertFalse(node3Row.getIsLatest());
-    }
+    //Own has been removed from musicMixin
+//    @Test(timeout=10000)
+//    public void own2() throws InterruptedException, MDBCServiceException {
+//        List<Range> range12 = new ArrayList<>( Arrays.asList(
+//            new Range("RANGE1"),
+//            new Range("RANGE2")
+//        ));
+//        List<Range> range34 = new ArrayList<>( Arrays.asList(
+//            new Range("RANGE3"),
+//            new Range("RANGE4")
+//        ));
+//        List<Range> range24 = new ArrayList<>( Arrays.asList(
+//            new Range("RANGE2"),
+//            new Range("RANGE4")
+//        ));
+//        List<Range> range123 = new ArrayList<>( Arrays.asList(
+//            new Range("RANGE1"),
+//            new Range("RANGE2"),
+//            new Range("RANGE3")
+//        ));
+//        DatabasePartition db1 = addRow(range12, false);
+//        DatabasePartition db2 = addRow(range34, false);
+//        MILLISECONDS.sleep(10);
+//        DatabasePartition db3 = addRow(range12, true);
+//        DatabasePartition db4 = addRow(range34, true);
+//        MILLISECONDS.sleep(10);
+//        DatabasePartition db5 = addRow(range24, true);
+//        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+//        MusicInterface.OwnershipReturn own = null;
+//        try {
+//            own = mixin.own(range123, currentPartition, MDBCUtils.generateTimebasedUniqueKey());
+//        } catch (MDBCServiceException e) {
+//            fail("failure when running own function");
+//        }
+//        Dag dag = own.getDag();
+//
+//        DagNode node4 = dag.getNode(db4.getMRIIndex());
+//        assertFalse(node4.hasNotIncomingEdges());
+//        List<DagNode> outgoingEdges = new ArrayList<>(node4.getOutgoingEdges());
+//        assertEquals(1,outgoingEdges.size());
+//
+//        DagNode missing = outgoingEdges.get(0);
+//        Set<Range> missingRanges = missing.getRangeSet();
+//        assertEquals(2,missingRanges.size());
+//        assertTrue(missingRanges.contains(new Range("RANGE1")));
+//        assertTrue(missingRanges.contains(new Range("RANGE3")));
+//        List<DagNode> outgoingEdges1 = missing.getOutgoingEdges();
+//        assertEquals(1,outgoingEdges1.size());
+//
+//        DagNode finalNode = outgoingEdges1.get(0);
+//        assertFalse(finalNode.hasNotIncomingEdges());
+//        Set<Range> finalSet = finalNode.getRangeSet();
+//        assertEquals(3,finalSet.size());
+//        assertTrue(finalSet.contains(new Range("RANGE1")));
+//        assertTrue(finalSet.contains(new Range("RANGE2")));
+//        assertTrue(finalSet.contains(new Range("RANGE3")));
+//
+//        DagNode node5 = dag.getNode(db5.getMRIIndex());
+//        List<DagNode> toRemoveOutEdges = node5.getOutgoingEdges();
+//        assertEquals(1,toRemoveOutEdges.size());
+//        toRemoveOutEdges.remove(finalNode);
+//        assertEquals(0,toRemoveOutEdges.size());
+//
+//        MusicRangeInformationRow row = mixin.getMusicRangeInformation(own.getRangeId());
+//        assertTrue(row.getIsLatest());
+//        DatabasePartition dbPartition = row.getDBPartition();
+//        List<Range> snapshot = dbPartition.getSnapshot();
+//        assertEquals(3,snapshot.size());
+//        MusicRangeInformationRow node5row = mixin.getMusicRangeInformation(node5.getId());
+//        assertFalse(node5row.getIsLatest());
+//        MusicRangeInformationRow node4Row = mixin.getMusicRangeInformation(db4.getMRIIndex());
+//        assertFalse(node4Row.getIsLatest());
+//        MusicRangeInformationRow node3Row = mixin.getMusicRangeInformation(db3.getMRIIndex());
+//        assertFalse(node3Row.getIsLatest());
+//    }
 
 
     @Test

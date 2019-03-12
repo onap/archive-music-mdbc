@@ -211,6 +211,8 @@ public interface MusicInterface {
      */
 	RangeDependency getMusicRangeDependency(Range baseRange) throws MDBCServiceException;
 
+    List<Range> getRangeDependencies(List<Range> range) throws MDBCServiceException;
+	
 	/**
      * This function is used to create a new row in the MRI table
      * @param info the information used to create the row
@@ -269,17 +271,6 @@ public interface MusicInterface {
 	StagingTable getTxDigest(MusicTxDigestId id) throws MDBCServiceException;
 
     /**
-     * Use this functions to verify ownership, and own new ranges
-     * @param ranges the ranges that should be own after calling this function
-     * @param partition current information of the ownership in the system
-     * @param ownOpId is the id used to describe this ownership operation (it is not used to create the new row, if any is
-     *                required
-	 * @return an object indicating the status of the own function result
-     * @throws MDBCServiceException
-     */
-	OwnershipReturn own(List<Range> ranges, DatabasePartition partition, UUID ownOpId) throws MDBCServiceException;
-
-    /**
      * This function relinquish ownership, if it is time to do it, it should be used at the end of a commit operation
      * @param partition information of the partition that is currently being owned
      * @throws MDBCServiceException
@@ -326,11 +317,11 @@ public interface MusicInterface {
     void deleteOldMriRows(Map<UUID,String> oldRowsAndLocks) throws MDBCServiceException;
 
     List<MusicRangeInformationRow> getAllMriRows() throws MDBCServiceException;
-
-    OwnershipAndCheckpoint getOwnAndCheck();
-
-    void reloadAlreadyApplied(DatabasePartition partition) throws MDBCServiceException;
     
     public void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
+    public LockResult requestLock(LockRequest request) throws MDBCServiceException;
+    public void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
+    public OwnershipReturn mergeLatestRows(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
+            Map<UUID, LockResult> locks, UUID ownershipId) throws MDBCServiceException;
 }
 

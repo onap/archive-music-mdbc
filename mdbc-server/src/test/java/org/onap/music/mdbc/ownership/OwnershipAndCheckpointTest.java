@@ -36,6 +36,8 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.onap.music.datastore.MusicDataStore;
 import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.exceptions.MDBCServiceException;
@@ -45,6 +47,7 @@ import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.TestUtils;
 import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
@@ -79,6 +82,11 @@ public class OwnershipAndCheckpointTest {
     private static DB db;
 	Connection conn;
 	MySQLMixin mysqlMixin;
+	OwnershipAndCheckpoint ownAndCheck;
+	
+	@Mock
+	StateManager stateManager = Mockito.mock(StateManager.class);
+	
 
     @BeforeClass
     public static void init() throws MusicServiceException, ClassNotFoundException, ManagedProcessException {
@@ -141,9 +149,11 @@ public class OwnershipAndCheckpointTest {
             Properties properties = new Properties();
             properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
             properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
-            musicMixin =new MusicMixin(mdbcServerName,properties);
+            //StateManager stateManager = new StateManager("dbUrl", properties, "serverName", "dbName");
+            ownAndCheck = new OwnershipAndCheckpoint();
+            musicMixin =new MusicMixin(stateManager, mdbcServerName,properties);
         } catch (MDBCServiceException e) {
-            fail("error creating music musicMixin");
+            fail("error creating music musicMixin " + e.getMessage());
         }
         this.conn = DriverManager.getConnection("jdbc:mariadb://localhost:"+sqlPort+"/"+DATABASE, "root", "");
         this.mysqlMixin = new MySQLMixin(musicMixin, "localhost:"+sqlPort+"/"+DATABASE, conn, null);
@@ -155,7 +165,7 @@ public class OwnershipAndCheckpointTest {
         String sqlOperation = "INSERT INTO "+TABLE+" (PersonID,LastName,FirstName,Address,City) VALUES "+
             "(1,'SAUREZ','ENRIQUE','GATECH','ATLANTA');";
         StagingTable stagingTable = new StagingTable();
-        musicMixin.reloadAlreadyApplied(partition);
+        ownAndCheck.reloadAlreadyApplied(partition);
         final Statement executeStatement = this.conn.createStatement();
         executeStatement.execute(sqlOperation);
         this.conn.commit();
@@ -170,12 +180,12 @@ public class OwnershipAndCheckpointTest {
 
     private OwnershipReturn cleanAndOwnPartition(List<Range> ranges, UUID ownOpId) throws SQLException {
         dropAndCreateTable();
-        musicMixin.cleanAlreadyApplied();
+        cleanAlreadyApplied(ownAndCheck);
         DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
 
         OwnershipReturn own=null;
         try {
-            own = musicMixin.own(ranges, currentPartition, ownOpId);
+            own = ownAndCheck.own(musicMixin, ranges, currentPartition, ownOpId);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
@@ -207,7 +217,8 @@ public class OwnershipAndCheckpointTest {
     public void checkpoint() throws MDBCServiceException, SQLException {
         Range range =
             new Range(TABLE);
-        OwnershipAndCheckpoint ownAndCheck = musicMixin.getOwnAndCheck();
+        Mockito.when(stateManager.getOwnAndCheck()).thenReturn(this.ownAndCheck);
+
         initDatabase(range);
 
         List<Range> ranges = new ArrayList<>();
@@ -230,7 +241,8 @@ public class OwnershipAndCheckpointTest {
     //@Ignore
     public void warmup() throws MDBCServiceException, SQLException {
         Range range = new Range(TABLE);
-        OwnershipAndCheckpoint ownAndCheck = musicMixin.getOwnAndCheck();
+        Mockito.when(stateManager.getOwnAndCheck()).thenReturn(this.ownAndCheck);
+
         initDatabase(range);
 
         List<Range> ranges = new ArrayList<>();
@@ -248,5 +260,9 @@ public class OwnershipAndCheckpointTest {
         ownAndCheck.warmup(musicMixin,mysqlMixin,ranges);
 
         checkData();
+    }
+    
+    private void cleanAlreadyApplied(OwnershipAndCheckpoint ownAndCheck) {
+        ownAndCheck.getAlreadyApplied().clear();
     }
 }
