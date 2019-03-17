@@ -103,6 +103,7 @@ public class MdbcServer {
 
   public void stop() {
 	  if (null != server) {
+	      meta.getStateManager().releaseAllPartitions();
 		  server.stop();
 		  server = null;
 	  }

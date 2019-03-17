@@ -344,4 +344,13 @@ public class StateManager {
     public OwnershipAndCheckpoint getOwnAndCheck() {
         return ownAndCheck;
     }
+
+    /**
+     * Close all connections for this server, relinquishing any locks/partitions owned by this server
+     */
+    public void releaseAllPartitions() {
+        for(String connection: this.connectionRanges.keySet()) {
+            closeConnection(connection);
+        } 
+    }
 }
