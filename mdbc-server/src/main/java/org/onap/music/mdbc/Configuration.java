@@ -38,4 +38,10 @@ public class Configuration {
 	public static final String TX_DAEMON_SLEEPTIME_S = "txdaemonsleeps";
 	/** Default txDigest Daemon sleep time */
 	public static final String TX_DAEMON_SLEEPTIME_S_DEFAULT = "10";
+    /**  The property name to use to provide a timeout to mdbc (ownership) */
+    public static final String KEY_OWNERSHIP_TIMEOUT = "mdbc_timeout";
+    /** The default property value to use for the MDBC timeout */
+    public static final long DEFAULT_OWNERSHIP_TIMEOUT = 5*60*60*1000;//default of 5 hours
+    /** The property name to provide comma separated list of ranges to warmup */
+    public static final String KEY_WARMUPRANGES = "warmupranges";
 }

@@ -67,22 +67,18 @@ public class MusicTxDigest {
 			    continue;
 			}
 			//2) for each partition I don't own
-            final List<Range> warmuplist = stateManager.getWarmupRanges();
-			if(warmuplist!=null) {
-                final Set<Range> warmupRanges = new HashSet(warmuplist);
-                final List<DatabasePartition> currentPartitions = stateManager.getPartitions();
-                List<Range> missingRanges = new ArrayList<>();
-                if (currentPartitions.size() != 0) {
-                    for (DatabasePartition part : currentPartitions) {
-                        List<Range> partitionRanges = part.getSnapshot();
-                        warmupRanges.removeAll(partitionRanges);
-                    }
-                    try {
-                        stateManager.getOwnAndCheck().warmup(mi, dbi, new ArrayList<>(warmupRanges));
-                    } catch (MDBCServiceException e) {
-                        logger.error("Unable to update for partition : " + warmupRanges + ". " + e.getMessage());
-                        continue;
-                    }
+            final Set<Range> warmupRanges = stateManager.getRangesToWarmup();
+            final List<DatabasePartition> currentPartitions = stateManager.getPartitions();
+            if (currentPartitions.size() != 0) {
+                for (DatabasePartition part : currentPartitions) {
+                    List<Range> partitionRanges = part.getSnapshot();
+                    warmupRanges.removeAll(partitionRanges);
+                }
+                try {
+                    stateManager.getOwnAndCheck().warmup(mi, dbi, new ArrayList<>(warmupRanges));
+                } catch (MDBCServiceException e) {
+                    logger.error("Unable to update for partition : " + warmupRanges + ". " + e.getMessage());
+                    continue;
                 }
             }
 
