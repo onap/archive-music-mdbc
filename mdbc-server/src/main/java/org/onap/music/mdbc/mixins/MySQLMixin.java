@@ -792,8 +792,9 @@ NEW.field refers to the new value
 	/**
 	 * Parse the transaction digest into individual events
 	 * @param transaction - base 64 encoded, serialized digest
+	 * @throws MDBCServiceException 
 	 */
-	public void replayTransaction(StagingTable transaction, List<Range> ranges) throws SQLException {
+	public void replayTransaction(StagingTable transaction, List<Range> ranges) throws SQLException, MDBCServiceException {
 		boolean autocommit = jdbcConn.getAutoCommit();
 		jdbcConn.setAutoCommit(false);
 		Statement jdbcStmt = jdbcConn.createStatement();
@@ -803,7 +804,7 @@ NEW.field refers to the new value
 			if(Range.overlaps(ranges,op.getTable())) {
 				try {
 					replayOperationIntoDB(jdbcStmt, op);
-				} catch (SQLException e) {
+				} catch (SQLException | MDBCServiceException e) {
 					//rollback transaction
 					logger.error("Unable to replay: " + op.getOperationType() + "->" + op.getVal() + "."
 						+ "Rolling back the entire digest replay.");
@@ -835,87 +836,148 @@ NEW.field refers to the new value
 	}
 
 	@Override
-	public void applyTxDigest(StagingTable txDigest,List<Range> ranges) throws SQLException {
+	public void applyTxDigest(StagingTable txDigest,List<Range> ranges) throws SQLException, MDBCServiceException {
 		replayTransaction(txDigest,ranges);
 	}
 
 	/**
-	 * Replays operation into database, usually from txDigest
-	 * @param jdbcStmt
-	 * @param r
-	 * @param op
-	 * @throws SQLException 
-	 */
-	private void replayOperationIntoDB(Statement jdbcStmt, Operation op) throws SQLException {
-		logger.info("Replaying Operation: " + op.getOperationType() + "->" + op.getVal());
-		JSONObject jsonOp = op.getVal();
-
-		ArrayList<String> cols = new ArrayList<String>();
-		ArrayList<Object> vals = new ArrayList<Object>();
-		Iterator<String> colIterator = jsonOp.keys();
-		while(colIterator.hasNext()) {
-			String col = colIterator.next();
-			//FIXME: should not explicitly refer to cassandramixin
-			if (col.equals(MusicMixin.MDBC_PRIMARYKEY_NAME)) {
-				//reserved name
-				continue;
-			}
-			cols.add(col);
-			vals.add(jsonOp.get(col));
-		}
-		
-		//build the queries
-		StringBuilder sql = new StringBuilder();
-		String sep = "";
-		switch (op.getOperationType()) {
-		case INSERT:
-			sql.append(op.getOperationType() + " INTO ");
-			sql.append(op.getTable() + " (") ;
-			sep = "";
-			for (String col: cols) {
-				sql.append(sep + col);
-				sep = ", ";
-			}	
-			sql.append(") VALUES (");
-			sep = "";
-			for (Object val: vals) {
-				sql.append(sep + "\"" + val + "\"");
-				sep = ", ";
-			}
-			sql.append(");");
-			break;
-		case UPDATE:
-			sql.append(op.getOperationType() + " ");
-			sql.append(op.getTable() + " SET ");
-			sep="";
-			for (int i=0; i<cols.size(); i++) {
-				sql.append(sep + cols.get(i) + "=\"" + vals.get(i) +"\"");
-				sep = ", ";
-			}
-			sql.append(" WHERE ");
-			try {
-				sql.append(getPrimaryKeyConditional(op.getKey()));
-			} catch (MDBCServiceException e) {
-			    throw new SQLException("Update operatoin doesn't contain the required primary key",e);
-			}
-			sql.append(";");
-			break;
-		case DELETE:
-			sql.append(op.getOperationType() + " FROM ");
-			sql.append(op.getTable() + " WHERE ");
-			sql.append(getPrimaryKeyConditional(op.getVal()));
-			sql.append(";");
-			break;
-		case SELECT:
-			//no update happened, do nothing
-			return;
-		default:
-			logger.error(op.getOperationType() + "not implemented for replay");
-		}
-		logger.info("Replaying operation: " + sql.toString());
-		
-		jdbcStmt.executeQuery(sql.toString());
-	}
+     * Replays operation into database, usually from txDigest
+     * @param jdbcStmt
+     * @param r
+     * @param op
+     * @throws SQLException 
+	 * @throws MDBCServiceException 
+     */
+    private void replayOperationIntoDB(Statement jdbcStmt, Operation op) throws SQLException, MDBCServiceException {
+        logger.info("Replaying Operation: " + op.getOperationType() + "->" + op.getVal());
+        JSONObject jsonOp = op.getVal();
+        
+        ArrayList<String> cols = new ArrayList<String>();
+        ArrayList<Object> vals = new ArrayList<Object>();
+        Iterator<String> colIterator = jsonOp.keys();
+        while(colIterator.hasNext()) {
+            String col = colIterator.next();
+            //FIXME: should not explicitly refer to cassandramixin
+            if (col.equals(MusicMixin.MDBC_PRIMARYKEY_NAME)) {
+                //reserved name
+                continue;
+            }
+            cols.add(col);
+            vals.add(jsonOp.get(col));
+        }
+        
+        //build and replay the queries
+        StringBuilder sql = constructSQL(op, cols, vals);
+        if(sql == null)
+            return;
+        
+        try {
+            logger.info("Replaying operation: " + sql.toString());
+            int updated = jdbcStmt.executeUpdate(sql.toString());
+            
+            if(updated == 0) {
+                // This applies only for replaying transactions involving Eventually Consistent tables
+                logger.warn("Error Replaying operation: " + sql.toString() + "; Replacing insert/replace/viceversa and replaying ");
+                
+                buildAndExecuteSQLInverse(jdbcStmt, op, cols, vals);
+            }
+        } catch (SQLException sqlE) {
+            // This applies only for replaying transactions involving Eventually Consistent tables
+            logger.warn("Error Replaying operation: " + sql.toString() + "; Replacing insert/replace/viceversa and replaying ");
+            
+            buildAndExecuteSQLInverse(jdbcStmt, op, cols, vals);       
+            
+        }
+    }
+    protected void buildAndExecuteSQLInverse(Statement jdbcStmt, Operation op,
+            ArrayList<String> cols, ArrayList<Object> vals) throws SQLException, MDBCServiceException {
+        StringBuilder sqlInverse = constructSQLInverse( op, cols, vals);
+        if(sqlInverse == null)
+            return;
+        logger.info("Replaying operation: " + sqlInverse.toString());       
+        jdbcStmt.executeUpdate(sqlInverse.toString());
+    }
+    protected StringBuilder constructSQLInverse(Operation op, ArrayList<String> cols,
+            ArrayList<Object> vals) throws MDBCServiceException {
+        StringBuilder sqlInverse = null;
+        switch (op.getOperationType()) {
+            case INSERT:
+                sqlInverse = constructUpdate(op.getTable() , OperationType.UPDATE, op.getKey(), cols, vals);
+                break;
+            case UPDATE:
+                sqlInverse = constructInsert(op.getTable() , OperationType.INSERT, cols, vals);
+                break;
+            default:
+                break;
+        }
+        return sqlInverse;
+    }
+    protected StringBuilder constructSQL(Operation op, ArrayList<String> cols,
+            ArrayList<Object> vals) throws MDBCServiceException {
+        StringBuilder sql = null;
+        switch (op.getOperationType()) {
+        case INSERT:
+            sql = constructInsert(op.getTable(), op.getOperationType(), cols, vals);
+            break;
+        case UPDATE:
+            sql = constructUpdate(op.getTable(), op.getOperationType(), op.getKey(), cols, vals);
+            break;
+        case DELETE:
+            sql = constructDelete(op.getTable(), op.getOperationType(), op.getKey());
+            break;
+        case SELECT:
+            //no update happened, do nothing
+            break;
+        default:
+            logger.error(op.getOperationType() + "not implemented for replay");
+        }
+        return sql;
+    }
+    private StringBuilder constructDelete(String r, OperationType op, JSONObject key) {
+        StringBuilder sql = new StringBuilder();
+        sql.append(op + " FROM ");
+        sql.append(r  + " WHERE ");
+        sql.append(getPrimaryKeyConditional(key));
+        sql.append(";");
+        return sql;
+    }
+    private StringBuilder constructInsert(String r, OperationType  op, ArrayList<String> cols,
+            ArrayList<Object> vals) {
+        StringBuilder sql = new StringBuilder();
+        String sep;
+        sql.append(op + " INTO ");
+        sql.append(r + " (") ;
+        sep = "";
+        for (String col: cols) {
+            sql.append(sep + col);
+            sep = ", ";
+        }   
+        sql.append(") VALUES (");
+        sep = "";
+        for (Object val: vals) {
+            sql.append(sep + "\"" + val + "\"");
+            sep = ", ";
+        }
+        sql.append(");");
+        return sql;
+    }
+    private StringBuilder constructUpdate(String r, OperationType op, JSONObject key, ArrayList<String> cols,
+            ArrayList<Object> vals) {
+        StringBuilder sql = new StringBuilder();
+        String sep;
+        sql.append(op + " ");
+        sql.append(r + " SET ");
+        sep="";
+        for (int i=0; i<cols.size(); i++) {
+            sql.append(sep + cols.get(i) + "=\"" + vals.get(i) +"\"");
+            sep = ", ";
+        }
+        sql.append(" WHERE ");
+        sql.append(getPrimaryKeyConditional(key));
+        sql.append(";");
+        
+        return sql;
+    }
 	
 	/**
 	 * Create an SQL string for AND'ing all of the primary keys

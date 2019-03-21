@@ -25,7 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -115,12 +115,13 @@ public interface DBInterface {
 	 * Replay a given TxDigest into the local DB
 	 * @param digest
 	 * @throws SQLException if replay cannot occur correctly
+	 * @throws MDBCServiceException 
 	 */
-	void replayTransaction(StagingTable digest, List<Range> ranges) throws SQLException;
+	void replayTransaction(StagingTable digest, List<Range> ranges) throws SQLException, MDBCServiceException;
 
 	void disableForeignKeyChecks() throws SQLException;
 
 	void enableForeignKeyChecks() throws SQLException;
 
-	void applyTxDigest(StagingTable txDigest, List<Range> ranges) throws SQLException;
+	void applyTxDigest(StagingTable txDigest, List<Range> ranges) throws SQLException, MDBCServiceException;
 }

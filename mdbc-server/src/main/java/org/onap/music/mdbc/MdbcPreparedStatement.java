@@ -25,7 +25,6 @@ import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.Array;
 import java.sql.Blob;
-import java.sql.CallableStatement;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.Date;
@@ -43,9 +42,7 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
-
 import org.apache.commons.lang3.StringUtils;
-
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 
@@ -673,117 +670,117 @@ public class MdbcPreparedStatement extends MdbcStatement implements PreparedStat
 
 	@Override
 	public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
-		((CallableStatement)stmt).setTimestamp(parameterIndex, x, cal);
+		((PreparedStatement)stmt).setTimestamp(parameterIndex, x, cal);
 	}
 
 	@Override
 	public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
-		((CallableStatement)stmt).setNull(parameterIndex, sqlType, typeName);
+		((PreparedStatement)stmt).setNull(parameterIndex, sqlType, typeName);
 	}
 
 	@Override
 	public void setURL(int parameterIndex, URL x) throws SQLException {
-		((CallableStatement)stmt).setURL(parameterIndex, x);
+		((PreparedStatement)stmt).setURL(parameterIndex, x);
 	}
 
 	@Override
 	public ParameterMetaData getParameterMetaData() throws SQLException {
-		return ((CallableStatement)stmt).getParameterMetaData();
+		return ((PreparedStatement)stmt).getParameterMetaData();
 	}
 
 	@Override
 	public void setRowId(int parameterIndex, RowId x) throws SQLException {
-		((CallableStatement)stmt).setRowId(parameterIndex, x);
+		((PreparedStatement)stmt).setRowId(parameterIndex, x);
 	}
 
 	@Override
 	public void setNString(int parameterIndex, String value) throws SQLException {
-		((CallableStatement)stmt).setNString(parameterIndex, value);
+		((PreparedStatement)stmt).setNString(parameterIndex, value);
 	}
 
 	@Override
 	public void setNCharacterStream(int parameterIndex, Reader value, long length) throws SQLException {
-		((CallableStatement)stmt).setNCharacterStream(parameterIndex, value, length);
+		((PreparedStatement)stmt).setNCharacterStream(parameterIndex, value, length);
 	}
 
 	@Override
 	public void setNClob(int parameterIndex, NClob value) throws SQLException {
-		((CallableStatement)stmt).setNClob(parameterIndex, value);
+		((PreparedStatement)stmt).setNClob(parameterIndex, value);
 	}
 
 	@Override
 	public void setClob(int parameterIndex, Reader reader, long length) throws SQLException {
-		((CallableStatement)stmt).setClob(parameterIndex, reader, length);
+		((PreparedStatement)stmt).setClob(parameterIndex, reader, length);
 	}
 
 	@Override
 	public void setBlob(int parameterIndex, InputStream inputStream, long length) throws SQLException {
-		((CallableStatement)stmt).setBlob(parameterIndex, inputStream, length);
+		((PreparedStatement)stmt).setBlob(parameterIndex, inputStream, length);
 	}
 
 	@Override
 	public void setNClob(int parameterIndex, Reader reader, long length) throws SQLException {
-		((CallableStatement)stmt).setNClob(parameterIndex, reader, length);
+		((PreparedStatement)stmt).setNClob(parameterIndex, reader, length);
 	}
 
 	@Override
 	public void setSQLXML(int parameterIndex, SQLXML xmlObject) throws SQLException {
-		((CallableStatement)stmt).setSQLXML(parameterIndex, xmlObject);
+		((PreparedStatement)stmt).setSQLXML(parameterIndex, xmlObject);
 	}
 
 	@Override
 	public void setObject(int parameterIndex, Object x, int targetSqlType, int scaleOrLength) throws SQLException {
-		((CallableStatement)stmt).setObject(parameterIndex, x, targetSqlType, scaleOrLength);
+		((PreparedStatement)stmt).setObject(parameterIndex, x, targetSqlType, scaleOrLength);
 	}
 
 	@Override
 	public void setAsciiStream(int parameterIndex, InputStream x, long length) throws SQLException {
-		((CallableStatement)stmt).setAsciiStream(parameterIndex, x, length);
+		((PreparedStatement)stmt).setAsciiStream(parameterIndex, x, length);
 	}
 
 	@Override
 	public void setBinaryStream(int parameterIndex, InputStream x, long length) throws SQLException {
-		((CallableStatement)stmt).setBinaryStream(parameterIndex, x, length);
+		((PreparedStatement)stmt).setBinaryStream(parameterIndex, x, length);
 	}
 
 	@Override
 	public void setCharacterStream(int parameterIndex, Reader reader, long length) throws SQLException {
-		((CallableStatement)stmt).setCharacterStream(parameterIndex, reader, length);
+		((PreparedStatement)stmt).setCharacterStream(parameterIndex, reader, length);
 	}
 
 	@Override
 	public void setAsciiStream(int parameterIndex, InputStream x) throws SQLException {
-		((CallableStatement)stmt).setAsciiStream(parameterIndex, x);
+		((PreparedStatement)stmt).setAsciiStream(parameterIndex, x);
 	}
 
 	@Override
 	public void setBinaryStream(int parameterIndex, InputStream x) throws SQLException {
-		((CallableStatement)stmt).setBinaryStream(parameterIndex, x);
+		((PreparedStatement)stmt).setBinaryStream(parameterIndex, x);
 	}
 
 	@Override
 	public void setCharacterStream(int parameterIndex, Reader reader) throws SQLException {
-		((CallableStatement)stmt).setCharacterStream(parameterIndex, reader);
+		((PreparedStatement)stmt).setCharacterStream(parameterIndex, reader);
 	}
 
 	@Override
 	public void setNCharacterStream(int parameterIndex, Reader value) throws SQLException {
-		((CallableStatement)stmt).setNCharacterStream(parameterIndex, value);
+		((PreparedStatement)stmt).setNCharacterStream(parameterIndex, value);
 	}
 
 	@Override
 	public void setClob(int parameterIndex, Reader reader) throws SQLException {
-		((CallableStatement)stmt).setClob(parameterIndex, reader);
+		((PreparedStatement)stmt).setClob(parameterIndex, reader);
 	}
 
 	@Override
 	public void setBlob(int parameterIndex, InputStream inputStream) throws SQLException {
-		((CallableStatement)stmt).setBlob(parameterIndex, inputStream);
+		((PreparedStatement)stmt).setBlob(parameterIndex, inputStream);
 	}
 
 	@Override
 	public void setNClob(int parameterIndex, Reader reader) throws SQLException {
-		((CallableStatement)stmt).setNClob(parameterIndex, reader);
+		((PreparedStatement)stmt).setNClob(parameterIndex, reader);
 	}
 	
 }
