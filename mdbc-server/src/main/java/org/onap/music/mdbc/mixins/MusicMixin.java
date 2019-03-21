@@ -1300,10 +1300,15 @@ public class MusicMixin implements MusicInterface {
     }
 
     protected void changeIsLatestToMRI(MusicRangeInformationRow row, boolean isLatest, LockResult lock) throws MDBCServiceException{
+       
+        if(lock == null)
+            return;
         PreparedQueryObject appendQuery = createChangeIsLatestToMriQuery(musicRangeInformationTableName, row.getPartitionIndex(),
             musicTxDigestTableName, isLatest);
         ReturnType returnType = MusicCore.criticalPut(music_ns, musicRangeInformationTableName, row.getPartitionIndex().toString(),
-            appendQuery, lock.getOwnerId(), null);
+            appendQuery, 
+            lock.getOwnerId()
+            , null);
         if(returnType.getResult().compareTo(ResultType.SUCCESS) != 0 ){
             logger.error(EELFLoggerDelegate.errorLogger, "Error when executing change isLatest operation with return type: "+returnType.getMessage());
             throw new MDBCServiceException("Error when executing change isLatest operation with return type: "+returnType.getMessage());
@@ -2057,8 +2062,11 @@ public class MusicMixin implements MusicInterface {
     }
 
     private void releaseLocks(List<MusicRangeInformationRow> changed, Map<UUID,LockResult> newLocks) throws MDBCServiceException{
+        
         for(MusicRangeInformationRow r : changed) {
             LockResult lock = newLocks.get(r.getPartitionIndex());
+            if(lock == null)
+                continue;
             unlockKeyInMusic(musicRangeInformationTableName, r.getPartitionIndex().toString(),
                 lock.getOwnerId());
             newLocks.remove(r.getPartitionIndex());
