@@ -180,23 +180,30 @@ public class OwnershipAndCheckpoint{
             throw new MDBCServiceException("Error applying tx digest in local SQL",e);
         }
     }
-
-    public void warmup(MusicInterface mi, DBInterface di, List<Range> ranges) throws MDBCServiceException {
-        if(ranges.isEmpty()){
+    
+    /**
+     * Replay the updates for the partitions containing ranges to the local database
+     * @param mi
+     * @param di
+     * @param rangesToWarmup
+     * @throws MDBCServiceException
+     */
+    public void warmup(MusicInterface mi, DBInterface di, List<Range> rangesToWarmup) throws MDBCServiceException {
+        if(rangesToWarmup.isEmpty()){
             return;
         }
         boolean ready = false;
         change.set(true);
-        Set<Range> rangeSet = new HashSet<Range>(ranges);
+        Set<Range> rangeSet = new HashSet<Range>(rangesToWarmup);
         Dag dag = new Dag(false);
         while(!ready){
             if(change.get()){
                 change.set(false);
-                final List<MusicRangeInformationRow> rows = extractRowsForRange(mi, ranges,false);
-                dag = Dag.getDag(rows,ranges);
+                final List<MusicRangeInformationRow> rows = extractRowsForRange(mi, rangesToWarmup,false);
+                dag = Dag.getDag(rows,rangesToWarmup);
             }
             else if(!dag.applied()){
-                DagNode node = dag.nextToApply(ranges);
+                DagNode node = dag.nextToApply(rangesToWarmup);
                 if(node!=null) {
                     Pair<MusicTxDigestId, List<Range>> pair = node.nextNotAppliedTransaction(rangeSet);
                     while (pair != null) {
@@ -208,7 +215,7 @@ public class OwnershipAndCheckpoint{
                             break;
                         } else {
                             final StagingTable txDigest = mi.getTxDigest(pair.getKey());
-                            applyTxDigest(ranges,di, txDigest);
+                            applyTxDigest(rangesToWarmup,di, txDigest);
                             for (Range r : pair.getValue()) {
                                 MusicRangeInformationRow row = node.getRow();
                                 alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));

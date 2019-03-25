@@ -45,6 +45,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -82,21 +83,26 @@ public class StateManager {
     String cassandraUrl;
     private Properties info;
     
-    /**  The property name to use to provide a timeout to mdbc (ownership) */
-    public static final String KEY_TIMEOUT = "mdbc_timeout";
-    /** The default property value to use for the MDBC timeout */
-    public static final long DEFAULT_TIMEOUT = 5*60*60*1000;//default of 5 hours
-    
     /** Identifier for this server instance */
     private String mdbcServerName;
     private Map<String,DatabasePartition> connectionRanges;//Each connection owns its own database partition
     private final Lock eventualLock  = new ReentrantLock();
     private List<Range> eventualRanges;
+    /** lock for warmupRanges */
     private final Lock warmupLock = new ReentrantLock();
-    private List<Range> warmupRanges;
+    /** a set of ranges that should be periodically updated with latest information, if null all tables should be warmed up */
+    private Set<Range> rangesToWarmup;
+    /** map of transactions that have already been applied/updated in this sites SQL db */
     private Map<Range, Pair<MriReference, Integer>> alreadyApplied;
     private OwnershipAndCheckpoint ownAndCheck;
 
+    /**
+     * For testing purposes only
+     */
+    @Deprecated
+    public StateManager() {
+    }
+    
 	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
         this.sqlDBName = sqlDBName;
         this.sqlDBUrl = sqlDBUrl;
@@ -118,11 +124,14 @@ public class StateManager {
         initMusic();
         initSqlDatabase(); 
 
-        String t = info.getProperty(KEY_TIMEOUT);
-        long timeout = (t == null) ? DEFAULT_TIMEOUT : Integer.parseInt(t);
+        String t = info.getProperty(Configuration.KEY_OWNERSHIP_TIMEOUT);
+        long timeoutMs = (t == null) ? Configuration.DEFAULT_OWNERSHIP_TIMEOUT : Integer.parseInt(t);
         alreadyApplied = new ConcurrentHashMap<>();
-        ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied, timeout);
+        ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied, timeoutMs);
         
+        rangesToWarmup = initWarmupRanges();
+        logger.info("Warmup ranges for this site is " + rangesToWarmup);
+
         MusicTxDigest txDaemon = new MusicTxDigest(this);
         txDaemon.startBackgroundDaemon(Integer.parseInt(
         		info.getProperty(Configuration.TX_DAEMON_SLEEPTIME_S, Configuration.TX_DAEMON_SLEEPTIME_S_DEFAULT))); 
@@ -160,6 +169,24 @@ public class StateManager {
             throw new MDBCServiceException(e.getMessage(), e);
         }
     }
+    
+    /**
+     * Get list of ranges to warmup from configuration file
+     * if no configuration is provided, will return null
+     * @return
+     */
+    private Set<Range> initWarmupRanges() {
+        String warmupString = info.getProperty(Configuration.KEY_WARMUPRANGES);
+        if (warmupString==null) {
+            return null;
+        }
+        Set<Range> warmupRanges = new HashSet<>();
+        String[] ranges = warmupString.split(",");
+        for (String range: ranges) {
+            warmupRanges.add(new Range(range.trim()));
+        }
+        return warmupRanges;
+    }
 
     public MusicInterface getMusicInterface() {
     	return this.musicInterface;
@@ -169,23 +196,45 @@ public class StateManager {
         return new ArrayList<>(connectionRanges.values());
 	}
 
-	public List<Range> getWarmupRanges(){
+    /**
+     * Get a list of ranges that are to be periodically warmed up
+     * 
+     * If no list is specified, all ranges except eventual consistency ranges are returned
+     * @return
+     */
+	public Set<Range> getRangesToWarmup() {
         warmupLock.lock();
-        List<Range> returnArray;
+        Set<Range> returnSet;
         try {
-            if(warmupRanges!=null) {
-                returnArray = new ArrayList<>(warmupRanges);
+            if(rangesToWarmup!=null) {
+                returnSet = rangesToWarmup;
             }
-            else{
-                returnArray = null;
+            else {
+                returnSet = getAllRanges();
+                for (Range eventualRange: eventualRanges) {
+                    returnSet.remove(eventualRange);
+                }
             }
         }
         finally{
            warmupLock.unlock();
         }
-        return returnArray;
+        return returnSet;
     }
 
+	/**
+	 * Get a set of all ranges seen in the sql db
+	 * @return
+	 */
+	private Set<Range> getAllRanges() {
+	    DBInterface dbi = ((MdbcConnection) getConnection("daemon")).getDBInterface();
+	    return dbi.getSQLRangeSet();
+    }
+
+    /**
+	 * Get a list of ranges that are eventually consistent
+	 * @return
+	 */
     public List<Range> getEventualRanges() {
         eventualLock.lock();
         List<Range> returnArray;
@@ -221,6 +270,10 @@ public class StateManager {
         this.mdbcServerName = mdbcServerName;
     }
 
+    /**
+     * Close connection and relinquish any locks held for that connection
+     * @param connectionId
+     */
     public void closeConnection(String connectionId){
         //\TODO check if there is a race condition
         if(mdbcConnections.containsKey(connectionId)) {
@@ -331,10 +384,10 @@ public class StateManager {
 
     }
 
-    public void setWarmupRanges(List<Range> warmupRanges) {
+    public void setWarmupRanges(Set<Range> warmupRanges) {
         warmupLock.lock();
         try {
-            this.warmupRanges = warmupRanges;
+            this.rangesToWarmup = warmupRanges;
         }
         finally{
             warmupLock.unlock();

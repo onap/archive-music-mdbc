@@ -50,11 +50,15 @@ public class MdbcTestClient {
             System.exit(1);
         }
         Connection connection;
-        try {
-            connection = DriverManager.getConnection("jdbc:avatica:remote:url=http://localhost:30000/test;serialization=protobuf");
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return;
+        try { 
+            String metricURL = "http://localhost:300000/test"; 
+            if(args[0] != null) { 
+                metricURL = args[0]; 
+            } 
+            connection = DriverManager.getConnection("jdbc:avatica:remote:url=" + metricURL+ ";serialization=protobuf"); 
+        } catch (SQLException e) { 
+            e.printStackTrace(); 
+            return; 
         }
 
         try {
@@ -104,7 +108,7 @@ public class MdbcTestClient {
         }
 
         final String insertSQL = "INSERT INTO Persons VALUES (1, 'Martinez', 'Juan', 'KACB', 'ATLANTA');";
-        final String insertSQL1 = "DELETE FROM Persons WHERE PersonID=1;";
+        final String insertSQL1 = "DELETE FROM Persons WHERE PersonID=2;";
         final String insertSQL2 = "INSERT INTO Persons VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
         final String insertSQL3 = "UPDATE Persons SET FirstName='JOSH' WHERE LastName='Smith';";
         final String insertSQL4 = "UPDATE Persons SET FirstName='JOHN' WHERE LastName='Smith';";
@@ -119,11 +123,11 @@ public class MdbcTestClient {
         }
 
         try {
-            execute = insertStmt.execute(insertSQL);
+            //execute = insertStmt.execute(insertSQL);
             execute = insertStmt.execute(insertSQL1);
-            execute = insertStmt.execute(insertSQL2);
-            execute = insertStmt.execute(insertSQL3);
-            execute = insertStmt.execute(insertSQL4);
+            //execute = insertStmt.execute(insertSQL2);
+            //execute = insertStmt.execute(insertSQL3);
+            //execute = insertStmt.execute(insertSQL4);
 
         } catch (SQLException e) {
             e.printStackTrace();

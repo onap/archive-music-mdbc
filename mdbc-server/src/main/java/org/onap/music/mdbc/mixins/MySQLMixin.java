@@ -27,6 +27,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -150,10 +151,7 @@ public class MySQLMixin implements DBInterface {
 	public String getDatabaseName() {
 		return this.dbName;
 	}
-	/**
-	 * Get a set of the table names in the database.
-	 * @return the set
-	 */
+
 	@Override
 	public Set<String> getSQLTableSet() {
 		Set<String> set = new TreeSet<String>();
@@ -172,6 +170,30 @@ public class MySQLMixin implements DBInterface {
 		logger.debug(EELFLoggerDelegate.applicationLogger,"getSQLTableSet returning: "+ set);
 		return set;
 	}
+	
+	@Override
+    public Set<Range> getSQLRangeSet() {
+        Set<String> set = new TreeSet<String>();
+        String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'";
+        try {
+            Statement stmt = jdbcConn.createStatement();
+            ResultSet rs = stmt.executeQuery(sql);
+            while (rs.next()) {
+                String s = rs.getString("TABLE_NAME");
+                set.add(s);
+            }
+            stmt.close();
+        } catch (SQLException e) {
+            logger.error(EELFLoggerDelegate.errorLogger,"getSQLTableSet: "+e);
+        }
+        logger.debug(EELFLoggerDelegate.applicationLogger,"getSQLTableSet returning: "+ set);
+        Set<Range> rangeSet = new HashSet<>();
+        for (String table: set) {
+            rangeSet.add(new Range(table));
+        }
+        return rangeSet;
+    }
+	
 /*
 mysql> describe tables;
 +-----------------+---------------------+------+-----+---------+-------+

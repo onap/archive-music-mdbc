@@ -49,7 +49,13 @@ public interface DBInterface {
 	 * Get a set of the table names in the database. The table names should be returned in UPPER CASE.
 	 * @return the set
 	 */
+	@Deprecated
 	Set<String> getSQLTableSet();
+	/**
+     * Get a set of the ranges in the database
+     * @return the set
+     */
+    Set<Range> getSQLRangeSet();
 	/**
 	 * Return the name of the database that the driver is connected to
 	 * @return
