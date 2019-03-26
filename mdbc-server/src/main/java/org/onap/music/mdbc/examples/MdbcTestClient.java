@@ -123,9 +123,9 @@ public class MdbcTestClient {
         }
 
         try {
-            //execute = insertStmt.execute(insertSQL);
+            execute = insertStmt.execute(insertSQL);
             execute = insertStmt.execute(insertSQL1);
-            //execute = insertStmt.execute(insertSQL2);
+            execute = insertStmt.execute(insertSQL2);
             //execute = insertStmt.execute(insertSQL3);
             //execute = insertStmt.execute(insertSQL4);
 
