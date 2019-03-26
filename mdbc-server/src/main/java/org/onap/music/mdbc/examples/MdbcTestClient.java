@@ -51,8 +51,8 @@ public class MdbcTestClient {
         }
         Connection connection;
         try { 
-            String metricURL = "http://localhost:300000/test"; 
-            if(args[0] != null) { 
+            String metricURL = "http://localhost:30000/test"; 
+            if (args.length>0 && args[0] != null) { 
                 metricURL = args[0]; 
             } 
             connection = DriverManager.getConnection("jdbc:avatica:remote:url=" + metricURL+ ";serialization=protobuf"); 
@@ -60,14 +60,12 @@ public class MdbcTestClient {
             e.printStackTrace(); 
             return; 
         }
-
         try {
         connection.setAutoCommit(false);
         } catch (SQLException e) {
             e.printStackTrace();
             return;
         }
-
 
         final String sql = "CREATE TABLE IF NOT EXISTS Persons (\n" +
                 "    PersonID int,\n" +
@@ -84,7 +82,6 @@ public class MdbcTestClient {
             e.printStackTrace();
             return;
         }
-
         boolean execute = true;
 //        try {
 //            execute = stmt.execute(sql);
@@ -123,9 +120,9 @@ public class MdbcTestClient {
         }
 
         try {
-            //execute = insertStmt.execute(insertSQL);
+            execute = insertStmt.execute(insertSQL);
             execute = insertStmt.execute(insertSQL1);
-            //execute = insertStmt.execute(insertSQL2);
+            execute = insertStmt.execute(insertSQL2);
             //execute = insertStmt.execute(insertSQL3);
             //execute = insertStmt.execute(insertSQL4);
 

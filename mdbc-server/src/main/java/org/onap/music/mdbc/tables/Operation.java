@@ -43,6 +43,18 @@ public final class Operation implements Serializable{
 		KEY = key;
 	}
 
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        Operation clone = null;
+        try {
+            clone = (Operation) super.clone();
+        }
+        catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        return clone;
+    }
+
 	public String getTable(){
 	    return TABLE;
     }

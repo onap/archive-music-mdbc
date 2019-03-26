@@ -74,13 +74,15 @@ public class MySQLMixin implements DBInterface {
 	public static final String TRANS_TBL = "MDBC_TRANSLOG";
 	private static final String CREATE_TBL_SQL =
 		"CREATE TABLE IF NOT EXISTS "+TRANS_TBL+
-		" (IX INT AUTO_INCREMENT, OP CHAR(1), TABLENAME VARCHAR(255),KEYDATA VARCHAR(1024), ROWDATA VARCHAR(1024), CONNECTION_ID INT,PRIMARY KEY (IX))";
+		" (IX INT AUTO_INCREMENT, OP CHAR(1), TABLENAME VARCHAR(255),KEYDATA VARCHAR(1024), ROWDATA VARCHAR(1024), " +
+			"CONNECTION_ID INT, PRIMARY KEY (IX));";
 
 	private final MusicInterface mi;
 	private final int connId;
 	private final String dbName;
 	private final Connection jdbcConn;
 	private final Map<String, TableInfo> tables;
+	private PreparedStatement deleteStagingStatement;
 	private boolean server_tbl_created = false;
 
 	public MySQLMixin() {
@@ -89,13 +91,19 @@ public class MySQLMixin implements DBInterface {
 		this.dbName = null;
 		this.jdbcConn = null;
 		this.tables = null;
+		this.deleteStagingStatement = null;
 	}
-	public MySQLMixin(MusicInterface mi, String url, Connection conn, Properties info) {
+	public MySQLMixin(MusicInterface mi, String url, Connection conn, Properties info) throws SQLException {
 		this.mi = mi;
 		this.connId = generateConnID(conn);
 		this.dbName = getDBName(conn);
 		this.jdbcConn = conn;
 		this.tables = new HashMap<String, TableInfo>();
+	}
+
+	private PreparedStatement getStagingDeletePreparedStatement() throws SQLException {
+		return jdbcConn.prepareStatement("DELETE FROM "+TRANS_TBL+" WHERE (IX BETWEEN ? AND ? ) AND " +
+					"CONNECTION_ID = ?;");
 	}
 	// This is used to generate a unique connId for this connection to the DB.
 	private int generateConnID(Connection conn) {
@@ -297,6 +305,7 @@ mysql> describe tables;
 					Statement stmt = jdbcConn.createStatement();
 					stmt.execute(CREATE_TBL_SQL);
 					stmt.close();
+					this.deleteStagingStatement = getStagingDeletePreparedStatement();
 					logger.info(EELFLoggerDelegate.applicationLogger,"createSQLTriggers: Server side dirty table created.");
 					server_tbl_created = true;
 				} catch (SQLException e) {
@@ -594,11 +603,15 @@ NEW.field refers to the new value
 		// copy from DB.MDBC_TRANSLOG where connid == myconnid
 		// then delete from MDBC_TRANSLOG
 		String sql2 = "SELECT IX, TABLENAME, OP, ROWDATA,KEYDATA FROM "+TRANS_TBL +" WHERE CONNECTION_ID = " + this.connId;
+		Integer biggestIx = Integer.MIN_VALUE;
+		Integer smallestIx = Integer.MAX_VALUE;
 		try {
 			ResultSet rs = executeSQLRead(sql2);
 			Set<Integer> rows = new TreeSet<Integer>();
 			while (rs.next()) {
 				int ix      = rs.getInt("IX");
+				biggestIx = Integer.max(biggestIx,ix);
+				smallestIx = Integer.min(smallestIx,ix);
 				String op   = rs.getString("OP");
 				OperationType opType = toOpEnum(op);
 				String tbl  = rs.getString("TABLENAME");
@@ -611,15 +624,12 @@ NEW.field refers to the new value
 			rs.getStatement().close();
 			if (rows.size() > 0) {
 				//TODO: DO batch deletion
-				sql2 = "DELETE FROM "+TRANS_TBL+" WHERE IX = ?";
-				PreparedStatement ps = jdbcConn.prepareStatement(sql2);
-				logger.debug("Executing: "+sql2);
-				logger.debug("  For ix = "+rows);
-				for (int ix : rows) {
-					ps.setInt(1, ix);
-					ps.execute();
-				}
-				ps.close();
+
+                this.deleteStagingStatement.setInt(1,smallestIx);
+				this.deleteStagingStatement.setInt(2,biggestIx);
+				this.deleteStagingStatement.setInt(3,this.connId);
+				logger.debug("Staging delete: Executing with vals ["+smallestIx+","+biggestIx+","+this.connId+"]");
+				this.deleteStagingStatement.execute();
 			}
 		} catch (SQLException e) {
 			logger.warn("Exception in postStatementHook: "+e);
@@ -1029,5 +1039,10 @@ NEW.field refers to the new value
 		logger.info("Clearing replayed operations");
 		String sql = "DELETE FROM " + TRANS_TBL + " WHERE CONNECTION_ID = " + this.connId; 
 		jdbcStmt.executeQuery(sql);
+	}
+
+	@Override
+	public Connection getSQLConnection(){
+		return jdbcConn;
 	}
 }

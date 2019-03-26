@@ -115,6 +115,10 @@ public class MdbcConnection implements Connection {
         logger.debug("Mdbc connection created with id: "+id);
     }
 
+    public DBInterface getDatabaseInterface(){
+       return this.dbi;
+    }
+
     @Override
     public <T> T unwrap(Class<T> iface) throws SQLException {
         logger.error(EELFLoggerDelegate.errorLogger, "proxyconn unwrap: " + iface.getName());
@@ -262,6 +266,11 @@ public class MdbcConnection implements Connection {
             logger.debug("Closing jdbc from mdbc with id:"+id);
             jdbcConn.close();
             logger.debug("Connection was closed for id:" + id);
+        }
+        try {
+            mi.relinquish(partition.getLockId(),partition.getMRIIndex().toString());
+        } catch (MDBCServiceException e) {
+            throw new SQLException("Failure during relinquish of partition",e);
         }
     }
 
@@ -509,7 +518,7 @@ public class MdbcConnection implements Connection {
             this.partition.updateDatabasePartition(tempPartition);
             statemanager.getOwnAndCheck().reloadAlreadyApplied(this.partition);
         }
-      dbi.preStatementHook(sql);
+        dbi.preStatementHook(sql);
     }
 
 
@@ -601,6 +610,18 @@ public class MdbcConnection implements Connection {
 
     public void relinquishIfRequired(DatabasePartition partition) throws MDBCServiceException {
         mi.relinquishIfRequired(partition);
+    }
+
+    public Connection getConnection(){
+        return jdbcConn;
+    }
+
+    public DatabasePartition getPartition() {
+       return partition;
+    }
+
+    public StagingTable getTransactionDigest(){
+        return transactionDigest;
     }
 
 }

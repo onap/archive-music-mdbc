@@ -214,12 +214,7 @@ public class OwnershipAndCheckpoint{
                             checkpointLock.unlock();
                             break;
                         } else {
-                            final StagingTable txDigest = mi.getTxDigest(pair.getKey());
-                            applyTxDigest(rangesToWarmup,di, txDigest);
-                            for (Range r : pair.getValue()) {
-                                MusicRangeInformationRow row = node.getRow();
-                                alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
-                            }
+                            applyDigestAndUpdateDataStructures(mi, di, rangesToWarmup, node, pair);
                         }
                         pair = node.nextNotAppliedTransaction(rangeSet);
                         enableForeignKeys(di);
@@ -233,6 +228,24 @@ public class OwnershipAndCheckpoint{
         }
     }
 
+    private void applyDigestAndUpdateDataStructures(MusicInterface mi, DBInterface di, List<Range> ranges, DagNode node,
+                                                    Pair<MusicTxDigestId, List<Range>> pair) throws MDBCServiceException {
+        final StagingTable txDigest;
+        try {
+            txDigest = mi.getTxDigest(pair.getKey());
+        } catch (MDBCServiceException e) {
+            logger.warn("Transaction digest was not found, this could be caused by a failure of the previous owner"
+                +"And would normally only happen as the last ID of the corresponding redo log. Please check that this is the"
+                +" case for txID "+pair.getKey().transactionId.toString());
+            return;
+        }
+        applyTxDigest(ranges,di, txDigest);
+        for (Range r : pair.getValue()) {
+            MusicRangeInformationRow row = node.getRow();
+            alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
+        }
+    }
+
     private void applyRequiredChanges(MusicInterface mi, DBInterface db, Dag extendedDag, List<Range> ranges, UUID ownOpId)
         throws MDBCServiceException {
         Set<Range> rangeSet = new HashSet<Range>(ranges);
@@ -242,12 +255,7 @@ public class OwnershipAndCheckpoint{
             if(node!=null) {
                 Pair<MusicTxDigestId, List<Range>> pair = node.nextNotAppliedTransaction(rangeSet);
                 while (pair != null) {
-                    final StagingTable txDigest = mi.getTxDigest(pair.getKey());
-                    applyTxDigest(ranges, db, txDigest);
-                    for (Range r : pair.getValue()) {
-                        MusicRangeInformationRow row = node.getRow();
-                        alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
-                    }
+                    applyDigestAndUpdateDataStructures(mi, db, ranges, node, pair);
                     pair = node.nextNotAppliedTransaction(rangeSet);
                     if (timeout(ownOpId)) {
                         enableForeignKeys(db);
@@ -393,6 +401,7 @@ public class OwnershipAndCheckpoint{
         return rowsPerLatestRange;
     }
 
+            
     public Map<Range, Pair<MriReference, Integer>> getAlreadyApplied() {
         return this.alreadyApplied;
     } 
