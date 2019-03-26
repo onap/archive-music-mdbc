@@ -19,6 +19,7 @@
  */
 package org.onap.music.mdbc.mixins;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -130,4 +131,6 @@ public interface DBInterface {
 	void enableForeignKeyChecks() throws SQLException;
 
 	void applyTxDigest(StagingTable txDigest, List<Range> ranges) throws SQLException, MDBCServiceException;
+
+	Connection getSQLConnection();
 }

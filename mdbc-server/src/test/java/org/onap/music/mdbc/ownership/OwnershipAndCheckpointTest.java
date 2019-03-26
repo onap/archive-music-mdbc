@@ -149,6 +149,7 @@ public class OwnershipAndCheckpointTest {
             Properties properties = new Properties();
             properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
             properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
+            properties.setProperty(MusicMixin.KEY_MUSIC_RFACTOR,"1");
             //StateManager stateManager = new StateManager("dbUrl", properties, "serverName", "dbName");
             ownAndCheck = new OwnershipAndCheckpoint();
             musicMixin =new MusicMixin(stateManager, mdbcServerName,properties);
@@ -175,7 +176,12 @@ public class OwnershipAndCheckpointTest {
         TxCommitProgress progressKeeper = new TxCommitProgress();
         progressKeeper.createNewTransactionTracker(id ,this.conn);
         musicMixin.commitLog(partition, null, stagingTable, id, progressKeeper);
-        TestUtils.unlockRow(keyspace,mriTableName,partition);
+        try {
+            TestUtils.unlockRow(keyspace, mriTableName, partition);
+        }
+        catch(Exception e){
+            fail(e.getMessage());
+        }
     }
 
     private OwnershipReturn cleanAndOwnPartition(List<Range> ranges, UUID ownOpId) throws SQLException {

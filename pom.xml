@@ -99,6 +99,7 @@
         <module>mdbc-server</module>
         <module>mdbc-packages</module>
         <module>mdbc-benchmark</module>
+        <module>mdbc-internal-benchmark</module>
     </modules>
 
     <dependencies>
@@ -127,11 +128,6 @@
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20160810</version>
-        </dependency>
-        <dependency>
-        	<groupId>org.mariadb.jdbc</groupId>
-        	<artifactId>mariadb-java-client</artifactId>
-        	<version>2.3.0</version>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
         <dependency>
