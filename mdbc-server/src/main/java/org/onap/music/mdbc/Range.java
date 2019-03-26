@@ -30,9 +30,7 @@ import java.util.Objects;
  * In the future we may decide to partition ranges differently
  * @author Enrique Saurez 
  */
-public class Range implements Serializable, Cloneable{
-
-	private static final long serialVersionUID = 1610744496930800088L;
+public class Range implements Cloneable{
 
 	private String table;
 
@@ -61,7 +59,7 @@ public class Range implements Serializable, Cloneable{
 	}
 
 	@Override
-    protected Range clone() {
+	public Range clone() {
 	    Range newRange = null;
 	    try{
             newRange = (Range) super.clone();

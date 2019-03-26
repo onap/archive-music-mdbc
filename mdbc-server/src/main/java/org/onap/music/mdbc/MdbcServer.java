@@ -20,7 +20,7 @@
 package org.onap.music.mdbc;
 
 import org.onap.music.mdbc.configurations.NodeConfiguration;
-import org.onap.music.mdbc.tables.MusicTxDigest;
+import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
 import org.apache.calcite.avatica.remote.Driver.Serialization;
 import org.apache.calcite.avatica.remote.LocalService;
 import org.apache.calcite.avatica.server.HttpServer;

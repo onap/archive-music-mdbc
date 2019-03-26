@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import org.junit.Test;
-import org.onap.music.mdbc.tables.MusicTxDigest;
+import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
 import org.onap.music.mdbc.tables.StagingTable;
 
 

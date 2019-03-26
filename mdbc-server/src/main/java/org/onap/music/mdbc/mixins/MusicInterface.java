@@ -21,11 +21,8 @@ package org.onap.music.mdbc.mixins;
 
 import com.datastax.driver.core.ResultSet;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
@@ -230,12 +227,12 @@ public interface MusicInterface {
 
 	/**
      * This function is used to append an index to the redo log in a MRI row
-     * @param partition information related to ownership of partitions, used to verify ownership
+     * @param MRIIndex index of the row to which the record is going to be added (obtained from the Partition)
+	 * @param lockId reference to lock associated to the row in the MRI table MRIIndex.
      * @param newRecord index of the new record to be appended to the redo log
      * @throws MDBCServiceException
      */
-	void appendToRedoLog( DatabasePartition partition, MusicTxDigestId newRecord) throws MDBCServiceException;
-
+	void appendToRedoLog(UUID MRIIndex,  String lockId, MusicTxDigestId newRecord)throws MDBCServiceException;
     /**
      * This functions adds the tx digest to
      * @param newId id used as index in the MTD table
@@ -261,7 +258,7 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
 	
-	public LinkedHashMap<UUID, StagingTable> getEveTxDigest(String nodeName) throws MDBCServiceException;
+	LinkedHashMap<UUID, StagingTable> getEveTxDigest(String nodeName) throws MDBCServiceException;
     /**
      * Function used to retrieve a given transaction digest and deserialize it
      * @param id of the transaction digest to be retrieved
@@ -276,17 +273,6 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
 	void relinquishIfRequired(DatabasePartition partition) throws MDBCServiceException;
-
-    /**
-	 * This function is in charge of owning all the ranges requested and creating a new row that show the ownership of all
-	 * those ranges.
-	 * @param rangeId new id to be used in the new row
-	 * @param ranges ranges to be owned by the end of the function called
-	 * @param partition current ownership status
-	 * @return
-	 * @throws MDBCServiceException
-	 */
-	//OwnershipReturn appendRange(String rangeId, List<Range> ranges, DatabasePartition partition) throws MDBCServiceException;
 
 	/**
      * This functions relinquishes a range
@@ -318,10 +304,17 @@ public interface MusicInterface {
 
     List<MusicRangeInformationRow> getAllMriRows() throws MDBCServiceException;
     
-    public void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
-    public LockResult requestLock(LockRequest request) throws MDBCServiceException;
-    public void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
-    public OwnershipReturn mergeLatestRows(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
+
+    void deleteMriRow(MusicRangeInformationRow row) throws MDBCServiceException;
+
+    void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
+
+    LockResult requestLock(LockRequest request) throws MDBCServiceException;
+
+    void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
+
+    OwnershipReturn mergeLatestRows(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
             Map<UUID, LockResult> locks, UUID ownershipId) throws MDBCServiceException;
+
 }
 
