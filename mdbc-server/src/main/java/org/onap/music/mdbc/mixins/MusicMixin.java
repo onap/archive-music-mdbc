@@ -113,6 +113,7 @@ public class MusicMixin implements MusicInterface {
     public static final String MDBC_PRIMARYKEY_TYPE = "uuid";
     public static final boolean DEFAULT_COMPRESSION = true;
 
+    public static final boolean ENABLE_NETWORK_TOPOLOGY_STRATEGY = false;
 
     //\TODO Add logic to change the names when required and create the tables when necessary
     private String musicTxDigestTableName = "musictxdigest";
@@ -253,12 +254,11 @@ public class MusicMixin implements MusicInterface {
     public static void createKeyspace(String keyspace, int replicationFactor) throws MDBCServiceException {
         Map<String,Object> replicationInfo = new HashMap<>();
         replicationInfo.put("'class'", "'NetworkTopologyStrategy'");
-        if(replicationFactor==3){
+        if (ENABLE_NETWORK_TOPOLOGY_STRATEGY && replicationFactor==3) {
             replicationInfo.put("'dc1'", 1);
             replicationInfo.put("'dc2'", 1);
             replicationInfo.put("'dc3'", 1);
-        }
-        else {
+        } else {
             replicationInfo.put("'class'", "'SimpleStrategy'");
             replicationInfo.put("'replication_factor'", replicationFactor);
         }
