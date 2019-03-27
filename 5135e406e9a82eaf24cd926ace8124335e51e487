@@ -1,0 +1,174 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6cc3bd64_dac3ce5b",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/TestUtils.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "Should this still be in the test directory and not the main directory?",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e2786b1e_d4f71a62",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 71,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "I don\u0027t like the static functions in this class",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "7b9d805f_7e49ce62",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1352,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "Most of the stuff below this line can probably be moved out of this function. This is the only spot that needs statemanager so we might be able to remove the statemanager dependency from this class. Should be in another pull request, just mentioning it here",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "4bd512ed_27b7a26e",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1393,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "should this be:\nnew MusicTxDigestId(null,MDBCUtils.generateUniqueKey(), -1);\n\n?\naddEventualTxDigest gets the value from the txDigestUUID (transactionId), not mriID",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "418a4963_8a894083",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MySQLMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "the batch deletion is now done? can we remove the TODO",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "875dab22_268339c8",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "Can we rename this MusicTxDigestDaemon or similar since it\u0027s now its own thread?",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3e553988_c87e503b",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigestId.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "do we need this field? mriId is never used in current code",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5f9823b6_9fb5321d",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigestId.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "Let\u0027s bite the bullet and add getters/setters for these fields. I\u0027ll take care of it in a new pull request",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8e1916cf_f0704378",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tools/ClusterSetup.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 30,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "Should the server worry about initializing all of the tables needed upon start up?\nI don\u0027t think this needs to be a separate class and the server should do this.\n\nThis is also the driver behind the static methods",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "07870782_2d552ed0",
+        "filename": "mdbc-server/src/main/resources/logback.xml",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T14:58:55Z",
+      "side": 1,
+      "message": "We should keep the logging statements for now",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
