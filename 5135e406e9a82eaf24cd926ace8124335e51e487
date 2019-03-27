@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "cc51ae1f_881b64be",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/TestUtils.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 38,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T16:15:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "6cc3bd64_dac3ce5b",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "e2786b1e_d4f71a62",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
         "patchSetId": 1
@@ -53,6 +71,24 @@
     },
     {
       "key": {
+        "uuid": "9465d52e_8ed644b8",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1352,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T16:15:28Z",
+      "side": 1,
+      "message": "will fix in another pull request",
+      "parentUuid": "7b9d805f_7e49ce62",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "4bd512ed_27b7a26e",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
         "patchSetId": 1
@@ -64,6 +100,24 @@
       "writtenOn": "2019-03-27T14:58:55Z",
       "side": 1,
       "message": "should this be:\nnew MusicTxDigestId(null,MDBCUtils.generateUniqueKey(), -1);\n\n?\naddEventualTxDigest gets the value from the txDigestUUID (transactionId), not mriID",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e2ded7c9_5c563b0f",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 1393,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T16:15:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "4bd512ed_27b7a26e",
       "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
       "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
       "unresolved": false
@@ -87,6 +141,24 @@
     },
     {
       "key": {
+        "uuid": "7ba68bce_894d2e11",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MySQLMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 626,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T16:15:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "418a4963_8a894083",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "875dab22_268339c8",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigest.java",
         "patchSetId": 1
@@ -98,6 +170,24 @@
       "writtenOn": "2019-03-27T14:58:55Z",
       "side": 1,
       "message": "Can we rename this MusicTxDigestDaemon or similar since it\u0027s now its own thread?",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "a252e381_40117f3f",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigest.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 35,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T16:15:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "875dab22_268339c8",
       "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
       "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
       "unresolved": false
@@ -121,6 +211,24 @@
     },
     {
       "key": {
+        "uuid": "99ac8604_58b8643a",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigestId.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 25,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T16:15:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "3e553988_c87e503b",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "5f9823b6_9fb5321d",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigestId.java",
         "patchSetId": 1
@@ -132,6 +240,24 @@
       "writtenOn": "2019-03-27T14:58:55Z",
       "side": 1,
       "message": "Let\u0027s bite the bullet and add getters/setters for these fields. I\u0027ll take care of it in a new pull request",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "8ee1652a_8f59689c",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigestId.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T16:15:28Z",
+      "side": 1,
+      "message": "will do in separate pull request",
+      "parentUuid": "5f9823b6_9fb5321d",
       "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
       "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
       "unresolved": false
@@ -166,6 +292,24 @@
       "writtenOn": "2019-03-27T14:58:55Z",
       "side": 1,
       "message": "We should keep the logging statements for now",
+      "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "853e79e3_345f503d",
+        "filename": "mdbc-server/src/main/resources/logback.xml",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-27T16:15:28Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "07870782_2d552ed0",
       "revId": "5135e406e9a82eaf24cd926ace8124335e51e487",
       "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
       "unresolved": false
