@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "f6d6e25c_0f253653",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-28T19:26:28Z",
+      "side": 1,
+      "message": "we need to release this row if we end up merging a row we already own into a new partition. I will be more careful in cleaning up the failure case",
+      "parentUuid": "4c922a23_ec5b0f45",
+      "revId": "b17e7cc68bfc225065bfee4884aa379ff8430476",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "f41e8e50_4e8cd443",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
         "patchSetId": 2
@@ -30,6 +48,24 @@
       "writtenOn": "2019-03-28T19:16:56Z",
       "side": 1,
       "message": "This should be only if newLocks doesn\u0027t contain the lock, it could already be own by a previous iteration with a different partition. So maybe we can split the if condition into \n1) partition.isLocked()\u0026\u0026partition.getMRIIndex().equals(uuid)|| !row.getIsLatest()\nHere we set it to own and add it to new locks\n2)  newLocks.containsKey(uuid)\nHere we just add it to the \"toOwn\"",
+      "revId": "b17e7cc68bfc225065bfee4884aa379ff8430476",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "db0be4eb_b7d7c375",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-03-28T19:26:28Z",
+      "side": 1,
+      "message": "Since we are putting into a map, won\u0027t we just end up overwriting what is already there? Meaning we just hold on to the information from iteration to iteration",
+      "parentUuid": "f41e8e50_4e8cd443",
       "revId": "b17e7cc68bfc225065bfee4884aa379ff8430476",
       "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
       "unresolved": false
