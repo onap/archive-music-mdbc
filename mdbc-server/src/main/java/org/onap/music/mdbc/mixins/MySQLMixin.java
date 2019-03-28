@@ -344,6 +344,7 @@ NEW.field refers to the new value
 */
 	private String generateTrigger(String tableName, String op) {
 		boolean isdelete = op.equals("DELETE");
+		boolean isinsert = op.equals("INSERT");
 		boolean isupdate = op.equals("UPDATE");
 		TableInfo ti = getTableInfo(tableName);
 		StringBuilder newJson = new StringBuilder("JSON_OBJECT(");		// JSON_OBJECT(key, val, key, val) page 1766
@@ -355,10 +356,10 @@ NEW.field refers to the new value
 			.append("'").append(col).append("', ")
 			.append(isdelete ? "OLD." : "NEW.")
 			.append(col);
-			if (!isdelete && (ti.iskey(col) || !ti.hasKey())) {
+			if (ti.iskey(col) || !ti.hasKey()) {
 				keyJson.append(kfx)
 					.append("'").append(col).append("', ")
-					.append(isupdate ? "OLD." : "NEW.")
+					.append(isinsert ? "NEW." : "OLD.")
 					.append(col);
 				kfx = ", ";
 			}
@@ -382,7 +383,7 @@ NEW.field refers to the new value
 		  .append("', ")
 		  .append(isdelete ? "'D'" : (op.equals("INSERT") ? "'I'" : "'U'"))
 		  .append(", ")
-		  .append(!isdelete ? keyJson.toString() : "NULL")
+		  .append( (keyJson.length()>"JSON_OBJECT()".length()) ? keyJson.toString() : "NULL")
 		  .append(", ")
 		  .append(newJson.toString())
 		  .append(", ")
