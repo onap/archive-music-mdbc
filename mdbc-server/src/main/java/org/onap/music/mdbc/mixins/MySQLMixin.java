@@ -355,10 +355,10 @@ NEW.field refers to the new value
 			.append("'").append(col).append("', ")
 			.append(isdelete ? "OLD." : "NEW.")
 			.append(col);
-			if (isupdate && (ti.iskey(col) || !ti.hasKey())) {
+			if (!isdelete && (ti.iskey(col) || !ti.hasKey())) {
 				keyJson.append(kfx)
 					.append("'").append(col).append("', ")
-					.append("OLD.")
+					.append(isupdate ? "OLD." : "NEW.")
 					.append(col);
 				kfx = ", ";
 			}
@@ -382,7 +382,7 @@ NEW.field refers to the new value
 		  .append("', ")
 		  .append(isdelete ? "'D'" : (op.equals("INSERT") ? "'I'" : "'U'"))
 		  .append(", ")
-		  .append(isupdate ? keyJson.toString() : "NULL")
+		  .append(!isdelete ? keyJson.toString() : "NULL")
 		  .append(", ")
 		  .append(newJson.toString())
 		  .append(", ")
@@ -913,21 +913,38 @@ NEW.field refers to the new value
                 buildAndExecuteSQLInverse(jdbcStmt, op, cols, vals);
             }
         } catch (SQLException sqlE) {
-            // This applies only for replaying transactions involving Eventually Consistent tables
-            logger.warn("Error Replaying operation: " + sql.toString() + "; Replacing insert/replace/viceversa and replaying ");
+            // This applies for replaying transactions involving Eventually Consistent tables
+            // or transactions that replay on top of existing keys
+            logger.warn("Error Replaying operation: " + sql.toString() + ";"
+                    + "Replacing insert/replace/viceversa and replaying ");
             
             buildAndExecuteSQLInverse(jdbcStmt, op, cols, vals);       
             
         }
     }
+    
     protected void buildAndExecuteSQLInverse(Statement jdbcStmt, Operation op,
             ArrayList<String> cols, ArrayList<Object> vals) throws SQLException, MDBCServiceException {
-        StringBuilder sqlInverse = constructSQLInverse( op, cols, vals);
+        StringBuilder sqlInverse = constructSQLInverse(op, cols, vals);
         if(sqlInverse == null)
             return;
         logger.info("Replaying operation: " + sqlInverse.toString());       
         jdbcStmt.executeUpdate(sqlInverse.toString());
     }
+    
+    /**
+     * Construct an update statement from an insert, or 
+     * construct an insert statement from an update
+     * 
+     * useful when replaying logic, if the primary key value is already present/not present
+     * 
+     * @param op
+     * @param cols
+     * @param vals
+     * @return
+     * @throws MDBCServiceException
+     */
+
     protected StringBuilder constructSQLInverse(Operation op, ArrayList<String> cols,
             ArrayList<Object> vals) throws MDBCServiceException {
         StringBuilder sqlInverse = null;
