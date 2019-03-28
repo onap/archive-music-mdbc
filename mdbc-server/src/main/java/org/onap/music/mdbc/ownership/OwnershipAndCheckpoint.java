@@ -271,39 +271,41 @@ public class OwnershipAndCheckpoint{
     /**
      * Use this functions to verify ownership, and taking locking ownership of new ranges
      * @param ranges the ranges that should be own after calling this function
-     * @param partition current information of the ownership in the system
+     * @param currPartition current information of the ownership in the system
      * @param ownOpId is the id used to describe this ownership operation (it is not used to create the new row, if any is
      *                required
      * @return an object indicating the status of the own function result
      * @throws MDBCServiceException
      */
-    public OwnershipReturn own(MusicInterface mi, List<Range> ranges, DatabasePartition partition, UUID opId) throws MDBCServiceException {
+    public OwnershipReturn own(MusicInterface mi, List<Range> ranges,
+            DatabasePartition currPartition, UUID opId) throws MDBCServiceException {
         
-        if(ranges == null || ranges.isEmpty()) {
+        if (ranges == null || ranges.isEmpty()) {
               return null;
         }
 
-        Map<UUID,LockResult> newLocks = new HashMap<>();
         //Init timeout clock
         startOwnershipTimeoutClock(opId);
-        if(partition.isLocked()&&partition.getSnapshot().containsAll(ranges)) {
-            return new OwnershipReturn(opId,partition.getLockId(),partition.getMRIIndex(),partition.getSnapshot(),null);
+        if (currPartition.isLocked()&&currPartition.getSnapshot().containsAll(ranges)) {
+            return new OwnershipReturn(opId,currPartition.getLockId(),currPartition.getMRIIndex(),
+                    currPartition.getSnapshot(),null);
         }
         //Find
+        Map<UUID,LockResult> newLocks = new HashMap<>();
         List<Range> rangesToOwn = mi.getRangeDependencies(ranges);
         List<MusicRangeInformationRow> rows = extractRowsForRange(mi,rangesToOwn, false);
         Dag toOwn =  Dag.getDag(rows,rangesToOwn);
         Dag currentlyOwn = new Dag();
-        while( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
+        while ( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
                 !timeout(opId)
-            ){
-            takeOwnershipOfDag(mi, partition, opId, newLocks, toOwn);
+            ) {
+            takeOwnershipOfDag(mi, currPartition, opId, newLocks, toOwn);
             currentlyOwn=toOwn;
             //TODO instead of comparing dags, compare rows
             rows = extractRowsForRange(mi, rangesToOwn, false);
             toOwn =  Dag.getDag(rows,rangesToOwn);
         }
-        if(!currentlyOwn.isOwned() || toOwn.isDifferent(currentlyOwn)){
+        if (!currentlyOwn.isOwned() || toOwn.isDifferent(currentlyOwn)) {
            mi.releaseLocks(newLocks);
            stopOwnershipTimeoutClock(opId);
            logger.error("Error when owning a range: Timeout");
@@ -317,14 +319,15 @@ public class OwnershipAndCheckpoint{
     
     /**
      * Step through dag and take lock ownership of each range
-     * @param partition
+     * @param partition current partition owned by system
      * @param opId
      * @param newLocks
      * @param toOwn
      * @throws MDBCServiceException
      */
-    private void takeOwnershipOfDag(MusicInterface mi, DatabasePartition partition, UUID opId, Map<UUID, LockResult> newLocks, Dag toOwn)
-            throws MDBCServiceException {
+    private void takeOwnershipOfDag(MusicInterface mi, DatabasePartition partition, UUID opId,
+            Map<UUID, LockResult> newLocks, Dag toOwn) throws MDBCServiceException {
+        
         while(toOwn.hasNextToOwn()){
             DagNode node = toOwn.nextToOwn();
             MusicRangeInformationRow row = node.getRow();
@@ -333,6 +336,8 @@ public class OwnershipAndCheckpoint{
                 newLocks.containsKey(uuid) ||
                 !row.getIsLatest()){
                 toOwn.setOwn(node);
+                newLocks.put(uuid, new LockResult(true, uuid, partition.getLockId(),
+                        false, partition.getSnapshot()));
             }
             else{
                 LockRequest request = new LockRequest(MusicMixin.musicRangeInformationTableName,uuid,

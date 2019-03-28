@@ -27,44 +27,45 @@ import org.onap.music.mdbc.Range;
 public class LockResult{
     private boolean successful;
     private UUID musicRangeInformationIndex;
-    private String ownerId;
+    private String lockId;
     private List<Range> ranges;
     private boolean newLock;
-    private long backOffPeriodS;
+    /** back off time in milliseconds */
+    private long backOffPeriodms;
 
-    public LockResult(boolean succesful, UUID rowId, String ownerId, boolean newLock, List<Range> ranges){
+    public LockResult(boolean succesful, UUID rowId, String lockId, boolean newLock, List<Range> ranges){
         this.successful = true;
         this.musicRangeInformationIndex = rowId;
-        this.ownerId=ownerId;
+        this.lockId=lockId;
         this.newLock=newLock;
         this.ranges=ranges;
     }
     /**
      * Please use constructor which specifies whether lock result was succesful
      * @param rowId
-     * @param ownerId
+     * @param lockId
      * @param newLock
      * @param ranges
      */
     @Deprecated
-    public LockResult(UUID rowId, String ownerId, boolean newLock, List<Range> ranges){
+    public LockResult(UUID rowId, String lockId, boolean newLock, List<Range> ranges){
         this.successful = true;
         this.musicRangeInformationIndex = rowId;
-        this.ownerId=ownerId;
+        this.lockId=lockId;
         this.newLock=newLock;
         this.ranges=ranges;
     }
     public LockResult(boolean successful, long backOffTimems) {
         this.successful = successful;
-        this.backOffPeriodS = backOffTimems;
+        this.backOffPeriodms = backOffTimems;
     }
     
     public boolean wasSuccessful() {
         return successful;
     }
     
-    public String getOwnerId(){
-        return ownerId;
+    public String getLockId(){
+        return lockId;
     }
     public boolean isNewLock(){
         return newLock;
@@ -86,7 +87,7 @@ public class LockResult{
      * @return
      */
     public long getBackOffPeriod() {
-        return this.backOffPeriodS;
+        return this.backOffPeriodms;
     }
     
 }

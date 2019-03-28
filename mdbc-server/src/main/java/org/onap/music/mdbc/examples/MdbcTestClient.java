@@ -106,7 +106,7 @@ public class MdbcTestClient {
 
         final String insertSQL = "INSERT INTO Persons VALUES (1, 'Martinez', 'Juan', 'KACB', 'ATLANTA');";
         final String insertSQL1 = "DELETE FROM Persons WHERE PersonID=2;";
-        final String insertSQL2 = "INSERT INTO Persons VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
+        final String insertSQL2 = "INSERT INTO Persons2 VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
         final String insertSQL3 = "UPDATE Persons SET FirstName='JOSH' WHERE LastName='Smith';";
         final String insertSQL4 = "UPDATE Persons SET FirstName='JOHN' WHERE LastName='Smith';";
 
@@ -121,7 +121,7 @@ public class MdbcTestClient {
 
         try {
             execute = insertStmt.execute(insertSQL);
-            execute = insertStmt.execute(insertSQL1);
+            //execute = insertStmt.execute(insertSQL1);
             execute = insertStmt.execute(insertSQL2);
             //execute = insertStmt.execute(insertSQL3);
             //execute = insertStmt.execute(insertSQL4);

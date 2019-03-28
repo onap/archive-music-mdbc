@@ -106,13 +106,14 @@ public class MusicMixin implements MusicInterface {
     /** The default property value to use for the Cassandra IP address. */
     public static final String DEFAULT_MUSIC_ADDRESS  = "localhost";
     /** The default property value to use for the Cassandra replication factor. */
-    public static final int    DEFAULT_MUSIC_RFACTOR  = 3;
+    public static final int    DEFAULT_MUSIC_RFACTOR  = 1;
     /** The default primary string column, if none is provided. */
     public static final String MDBC_PRIMARYKEY_NAME = "mdbc_cuid";
     /** Type of the primary key, if none is defined by the user */
     public static final String MDBC_PRIMARYKEY_TYPE = "uuid";
     public static final boolean DEFAULT_COMPRESSION = true;
 
+    public static final boolean ENABLE_NETWORK_TOPOLOGY_STRATEGY = false;
 
     //\TODO Add logic to change the names when required and create the tables when necessary
     private String musicTxDigestTableName = "musictxdigest";
@@ -253,12 +254,11 @@ public class MusicMixin implements MusicInterface {
     public static void createKeyspace(String keyspace, int replicationFactor) throws MDBCServiceException {
         Map<String,Object> replicationInfo = new HashMap<>();
         replicationInfo.put("'class'", "'NetworkTopologyStrategy'");
-        if(replicationFactor==3){
+        if (ENABLE_NETWORK_TOPOLOGY_STRATEGY && replicationFactor==3) {
             replicationInfo.put("'dc1'", 1);
             replicationInfo.put("'dc2'", 1);
             replicationInfo.put("'dc3'", 1);
-        }
-        else {
+        } else {
             replicationInfo.put("'class'", "'SimpleStrategy'");
             replicationInfo.put("'replication_factor'", replicationFactor);
         }
@@ -1262,7 +1262,7 @@ public class MusicMixin implements MusicInterface {
             musicTxDigestTableName, isLatest);
         ReturnType returnType = MusicCore.criticalPut(music_ns, musicRangeInformationTableName, row.getPartitionIndex().toString(),
             appendQuery, 
-            lock.getOwnerId()
+            lock.getLockId()
             , null);
         if(returnType.getResult().compareTo(ResultType.SUCCESS) != 0 ){
             logger.error(EELFLoggerDelegate.errorLogger, "Error when executing change isLatest operation with return type: "+returnType.getMessage());
@@ -1996,15 +1996,19 @@ public class MusicMixin implements MusicInterface {
         return result;
     }
 
-    private void unlockKeyInMusic(String table, String key, String lockref) {
-        String fullyQualifiedKey= music_ns+"."+ table+"."+lockref;
-        MusicCore.destroyLockRef(fullyQualifiedKey,lockref);
+    private void unlockKeyInMusic(String table, String key, String lockref) throws MDBCServiceException {
+        String fullyQualifiedKey= music_ns+"."+ table+"."+key;
+        try {
+            MusicCore.voluntaryReleaseLock(fullyQualifiedKey,lockref);
+        } catch (MusicLockingException e) {
+            throw new MDBCServiceException(e.getMessage(), e);
+        }
     }
 
     @Override
     public void releaseLocks(Map<UUID,LockResult> newLocks) throws MDBCServiceException{
         for(Map.Entry<UUID,LockResult> lock : newLocks.entrySet()) {
-            unlockKeyInMusic(musicRangeInformationTableName, lock.getKey().toString(), lock.getValue().getOwnerId());
+            unlockKeyInMusic(musicRangeInformationTableName, lock.getKey().toString(), lock.getValue().getLockId());
         }
     }
 
@@ -2015,7 +2019,7 @@ public class MusicMixin implements MusicInterface {
             if(lock == null)
                 continue;
             unlockKeyInMusic(musicRangeInformationTableName, r.getPartitionIndex().toString(),
-                lock.getOwnerId());
+                lock.getLockId());
             newLocks.remove(r.getPartitionIndex());
         }
     }
@@ -2025,7 +2029,7 @@ public class MusicMixin implements MusicInterface {
         for(Map.Entry<UUID,LockResult> lock : newLocks.entrySet()) {
             UUID id = lock.getKey();
             if(id!=finalRow){
-                unlockKeyInMusic(musicRangeInformationTableName, id.toString(), lock.getValue().getOwnerId());
+                unlockKeyInMusic(musicRangeInformationTableName, id.toString(), lock.getValue().getLockId());
                 toErase.add(id);
             }
         }
@@ -2083,6 +2087,7 @@ public class MusicMixin implements MusicInterface {
         latestDag.addNewNode(r,new ArrayList<>(rangesAndDependents.getValue()));
     }
 
+
     private List<MusicRangeInformationRow> setReadOnlyAnyDoubleRow(Dag latestDag,List<MusicRangeInformationRow> rows, Map<UUID,LockResult> locks)
         throws MDBCServiceException{
         List<MusicRangeInformationRow> returnInfo = new ArrayList<>();
@@ -2126,7 +2131,7 @@ public class MusicMixin implements MusicInterface {
         releaseLocks(changed,locks);
         releaseAllLocksExcept(row.getPartitionIndex(),locks);
         LockResult ownRow = locks.get(row.getPartitionIndex());
-        return new OwnershipReturn(ownershipId, ownRow.getOwnerId(), ownRow.getIndex(),ranges,extendedDag);
+        return new OwnershipReturn(ownershipId, ownRow.getLockId(), ownRow.getIndex(),ranges,extendedDag);
     }
 
     /**
@@ -2151,12 +2156,7 @@ public class MusicMixin implements MusicInterface {
         if(ownerId==null||ownerId.isEmpty()||rangeId==null||rangeId.isEmpty()){
             return;
         }
-        String fullyQualifiedMriKey = music_ns+"."+ musicRangeInformationTableName+"."+rangeId;
-        try {
-            MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey,ownerId);
-        } catch (MusicLockingException e) {
-            throw new MDBCServiceException(e.getMessage(), e);
-        }
+        unlockKeyInMusic(musicRangeInformationTableName, rangeId, ownerId);
     }
 
     /**
