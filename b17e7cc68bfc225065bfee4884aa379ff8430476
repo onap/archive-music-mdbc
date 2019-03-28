@@ -69,6 +69,24 @@
       "revId": "b17e7cc68bfc225065bfee4884aa379ff8430476",
       "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b44e3858_511cdd5d",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-03-28T19:30:39Z",
+      "side": 1,
+      "message": "The lock may not be the same as the lock hold by the partition.",
+      "parentUuid": "db0be4eb_b7d7c375",
+      "revId": "b17e7cc68bfc225065bfee4884aa379ff8430476",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
     }
   ]
 }
