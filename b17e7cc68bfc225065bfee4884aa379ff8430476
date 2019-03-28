@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4c922a23_ec5b0f45",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 336,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-03-28T19:16:56Z",
+      "side": 1,
+      "message": "I am also concerned to add a new lock for the current partition, because it would be release in case of failure, which shouldn\u0027t be a requirement, when we try to acquire new locks, we end up releasing even the lock that we had before, see line 307 of this code.",
+      "revId": "b17e7cc68bfc225065bfee4884aa379ff8430476",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "f41e8e50_4e8cd443",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 339,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-03-28T19:16:56Z",
+      "side": 1,
+      "message": "This should be only if newLocks doesn\u0027t contain the lock, it could already be own by a previous iteration with a different partition. So maybe we can split the if condition into \n1) partition.isLocked()\u0026\u0026partition.getMRIIndex().equals(uuid)|| !row.getIsLatest()\nHere we set it to own and add it to new locks\n2)  newLocks.containsKey(uuid)\nHere we just add it to the \"toOwn\"",
+      "revId": "b17e7cc68bfc225065bfee4884aa379ff8430476",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
