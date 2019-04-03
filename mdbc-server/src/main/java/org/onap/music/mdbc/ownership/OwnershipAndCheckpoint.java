@@ -334,12 +334,11 @@ public class OwnershipAndCheckpoint{
             DagNode node = toOwn.nextToOwn();
             MusicRangeInformationRow row = node.getRow();
             UUID uuid = row.getPartitionIndex();
-            if (partition.isLocked() && partition.getMRIIndex().equals(uuid) ||
-                !row.getIsLatest()) {
+            if (partition.isLocked() && partition.getMRIIndex().equals(uuid) ) {
                 toOwn.setOwn(node);
                 newLocks.put(uuid, new LockResult(true, uuid, partition.getLockId(),
                         false, partition.getSnapshot()));
-            } else if (newLocks.containsKey(uuid)) {
+            } else if ( newLocks.containsKey(uuid) || !row.getIsLatest() ) {
                 toOwn.setOwn(node);
             } else {
                 LockRequest request = new LockRequest(MusicMixin.musicRangeInformationTableName,uuid,
