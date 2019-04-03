@@ -24,6 +24,7 @@ import org.apache.calcite.avatica.remote.Driver;
 
 public class MdbcTestClient {
 
+
     public static class Hr {
         public final Employee[] emps = {
                 new Employee(100, "Bill"),
@@ -109,7 +110,6 @@ public class MdbcTestClient {
         final String insertSQL2 = "INSERT INTO Persons2 VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
         final String insertSQL3 = "UPDATE Persons SET FirstName='JOSH' WHERE LastName='Smith';";
         final String insertSQL4 = "UPDATE Persons SET FirstName='JOHN' WHERE LastName='Smith';";
-
 
         Statement insertStmt;
         try {
