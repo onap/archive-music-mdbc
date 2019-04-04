@@ -98,8 +98,6 @@
     <modules>
         <module>mdbc-server</module>
         <module>mdbc-packages</module>
-        <module>mdbc-benchmark</module>
-        <module>mdbc-internal-benchmark</module>
     </modules>
 
     <dependencies>
