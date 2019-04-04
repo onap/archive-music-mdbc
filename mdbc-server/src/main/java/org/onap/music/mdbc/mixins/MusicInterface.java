@@ -313,7 +313,20 @@ public interface MusicInterface {
 
     void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
 
-    OwnershipReturn mergeLatestRows(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
+    /**
+     * Combine previous musicrangeinformation rows for new partition, if necessary
+     * 
+     * Does not merge rows if a single previous row is sufficient to match new partition needed
+     * 
+     * @param extendedDag
+     * @param latestRows
+     * @param ranges
+     * @param locks
+     * @param ownershipId
+     * @return
+     * @throws MDBCServiceException
+     */
+    OwnershipReturn mergeLatestRowsIfNecessary(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
             Map<UUID, LockResult> locks, UUID ownershipId) throws MDBCServiceException;
 
 }

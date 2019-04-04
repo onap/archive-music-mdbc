@@ -2110,9 +2110,17 @@ public class MusicMixin implements MusicInterface {
     }
 
     @Override
-    public OwnershipReturn mergeLatestRows(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
-                                            Map<UUID,LockResult> locks, UUID ownershipId) throws MDBCServiceException{
+    public OwnershipReturn mergeLatestRowsIfNecessary(Dag extendedDag, List<MusicRangeInformationRow> latestRows,
+            List<Range> ranges, Map<UUID, LockResult> locks, UUID ownershipId) throws MDBCServiceException {
         recoverFromFailureAndUpdateDag(extendedDag,latestRows,ranges,locks);
+        if (latestRows.size()==1) {
+            //reuse current row if possible
+            MusicRangeInformationRow row = latestRows.get(0);
+            LockResult lockresult = locks.get(row.getPartitionIndex());
+            if (lockresult!=null) {
+                return new OwnershipReturn(ownershipId, lockresult.getLockId(), row.getPartitionIndex(), ranges, extendedDag);
+            }
+        }
         List<MusicRangeInformationRow> changed = setReadOnlyAnyDoubleRow(extendedDag, latestRows,locks);
         releaseLocks(changed, locks);
         MusicRangeInformationRow row = createAndAssignLock(ranges);
