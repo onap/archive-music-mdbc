@@ -20,24 +20,22 @@
 
 package org.onap.music.mdbc.mixins;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.junit.Assert.*;
-
-import com.datastax.driver.core.Cluster;
-import com.datastax.driver.core.Session;
-
-import java.util.*;
-
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.function.Consumer;
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
-
-
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
-import org.junit.Ignore;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 import org.onap.music.datastore.MusicDataStore;
 import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.exceptions.MDBCServiceException;
@@ -51,12 +49,13 @@ import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.StateManager;
-import org.onap.music.mdbc.TestUtils;
-import org.onap.music.mdbc.ownership.Dag;
-import org.onap.music.mdbc.ownership.DagNode;
+import org.onap.music.mdbc.proto.ProtoDigest.Digest.CompleteDigest;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
-import org.onap.music.service.impl.MusicCassaCore;
+import org.onap.music.mdbc.tables.StagingTable;
+import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.Session;
+import com.google.protobuf.InvalidProtocolBufferException;
 
 public class MusicMixinTest {
 	
@@ -109,6 +108,7 @@ public class MusicMixinTest {
             Properties properties = new Properties();
             properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
             properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
+            properties.setProperty(MusicMixin.KEY_COMPRESSION, Boolean.toString(true));
             mixin=new MusicMixin(stateManager, mdbcServerName,properties);
         } catch (MDBCServiceException e) {
             fail("error creating music mixin");
@@ -245,5 +245,40 @@ public class MusicMixinTest {
 
     @Test
     public void relinquishIfRequired() {
+    }
+    
+    @Test
+    public void getEveTxDigest() throws Exception {
+        
+        mixin.createMusicEventualTxDigest();
+        ByteBuffer compressed = mockCompressedProtoByteBuff();
+        MusicTxDigestId digestId = new MusicTxDigestId(UUID.randomUUID(), 1);
+        mixin.addEventualTxDigest(digestId, compressed);
+        
+        LinkedHashMap<UUID, StagingTable> digest =  mixin.getEveTxDigest("n1");
+        
+        Consumer<Map.Entry<UUID,StagingTable>> consumer = new Consumer<Map.Entry<UUID,StagingTable>>() {
+
+            @Override
+            public void accept(Entry<UUID, StagingTable> mapEntry) {
+                assertNotNull(mapEntry.getValue());
+            }
+            
+        };
+       
+        digest.entrySet().forEach(consumer);
+        
+        
+        
+        
+    }
+
+    protected ByteBuffer mockCompressedProtoByteBuff() throws MDBCServiceException, InvalidProtocolBufferException {
+        CompleteDigest instance = CompleteDigest.getDefaultInstance();
+        // CompleteDigest instance  = CompleteDigest.parseFrom(ByteBuffer.wrap("Test".getBytes()));
+        byte[] bytes = instance.toByteArray();
+        ByteBuffer serialized = ByteBuffer.wrap(bytes);
+        ByteBuffer compressed = StagingTable.Compress(serialized);
+        return compressed;
     }
 }

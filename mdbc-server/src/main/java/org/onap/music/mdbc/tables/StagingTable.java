@@ -91,7 +91,7 @@ public class StagingTable {
         builderInitialized=true;
 		digestBuilder = CompleteDigest.newBuilder();
 		this.eventuallyConsistentRanges=eventuallyConsistentRanges;
-		eventuallyBuilder = (!this.eventuallyConsistentRanges.isEmpty())?null:CompleteDigest.newBuilder();
+		eventuallyBuilder = (this.eventuallyConsistentRanges.isEmpty())?null:CompleteDigest.newBuilder();
 	}
 
 	public StagingTable(ByteBuffer serialized) throws MDBCServiceException {
@@ -242,7 +242,15 @@ public class StagingTable {
     }
 
     synchronized public boolean isEmpty() {
-	    return (digestBuilder.getRowsCount()==0);
+	    return (digestBuilder.getRowsCount()==0 && eventuallyBuilder.getRowsCount()==0);
+    }
+    
+    synchronized public boolean isStrongEmpty() {
+        return (digestBuilder.getRowsCount()==0);
+    }
+    
+    synchronized public boolean isEventualEmpty() {
+        return (eventuallyBuilder.getRowsCount()==0);
     }
 	
 	synchronized public void clear() throws MDBCServiceException {
