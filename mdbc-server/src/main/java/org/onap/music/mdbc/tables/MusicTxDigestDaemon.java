@@ -133,7 +133,7 @@ public class MusicTxDigestDaemon implements Runnable {
 					logger.error("Unable to perform Eventual Consistency operations" + e.getMessage());
 					continue;
 				}
-				conn.close();
+
 				Thread.sleep(TimeUnit.SECONDS.toMillis(this.daemonSleepTimeS));
 			} catch (InterruptedException | SQLException e) {
 				logger.error("MusicTxDigest background daemon stopped " + e.getMessage(), e);
