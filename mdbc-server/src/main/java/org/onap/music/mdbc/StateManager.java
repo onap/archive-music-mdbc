@@ -283,7 +283,7 @@ public class StateManager {
             transactionInfo.deleteTxProgress(connectionId);
             try {
                 Connection conn = mdbcConnections.get(connectionId);
-                if(conn!=null) {
+                if (conn!=null && !conn.isClosed()) {
                     conn.close();
                 }
             } catch (SQLException e) {
