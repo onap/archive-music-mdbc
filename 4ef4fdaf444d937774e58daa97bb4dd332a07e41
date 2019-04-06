@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "7c7c65ee_49880e24",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tables/MusicTxDigestDaemon.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 94,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-04-06T00:21:08Z",
+      "side": 1,
+      "message": "Maybe we can move the connection outside of the while loop?",
+      "revId": "4ef4fdaf444d937774e58daa97bb4dd332a07e41",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
