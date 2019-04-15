@@ -316,7 +316,7 @@ public class OwnershipAndCheckpoint{
         Set<Range> allRanges = currentlyOwn.getAllRanges();
         List<MusicRangeInformationRow> isLatestRows = extractRowsForRange(mi, new ArrayList<>(allRanges), true);
         currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,isLatestRows));
-        return mi.mergeLatestRows(currentlyOwn,rows,ranges,newLocks,opId);
+        return mi.mergeLatestRowsIfNecessary(currentlyOwn,rows,ranges,newLocks,opId);
     }
     
     /**
