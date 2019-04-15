@@ -272,6 +272,9 @@ public class MdbcConnection implements Connection {
         } catch (MDBCServiceException e) {
             throw new SQLException("Failure during relinquish of partition",e);
         }
+	// Warning! Make sure this call remains AFTER the call to jdbcConn.close(),
+	// otherwise you're going to get stuck in an infinite loop.
+	statemanager.closeConnection(id);
     }
 
     @Override
