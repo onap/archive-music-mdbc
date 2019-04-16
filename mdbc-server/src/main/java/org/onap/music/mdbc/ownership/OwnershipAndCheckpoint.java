@@ -293,8 +293,8 @@ public class OwnershipAndCheckpoint{
         //Find
         Map<UUID,LockResult> newLocks = new HashMap<>();
         List<Range> rangesToOwn = mi.getRangeDependencies(ranges);
-        List<MusicRangeInformationRow> rows = extractRowsForRange(mi,rangesToOwn, false);
-        Dag toOwn =  Dag.getDag(rows,rangesToOwn);
+        List<MusicRangeInformationRow> rangesToOwnRows = extractRowsForRange(mi,rangesToOwn, false);
+        Dag toOwn =  Dag.getDag(rangesToOwnRows,rangesToOwn);
         Dag currentlyOwn = new Dag();
         while ( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
                 !timeout(opId)
@@ -302,8 +302,8 @@ public class OwnershipAndCheckpoint{
             takeOwnershipOfDag(mi, currPartition, opId, newLocks, toOwn);
             currentlyOwn=toOwn;
             //TODO instead of comparing dags, compare rows
-            rows = extractRowsForRange(mi, rangesToOwn, false);
-            toOwn =  Dag.getDag(rows,rangesToOwn);
+            rangesToOwnRows = extractRowsForRange(mi, rangesToOwn, false);
+            toOwn =  Dag.getDag(rangesToOwnRows,rangesToOwn);
         }
         if (!currentlyOwn.isOwned() || toOwn.isDifferent(currentlyOwn)) {
             //hold on to previous partition
@@ -314,9 +314,9 @@ public class OwnershipAndCheckpoint{
             throw new MDBCServiceException("Ownership timeout");
         }
         Set<Range> allRanges = currentlyOwn.getAllRanges();
-        List<MusicRangeInformationRow> isLatestRows = extractRowsForRange(mi, new ArrayList<>(allRanges), true);
-        currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,isLatestRows));
-        return mi.mergeLatestRowsIfNecessary(currentlyOwn,rows,ranges,newLocks,opId);
+        List<MusicRangeInformationRow> latestRows = extractRowsForRange(mi, new ArrayList<>(allRanges), true);
+        currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,latestRows));
+        return mi.mergeLatestRowsIfNecessary(currentlyOwn,latestRows,ranges,newLocks,opId);
     }
     
     /**

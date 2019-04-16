@@ -195,4 +195,18 @@ public class DatabasePartition {
         }
         return false;
     }
+    
+    /**
+     * Checks if the database partition contains all of the ranges
+     * @param ranges
+     * @return
+     */
+    public synchronized boolean contains(List<Range> ranges) {
+        for (Range range: ranges) {
+            if (!isContained(range)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
