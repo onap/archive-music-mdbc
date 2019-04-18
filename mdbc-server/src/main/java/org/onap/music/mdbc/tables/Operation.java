@@ -24,19 +24,20 @@ import java.io.Serializable;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.onap.music.exceptions.MDBCServiceException;
-
+import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 import static java.util.Objects.hash;
 
 public final class Operation implements Serializable{
 
 	private static final long serialVersionUID = -1215301985078183104L;
 
-	final OperationType TYPE;
+	final SQLOperation TYPE;
 	final String VAL;
 	final String KEY;
 	final String TABLE;
 
-	public Operation(String table,OperationType type, String newVal, String key) {
+	public Operation(String table, SQLOperation type, String newVal, String key) {
 	    TABLE = table;
 		TYPE = type;
 		VAL = newVal;
@@ -72,7 +73,7 @@ public final class Operation implements Serializable{
         return keys;
     }
 
-    public OperationType getOperationType() {
+    public SQLOperation getOperationType() {
     	return this.TYPE;
     }
 

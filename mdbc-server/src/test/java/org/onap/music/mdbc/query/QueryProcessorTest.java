@@ -16,23 +16,20 @@
 package org.onap.music.mdbc.query;
 
 import static org.junit.Assert.*;
-import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import org.apache.calcite.sql.parser.SqlParseException;
 import org.junit.Test;
-import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
-import org.onap.music.mdbc.tables.StagingTable;
 
 
 public class QueryProcessorTest {
 
     @Test
-    public void tableQuery() throws Exception {
+    public void tableQuery() throws SQLException {
         String sqlQuery = "CREATE TABLE pet (name VARCHAR(20), owner VARCHAR(20))";
-        HashMap<String, List<Operation>> expectedOut = new HashMap<>();
-        List<Operation> op = new ArrayList<>();
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> op = new ArrayList<>();
         // no table ops for now
         // op.add(Operation.TABLE);
         // expectedOut.put("pet", op);
@@ -40,23 +37,33 @@ public class QueryProcessorTest {
     }
 
     @Test
-    public void selectQuery() throws SqlParseException {
-        String sqlQuery = "SELECT name, age FROM table1 t1";
-        HashMap<String, List<Operation>> expectedOut = new HashMap<>();
-        List<Operation> t1op = new ArrayList<>();
-        t1op.add(Operation.SELECT);
-        expectedOut.put("TABLE1", t1op);
+    public void selectQuery() throws SQLException {
+        String sqlQuery = "SELECT name, age FROM DB.table1 t1;";
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> t1op = new ArrayList<>();
+        t1op.add(SQLOperation.SELECT);
+        expectedOut.put("DB.TABLE1", t1op);
+        assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery));
+    }
+    
+    @Test
+    public void selectQuery1() throws SQLException {
+        String sqlQuery = "SELECT name, age FROM DB.table1;";
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> t1op = new ArrayList<>();
+        t1op.add(SQLOperation.SELECT);
+        expectedOut.put("DB.TABLE1", t1op);
         assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery));
     }
 
     @Test
-    public void selectQuery2Table() throws SqlParseException {
+    public void selectQuery2Table() throws SQLException {
         String sqlQuery = "SELECT name, age FROM table1 t1, table2 t2 WHERE t1.id = t2.id";
-        HashMap<String, List<Operation>> expectedOut = new HashMap<>();
-        List<Operation> t1op = new ArrayList<>();
-        List<Operation> t2op = new ArrayList<>();
-        t1op.add(Operation.SELECT);
-        t2op.add(Operation.SELECT);
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> t1op = new ArrayList<>();
+        List<SQLOperation> t2op = new ArrayList<>();
+        t1op.add(SQLOperation.SELECT);
+        t2op.add(SQLOperation.SELECT);
         expectedOut.put("TABLE1", t1op);
         expectedOut.put("TABLE2", t2op);
         assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery));
@@ -66,40 +73,56 @@ public class QueryProcessorTest {
     }
 
     @Test
-    public void insertQuery() throws SqlParseException {
+    public void insertQuery() throws SQLException {
         String sqlQuery = "INSERT INTO Employees (id, name) values ('1','Vikram')";
-        HashMap<String, List<Operation>> expectedOut = new HashMap<>();
-        List<Operation> t1op = new ArrayList<>();
-        t1op.add(Operation.INSERT);
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> t1op = new ArrayList<>();
+        t1op.add(SQLOperation.INSERT);
         expectedOut.put("EMPLOYEES", t1op);
         assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery));
     }
 
     @Test
-    public void updateQuery() throws SqlParseException {
-        String sqlQuery = "UPDATE Employees SET id = 1 WHERE id = 2";
-        HashMap<String, List<Operation>> expectedOut = new HashMap<>();
-        List<Operation> t1op = new ArrayList<>();
-        t1op.add(Operation.UPDATE);
-        expectedOut.put("EMPLOYEES", t1op);
+    public void updateQuery() throws SQLException {
+        String sqlQuery = "UPDATE Db.Employees SET id = 1 WHERE id = 2";
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> t1op = new ArrayList<>();
+        t1op.add(SQLOperation.UPDATE);
+        expectedOut.put("DB.EMPLOYEES", t1op);
         assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery));
 
-        sqlQuery = "UPDATE Employees SET id = 1";
+        sqlQuery = "UPDATE db.Employees SET id = 1";
         assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery));
     }
 
     @Test
-    public void insertSelect() throws SqlParseException {
+    public void insertSelect() throws SQLException {
         String sqlQuery =
                 "INSERT INTO table1 (CustomerName, City, Country) SELECT SupplierName, City, Country FROM table2";
-        HashMap<String, List<Operation>> expectedOut = new HashMap<>();
-        List<Operation> t1op = new ArrayList<>();
-        List<Operation> t2op = new ArrayList<>();
-        t1op.add(Operation.INSERT);
-        t2op.add(Operation.SELECT);
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> t1op = new ArrayList<>();
+        List<SQLOperation> t2op = new ArrayList<>();
+        t1op.add(SQLOperation.INSERT);
+        t2op.add(SQLOperation.SELECT);
         expectedOut.put("TABLE1", t1op);
         expectedOut.put("TABLE2", t2op);
         assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery));
     }
-
+    
+    @Test
+    public void selectJoin() throws SQLException {
+        String sqlQuery =
+                "SELECT Orders.OrderID, Customers.CustomerName, Orders.OrderDate " + 
+                "FROM Orders " + 
+                "INNER JOIN DB.Customers ON Orders.CustomerID=Customers.CustomerID;";
+        
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> t1op = new ArrayList<>();
+        List<SQLOperation> t2op = new ArrayList<>();
+        t1op.add(SQLOperation.SELECT);
+        t2op.add(SQLOperation.SELECT);
+        expectedOut.put("ORDERS", t1op);
+        expectedOut.put("DB.CUSTOMERS", t2op);
+        assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery));
+    }
 }

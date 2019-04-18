@@ -53,6 +53,7 @@ import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
 import org.onap.music.mdbc.query.QueryProcessor;
+import org.onap.music.mdbc.query.SQLOperation;
 import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -501,13 +502,13 @@ public class MdbcConnection implements Connection {
      * can be synchronized before a SELECT, for those databases that do not support SELECT triggers.
      * @param sql the SQL statement that is about to be executed
      */
-    public void preStatementHook(final String sql) throws MDBCServiceException {
+    public void preStatementHook(final String sql) throws MDBCServiceException, SQLException {
         //TODO: verify ownership of keys here
         //Parse tables from the sql query
-        Map<String, List<String>> tableToInstruction = QueryProcessor.extractTableFromQuery(sql);
+        Map<String, List<SQLOperation>> tableToInstruction = QueryProcessor.parseSqlQuery(sql);
         //Check ownership of keys
         List<Range> queryTables = MDBCUtils.getTables(tableToInstruction);
-        if(this.partition!=null ){
+        if (this.partition!=null) {
             List<Range> snapshot = this.partition.getSnapshot();
             if(snapshot!=null){
                 queryTables.addAll(snapshot);

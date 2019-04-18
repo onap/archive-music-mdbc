@@ -17,8 +17,8 @@
  * limitations under the License.
  * ============LICENSE_END======================================================
  */
-package org.onap.music.mdbc.tables;
+package org.onap.music.mdbc.query;
 
-public enum OperationType{
-	DELETE, UPDATE, INSERT, SELECT
+public enum SQLOperationType {
+    READ, WRITE, TABLE; 
 }

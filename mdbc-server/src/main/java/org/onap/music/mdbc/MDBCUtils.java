@@ -37,6 +37,7 @@ import org.onap.music.logging.format.ErrorSeverity;
 import org.onap.music.logging.format.ErrorTypes;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.Utils;
+import org.onap.music.mdbc.query.SQLOperation;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;
 
@@ -96,7 +97,7 @@ public class MDBCUtils {
 		return prop;
 	}
 
-	public static List<Range> getTables(Map<String,List<String>> queryParsed){
+	public static List<Range> getTables(Map<String,List<SQLOperation>> queryParsed){
 	    List<Range> ranges = new ArrayList<>();
 	    for(String table: queryParsed.keySet()){
 	       ranges.add(new Range(table));

@@ -36,6 +36,8 @@ import org.onap.music.mdbc.proto.ProtoDigest.Digest.CompleteDigest;
 import org.onap.music.mdbc.proto.ProtoDigest.Digest.CompleteDigest.Builder;
 import org.onap.music.mdbc.proto.ProtoDigest.Digest.Row;
 import org.onap.music.mdbc.proto.ProtoDigest.Digest.Row.OpType;
+import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 
 public class StagingTable {
 
@@ -105,8 +107,8 @@ public class StagingTable {
         }
         for(Row row : completeDigest.getRowsList()){
             final OpType type = row.getType();
-            OperationType newType = (type==OpType.INSERT)?OperationType.INSERT:(type==OpType.DELETE)?
-            OperationType.DELETE:OperationType.UPDATE;
+            SQLOperation newType = (type==OpType.INSERT)?SQLOperation.INSERT:(type==OpType.DELETE)?
+            SQLOperation.DELETE:SQLOperation.UPDATE;
             operations.add(new Operation(row.getTable(),newType,row.getVal(),row.getKey()));
         }
     }
@@ -176,13 +178,13 @@ public class StagingTable {
 	    return isBuilderInitialized();
     }
 	
-	synchronized public void addOperation(Range range, OperationType type, String newVal, String keys)
+	synchronized public void addOperation(Range range, SQLOperation type, String newVal, String keys)
         throws MDBCServiceException {
 	    if(!builderInitialized){
             throw new MDBCServiceException("This type of staging table is unmutable, please use the constructor"
                 + "with no parameters");
         }
-		OpType newType = (type==OperationType.INSERT)?OpType.INSERT:(type==OperationType.DELETE)?
+		OpType newType = (type==SQLOperation.INSERT)?OpType.INSERT:(type==SQLOperation.DELETE)?
 			OpType.DELETE:OpType.UPDATE;
 	    Row.Builder rowBuilder = Row.newBuilder().setTable(range.getTable()).setType(newType).setVal(newVal);
 	    if(keys!=null){
@@ -209,8 +211,8 @@ public class StagingTable {
         ArrayList<Operation> newOperations = new ArrayList<>();
         for(Row row : digestBuilder.getRowsList()){
             final OpType type = row.getType();
-            OperationType newType = (type==OpType.INSERT)?OperationType.INSERT:(type==OpType.DELETE)?
-                OperationType.DELETE:OperationType.UPDATE;
+            SQLOperation newType = (type==OpType.INSERT)?SQLOperation.INSERT:(type==OpType.DELETE)?
+                SQLOperation.DELETE:SQLOperation.UPDATE;
             newOperations.add(new Operation(row.getTable(),newType,row.getVal(),row.getKey()));
         }
         return newOperations;
