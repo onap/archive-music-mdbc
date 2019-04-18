@@ -43,8 +43,9 @@ import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.Operation;
-import org.onap.music.mdbc.tables.OperationType;
 import org.onap.music.mdbc.tables.StagingTable;
 
 import net.sf.jsqlparser.JSQLParserException;
@@ -578,16 +579,16 @@ NEW.field refers to the new value
 		}
 	}
 
-	private OperationType toOpEnum(String operation) throws NoSuchFieldException {
+	private SQLOperation toOpEnum(String operation) throws NoSuchFieldException {
 		switch (operation.toLowerCase()) {
 			case "i":
-				return OperationType.INSERT;
+				return SQLOperation.INSERT;
 			case "d":
-				return OperationType.DELETE;
+				return SQLOperation.DELETE;
 			case "u":
-				return OperationType.UPDATE;
+				return SQLOperation.UPDATE;
 			case "s":
-				return OperationType.SELECT;
+				return SQLOperation.SELECT;
 			default:
 				logger.error(EELFLoggerDelegate.errorLogger,"Invalid operation selected: ["+operation+"]");
 				throw new NoSuchFieldException("Invalid operation enum");
@@ -614,7 +615,7 @@ NEW.field refers to the new value
 				biggestIx = Integer.max(biggestIx,ix);
 				smallestIx = Integer.min(smallestIx,ix);
 				String op   = rs.getString("OP");
-				OperationType opType = toOpEnum(op);
+				SQLOperation opType = toOpEnum(op);
 				String tbl  = rs.getString("TABLENAME");
 				String newRowStr = rs.getString("ROWDATA");
 				String rowStr = rs.getString("KEYDATA");
@@ -951,10 +952,10 @@ NEW.field refers to the new value
         StringBuilder sqlInverse = null;
         switch (op.getOperationType()) {
             case INSERT:
-                sqlInverse = constructUpdate(op.getTable() , OperationType.UPDATE, op.getKey(), cols, vals);
+                sqlInverse = constructUpdate(op.getTable() , SQLOperation.UPDATE, op.getKey(), cols, vals);
                 break;
             case UPDATE:
-                sqlInverse = constructInsert(op.getTable() , OperationType.INSERT, cols, vals);
+                sqlInverse = constructInsert(op.getTable() , SQLOperation.INSERT, cols, vals);
                 break;
             default:
                 break;
@@ -982,7 +983,7 @@ NEW.field refers to the new value
         }
         return sql;
     }
-    private StringBuilder constructDelete(String r, OperationType op, JSONObject key) {
+    private StringBuilder constructDelete(String r, SQLOperation op, JSONObject key) {
         StringBuilder sql = new StringBuilder();
         sql.append(op + " FROM ");
         sql.append(r  + " WHERE ");
@@ -990,7 +991,7 @@ NEW.field refers to the new value
         sql.append(";");
         return sql;
     }
-    private StringBuilder constructInsert(String r, OperationType  op, ArrayList<String> cols,
+    private StringBuilder constructInsert(String r, SQLOperation  op, ArrayList<String> cols,
             ArrayList<Object> vals) {
         StringBuilder sql = new StringBuilder();
         String sep;
@@ -1010,7 +1011,7 @@ NEW.field refers to the new value
         sql.append(");");
         return sql;
     }
-    private StringBuilder constructUpdate(String r, OperationType op, JSONObject key, ArrayList<String> cols,
+    private StringBuilder constructUpdate(String r, SQLOperation op, JSONObject key, ArrayList<String> cols,
             ArrayList<Object> vals) {
         StringBuilder sql = new StringBuilder();
         String sep;

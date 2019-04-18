@@ -22,16 +22,12 @@ package org.onap.music.mdbc;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 
-import java.util.HashSet;
 import org.json.JSONObject;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.onap.music.exceptions.MDBCServiceException;
-import org.onap.music.mdbc.tables.OperationType;
+import org.onap.music.mdbc.query.SQLOperation;
 import org.onap.music.mdbc.tables.StagingTable;
 
 public class MDBCUtilsTest {
@@ -40,7 +36,7 @@ public class MDBCUtilsTest {
     public void toStringTest1() {
         StagingTable table = new StagingTable();
         try {
-            table.addOperation(new Range("TABLE1"),OperationType.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString(),null);
+            table.addOperation(new Range("TABLE1"),SQLOperation.INSERT,(new JSONObject(new String[]{"test3", "Test4"})).toString(),null);
         } catch (MDBCServiceException e) {
             fail();
         }
