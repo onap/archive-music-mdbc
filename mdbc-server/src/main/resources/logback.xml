@@ -37,7 +37,7 @@
   
   -->
 
-<configuration scan="true" scanPeriod="3 seconds" debug="true">
+<configuration scan="false" scanPeriod="3 seconds" debug="true">
   <!-- 
   Logback files for the mdbc Driver "mdbc"
   are created in directory ${catalina.base}/logs/mdbc;

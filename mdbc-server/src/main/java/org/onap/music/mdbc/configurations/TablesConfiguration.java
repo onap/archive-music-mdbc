@@ -26,6 +26,7 @@ import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
+import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
 
 import com.google.gson.Gson;
 import org.onap.music.datastore.PreparedQueryObject;
@@ -46,6 +47,7 @@ public class TablesConfiguration {
 
     private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(TablesConfiguration.class);
     private List<PartitionInformation> partitions;
+    private List<String> eventual;
     String tableToPartitionName;
     private String musicNamespace;
     private String partitionInformationTableName;
@@ -83,16 +85,17 @@ public class TablesConfiguration {
 
             logger.info("Creating empty row with id "+partitionId);
             MusicMixin.createEmptyMriRow(musicNamespace,partitionInfo.mriTableName,UUID.fromString(partitionId),
-                partitionInfo.owner,null,partitionInfo.getTables(),true);
+                partitionInfo.owner,null,
+                partitionInfo.getTables(),true);
 
             //3) Create config for this node
             StringBuilder newStr = new StringBuilder();
             for(Range r: partitionInfo.tables){
-                newStr.append(r.toString().toUpperCase()).append(",");
+                newStr.append(r.toString()).append(",");
             }
 
             logger.info("Appending row to configuration "+partitionId);
-            nodeConfigs.add(new NodeConfiguration(newStr.toString(),"",UUID.fromString(partitionId),
+            nodeConfigs.add(new NodeConfiguration(newStr.toString(),eventual,UUID.fromString(partitionId),
             		sqlDatabaseName, partitionInfo.owner));
         }
         return nodeConfigs;

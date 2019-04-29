@@ -80,6 +80,15 @@ public class MdbcServer {
     	Properties connectionProps = new Properties();
     	connectionProps.put("user", user);
     	connectionProps.put("password", password);
+    	String defaultMusicMixin = Utils.getDefaultMusicMixin();
+    	if(defaultMusicMixin!=null){
+    		connectionProps.put(Configuration.KEY_MUSIC_MIXIN_NAME,defaultMusicMixin);
+		}
+    	String defaultDBMixin = Utils.getDefaultDBMixin();
+		if(defaultMusicMixin!=null){
+    		connectionProps.put(Configuration.KEY_DB_MIXIN_NAME,defaultDBMixin);
+		}
+		Utils.registerDefaultDrivers();
     	meta = new MdbcServerLogic(url,connectionProps,config);
     	LocalService service = new LocalService(meta);
 

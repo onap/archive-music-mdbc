@@ -24,6 +24,8 @@ import org.onap.music.mdbc.configurations.NodeConfiguration;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.UUID;
 
 public class CreatePartition {
@@ -51,7 +53,9 @@ public class CreatePartition {
     }
 
     public void convert(){
-        config = new NodeConfiguration(tables, eventual,UUID.fromString(mriIndex),"test","");
+        String[] tablesArray=eventual.split(",");
+        ArrayList<String> eventualTables = (new ArrayList<>(Arrays.asList(tablesArray)));
+        config = new NodeConfiguration(tables, eventualTables,UUID.fromString(mriIndex),"test","");
     }
 
     public void saveToFile(){
