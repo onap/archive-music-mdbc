@@ -1,0 +1,11 @@
+{
+  "internalNamespace": "music_internal",
+  "internalReplicationFactor": 1,
+  "musicNamespace": "namespace",
+  "musicReplicationFactor": 1,
+  "mriTableName": "musicrangeinformation",
+  "mtxdTableName": "musictxdigest",
+  "eventualMtxdTableName":"musicevetxdigest",
+  "nodeInfoTableName":"nodeinfo",
+  "rangeDependencyTableName":"musicrangedependency"
+}

@@ -61,12 +61,13 @@ public class MixinFactory {
 						con = cl.getConstructor(MusicInterface.class, String.class, Connection.class, Properties.class);
 						if (con != null) {
 							logger.info(EELFLoggerDelegate.applicationLogger,"Found match: "+miname);
-							return (DBInterface) con.newInstance(mi, url, conn, info);
+							DBInterface newdbi = (DBInterface) con.newInstance(mi, url, conn, info);
+							return newdbi;
 						}
 					}
 				}
 			} catch (Exception e) {
-				logger.error(EELFLoggerDelegate.errorLogger,"createDBInterface: "+e);
+				logger.error(EELFLoggerDelegate.errorLogger,"createDBInterface error for "+cl.getName(),e);
 			}
 		}
 		return null;
