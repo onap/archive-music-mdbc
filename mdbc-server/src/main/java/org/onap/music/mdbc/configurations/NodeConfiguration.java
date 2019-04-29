@@ -41,7 +41,7 @@ public class NodeConfiguration {
     public String nodeName;
     public String sqlDatabaseName;
 
-    public NodeConfiguration(String tables, String eventualTables, UUID mriIndex, String sqlDatabaseName, String node){
+    public NodeConfiguration(String tables, List<String> eventualTables, UUID mriIndex, String sqlDatabaseName, String node){
         //	public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String mriTable, String lockId, String musicTxDigestTable) {
         partition = new DatabasePartition(toRanges(tables), mriIndex, null) ;
         eventual = new Eventual(toRanges(eventualTables));
@@ -49,16 +49,20 @@ public class NodeConfiguration {
         this.sqlDatabaseName = sqlDatabaseName;
     }
 
+    protected List<Range> toRanges(List<String> tables){
+        List<Range> newRange = new ArrayList<>();
+         for(String table: tables) {
+            newRange.add(new Range(table));
+        }
+        return newRange;
+    }
+
     protected List<Range> toRanges(String tables){
         if(tables.isEmpty()){
             return new ArrayList<>();
         }
-        List<Range> newRange = new ArrayList<>();
         String[] tablesArray=tables.split(",");
-        for(String table: tablesArray) {
-            newRange.add(new Range(table));
-        }
-        return newRange;
+        return toRanges(new ArrayList<>(Arrays.asList(tablesArray)));
     }
 
     public String toJson() {

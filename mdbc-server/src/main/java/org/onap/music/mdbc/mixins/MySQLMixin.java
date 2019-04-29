@@ -40,6 +40,7 @@ import org.json.JSONTokener;
 
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.mdbc.Configuration;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
@@ -75,7 +76,7 @@ public class MySQLMixin implements DBInterface {
 	public static final String TRANS_TBL = "MDBC_TRANSLOG";
 	private static final String CREATE_TBL_SQL =
 		"CREATE TABLE IF NOT EXISTS "+TRANS_TBL+
-		" (IX INT AUTO_INCREMENT, OP CHAR(1), TABLENAME VARCHAR(255),KEYDATA VARCHAR(1024), ROWDATA VARCHAR(1024), " +
+		" (IX INT AUTO_INCREMENT, OP CHAR(1), SCHEMANAME VARCHAR(255), TABLENAME VARCHAR(255),KEYDATA VARCHAR(1024), ROWDATA VARCHAR(1024), " +
 			"CONNECTION_ID INT, PRIMARY KEY (IX));";
 
 	private final MusicInterface mi;
@@ -85,6 +86,10 @@ public class MySQLMixin implements DBInterface {
 	private final Map<String, TableInfo> tables;
 	private PreparedStatement deleteStagingStatement;
 	private boolean server_tbl_created = false;
+	private boolean useAsyncStagingUpdate = false;
+	private Object stagingHandlerLock = new Object();
+	private AsyncUpdateHandler stagingHandler = null;
+	private StagingTable currentStaging=null;
 
 	public MySQLMixin() {
 		this.mi = null;
@@ -100,12 +105,35 @@ public class MySQLMixin implements DBInterface {
 		this.dbName = getDBName(conn);
 		this.jdbcConn = conn;
 		this.tables = new HashMap<String, TableInfo>();
+		useAsyncStagingUpdate = Boolean.parseBoolean(info.getProperty(Configuration.KEY_ASYNC_STAGING_TABLE_UPDATE,
+																Configuration.ASYNC_STAGING_TABLE_UPDATE));
+	}
+
+	class StagingTableUpdateRunnable implements Runnable{
+
+		private MySQLMixin mixin;
+		private StagingTable staging;
+
+	    StagingTableUpdateRunnable(MySQLMixin mixin, StagingTable staging){
+	    	this.mixin=mixin;
+	    	this.staging=staging;
+		}
+
+		@Override
+		public void run() {
+			try {
+				this.mixin.updateStagingTable(staging);
+			} catch (NoSuchFieldException|MDBCServiceException e) {
+			    this.mixin.logger.error("Error when updating the staging table");
+			}
+		}
 	}
 
 	private PreparedStatement getStagingDeletePreparedStatement() throws SQLException {
 		return jdbcConn.prepareStatement("DELETE FROM "+TRANS_TBL+" WHERE (IX BETWEEN ? AND ? ) AND " +
 					"CONNECTION_ID = ?;");
 	}
+
 	// This is used to generate a unique connId for this connection to the DB.
 	private int generateConnID(Connection conn) {
 		int rv = (int) System.currentTimeMillis();	// random-ish
@@ -156,11 +184,19 @@ public class MySQLMixin implements DBInterface {
 		}
 		return dbname;
 	}
-	
+
+	@Override
 	public String getDatabaseName() {
 		return this.dbName;
 	}
 
+	@Override
+	public String getSchema() {return this.dbName;}
+
+	/**
+	 * Get a set of the table names in the database.
+	 * @return the set
+	 */
 	@Override
 	public Set<String> getSQLTableSet() {
 		Set<String> set = new TreeSet<String>();
@@ -183,7 +219,7 @@ public class MySQLMixin implements DBInterface {
 	@Override
     public Set<Range> getSQLRangeSet() {
         Set<String> set = new TreeSet<String>();
-        String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'";
+        String sql = "SELECT CONCAT(TABLE_SCHEMA, '.', TABLE_NAME) as TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'";
         try {
             Statement stmt = jdbcConn.createStatement();
             ResultSet rs = stmt.executeQuery(sql);
@@ -244,9 +280,19 @@ mysql> describe tables;
 		TableInfo ti = tables.get(tableName);
 		if (ti == null) {
 			try {
-				String tbl = tableName;//.toUpperCase();
-				String sql = "SELECT COLUMN_NAME, DATA_TYPE, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='"+tbl+"'";
-				ResultSet rs = executeSQLRead(sql);
+				final String[] split = tableName.split("\\.");
+				String tbl = (split.length==2)?split[1]:tableName;
+				String localSchema = (split.length==2)?split[0]:getSchema();
+				StringBuilder sql=new StringBuilder();
+				sql.append("SELECT COLUMN_NAME, DATA_TYPE, COLUMN_KEY FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=");
+				if(localSchema==null) {
+					sql.append("DATABASE() AND TABLE_NAME='");
+				}
+				else {
+					sql.append("'").append(localSchema).append("' AND TABLE_NAME='");
+				}
+				sql.append(tbl).append("';");
+				ResultSet rs = executeSQLRead(sql.toString());
 				if (rs != null) {
 					ti = new TableInfo();
 					while (rs.next()) {
@@ -296,9 +342,13 @@ mysql> describe tables;
 		}
 	}
 	@Override
-	public void createSQLTriggers(String tableName) {
-		// Don't create triggers for the table the triggers write into!!!
+	public void createSQLTriggers(String table) {
+		final String[] split = table.split("\\.");
+		String schemaName = (split.length==2)?split[0]:getSchema();
+		String tableName = (split.length==2)?split[1]:table;
+
 		if (tableName.equals(TRANS_TBL))
+			// Don't create triggers for the table the triggers write into!!!
 			return;
 		try {
 			if (!server_tbl_created) {
@@ -321,12 +371,12 @@ mysql> describe tables;
 				//msm.register(name);
 			}
 			// No SELECT trigger
-			executeSQLWrite(generateTrigger(tableName, "INSERT"));
-			executeSQLWrite(generateTrigger(tableName, "UPDATE"));
+			executeSQLWrite(generateTrigger(schemaName,tableName, "INSERT"));
+			executeSQLWrite(generateTrigger(schemaName,tableName, "UPDATE"));
 			//\TODO: save key row instead of the whole row for delete
-			executeSQLWrite(generateTrigger(tableName, "DELETE"));
+			executeSQLWrite(generateTrigger(schemaName,tableName, "DELETE"));
 		} catch (SQLException e) {
-			if (e.getMessage().equals("Trigger already exists")) {
+			if (e.getMessage().equals("Trigger already exists") || e.getMessage().endsWith("already exists")){
 				//only warn if trigger already exists
 				logger.warn(EELFLoggerDelegate.applicationLogger, "createSQLTriggers" + e);
 			} else {
@@ -343,7 +393,7 @@ END;
 OLD.field refers to the old value
 NEW.field refers to the new value
 */
-	private String generateTrigger(String tableName, String op) {
+	private String generateTrigger(String schema, String tableName, String op) {
 		boolean isdelete = op.equals("DELETE");
 		boolean isinsert = op.equals("INSERT");
 		boolean isupdate = op.equals("UPDATE");
@@ -371,25 +421,27 @@ NEW.field refers to the new value
 		//\TODO check if using mysql driver, so instead check the exception
         //\TODO add conditional for update, if primary key is still the same, use null in the KEYDATA col
 		StringBuilder sb = new StringBuilder()
-		  .append("CREATE TRIGGER ")		// IF NOT EXISTS not supported by MySQL!
-		  .append(String.format("%s_%s", op.substring(0, 1), tableName))
-		  .append(" AFTER ")
-		  .append(op)
-		  .append(" ON ")
-		  .append(tableName.toUpperCase())
-		  .append(" FOR EACH ROW INSERT INTO ")
-		  .append(TRANS_TBL)
-		  .append(" (TABLENAME, OP, KEYDATA, ROWDATA, CONNECTION_ID) VALUES('")
-		  .append(tableName.toUpperCase())
-		  .append("', ")
-		  .append(isdelete ? "'D'" : (op.equals("INSERT") ? "'I'" : "'U'"))
-		  .append(", ")
-		  .append( (keyJson.length()>"JSON_OBJECT()".length()) ? keyJson.toString() : "NULL")
-		  .append(", ")
-		  .append(newJson.toString())
-		  .append(", ")
-		  .append("CONNECTION_ID()")
-		  .append(")");
+			.append("CREATE TRIGGER ")		// IF NOT EXISTS not supported by MySQL!
+			.append(String.format("%s_%s", op.substring(0, 1), tableName))
+			.append(" AFTER ")
+			.append(op)
+			.append(" ON ")
+			.append(tableName)
+			.append(" FOR EACH ROW INSERT INTO ")
+			.append(TRANS_TBL)
+			.append(" (SCHEMANAME, TABLENAME, OP, KEYDATA, ROWDATA, CONNECTION_ID) VALUES('")
+			.append( (schema==null)?"NULL":schema )
+			.append("', '")
+			.append(tableName)
+			.append("', ")
+			.append(isdelete ? "'D'" : (op.equals("INSERT") ? "'I'" : "'U'"))
+			.append(", ")
+			.append( (keyJson.length()>"JSON_OBJECT()".length()) ? keyJson.toString() : "NULL")
+			.append(", ")
+			.append(newJson.toString())
+			.append(", ")
+			.append("CONNECTION_ID()")
+			.append(")");
 		return sb.toString();
 	}
 	private String[] getTriggerNames(String tableName) {
@@ -521,6 +573,16 @@ NEW.field refers to the new value
 		return rs;
 	}
 
+	@Override
+	public void preCommitHook() {
+		synchronized (stagingHandlerLock){
+		    //\TODO check if this can potentially block forever in certain scenarios
+			if(stagingHandler!=null){
+				stagingHandler.waitForAllPendingUpdates();
+			}
+		}
+	}
+
 	/**
 	 * This method executes a write query in the sql database.
 	 * @param sql the SQL to be sent to MySQL
@@ -569,11 +631,24 @@ NEW.field refers to the new value
 			String[] parts = sql.trim().split(" ");
 			String cmd = parts[0].toLowerCase();
 			if ("delete".equals(cmd) || "insert".equals(cmd) || "update".equals(cmd)) {
-				try {
-					this.updateStagingTable(transactionDigest);
-				} catch (NoSuchFieldException|MDBCServiceException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+				if (useAsyncStagingUpdate) {
+					synchronized (stagingHandlerLock){
+						if(stagingHandler==null||currentStaging!=transactionDigest){
+							Runnable newRunnable = new StagingTableUpdateRunnable(this, transactionDigest);
+							currentStaging=transactionDigest;
+							stagingHandler=new AsyncUpdateHandler(newRunnable);
+						}
+						//else we can keep using the current staging Handler
+					}
+					stagingHandler.processNewUpdate();
+				} else {
+
+					try {
+						this.updateStagingTable(transactionDigest);
+					} catch (NoSuchFieldException | MDBCServiceException e) {
+						// TODO Auto-generated catch block
+						this.logger.error("Error updating the staging table");
+					}
 				}
 			}
 		}
@@ -604,7 +679,7 @@ NEW.field refers to the new value
 		throws NoSuchFieldException, MDBCServiceException {
 		// copy from DB.MDBC_TRANSLOG where connid == myconnid
 		// then delete from MDBC_TRANSLOG
-		String sql2 = "SELECT IX, TABLENAME, OP, ROWDATA,KEYDATA FROM "+TRANS_TBL +" WHERE CONNECTION_ID = " + this.connId;
+		String sql2 = "SELECT IX, SCHEMANAME, TABLENAME, OP, ROWDATA, KEYDATA FROM " + TRANS_TBL +" WHERE CONNECTION_ID = " + this.connId;
 		Integer biggestIx = Integer.MIN_VALUE;
 		Integer smallestIx = Integer.MAX_VALUE;
 		try {
@@ -616,10 +691,11 @@ NEW.field refers to the new value
 				smallestIx = Integer.min(smallestIx,ix);
 				String op   = rs.getString("OP");
 				SQLOperation opType = toOpEnum(op);
+				String schema= rs.getString("SCHEMANAME");
 				String tbl  = rs.getString("TABLENAME");
 				String newRowStr = rs.getString("ROWDATA");
 				String rowStr = rs.getString("KEYDATA");
-				Range range = new Range(tbl);
+				Range range = new Range(schema+"."+tbl);
 				transactionDigests.addOperation(range,opType,newRowStr,rowStr);
 				rows.add(ix);
 			}
@@ -1056,7 +1132,7 @@ NEW.field refers to the new value
 	private void clearReplayedOperations(Statement jdbcStmt) throws SQLException {
 		logger.info("Clearing replayed operations");
 		String sql = "DELETE FROM " + TRANS_TBL + " WHERE CONNECTION_ID = " + this.connId; 
-		jdbcStmt.executeQuery(sql);
+		jdbcStmt.executeUpdate(sql);
 	}
 
 	@Override
