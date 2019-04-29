@@ -23,6 +23,9 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
 
+import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.mdbc.mixins.MusicMixin;
+
 
 /**
  * This class represent a range of the whole database 
@@ -32,13 +35,21 @@ import java.util.Objects;
  */
 public class Range implements Cloneable{
 
+    private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Range.class);
+
 	private String table;
 
 	public Range(String table) {
-		this.table = table.toUpperCase();
+		final String[] split = table.split("\\.");
+		if(split.length!=2){
+			logger.debug("Table should contain schema, received in constructor: " + table);
+//			throw new IllegalArgumentException("Table should always contain the schema, table received in "
+//				+ "constructor is "+table);
+		}
+		this.table = table;
 	}
 
-	public String toString(){return table.toUpperCase();}
+	public String toString(){return table;}
 
 	/**
 	 * Compares to Range types
@@ -55,7 +66,7 @@ public class Range implements Cloneable{
 
 	@Override
 	public int hashCode(){
-        return table.hashCode();
+        return table.toUpperCase().hashCode();
 	}
 
 	@Override
@@ -74,11 +85,11 @@ public class Range implements Cloneable{
 
     public static boolean overlaps(List<Range> ranges, String table){
 		//\TODO check if parallel stream makes sense here
-        return ranges.stream().map((Range r) -> r.table.equals(table)).anyMatch((Boolean b) -> b);
+        return ranges.stream().map((Range r) -> r.table.toUpperCase().equals(table.toUpperCase())).anyMatch((Boolean b) -> b);
 	}
 
 	public boolean overlaps(Range other) {
-		return table.equals(other.table);
+		return table.toUpperCase().equals(other.table.toUpperCase());
 	}
 
     public String getTable() {
