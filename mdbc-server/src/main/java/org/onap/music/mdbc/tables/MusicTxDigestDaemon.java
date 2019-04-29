@@ -89,9 +89,10 @@ public class MusicTxDigestDaemon implements Runnable {
 			logger.error("Music interface or DB interface is null in background daemon");
 			return;
 		}
+		MdbcConnection conn = null;
 		while (true) {
 			try {
-				MdbcConnection conn = (MdbcConnection) stateManager.getConnection("daemon");
+				conn = (MdbcConnection) stateManager.getConnection("daemon");
 				if (conn == null) {
 					logger.error("Connection created is null in background daemon");
 					return;
@@ -111,18 +112,20 @@ public class MusicTxDigestDaemon implements Runnable {
 				}
 				//2) for each partition I don't own
 				final Set<Range> warmupRanges = stateManager.getRangesToWarmup();
-				final List<DatabasePartition> currentPartitions = stateManager.getPartitions();
-				List<Range> missingRanges = new ArrayList<>();
-				if (currentPartitions.size() != 0) {
-					for (DatabasePartition part : currentPartitions) {
-						List<Range> partitionRanges = part.getSnapshot();
-						warmupRanges.removeAll(partitionRanges);
-					}
-					try {
-						stateManager.getOwnAndCheck().warmup(mi, dbi, new ArrayList<>(warmupRanges));
-					} catch (MDBCServiceException e) {
-						logger.error("Unable to update for partition : " + warmupRanges + ". " + e.getMessage());
-						continue;
+				if (warmupRanges!=null) {
+					final List<DatabasePartition> currentPartitions = stateManager.getPartitions();
+					List<Range> missingRanges = new ArrayList<>();
+					if (currentPartitions.size() != 0) {
+						for (DatabasePartition part : currentPartitions) {
+							List<Range> partitionRanges = part.getSnapshot();
+							warmupRanges.removeAll(partitionRanges);
+						}
+						try {
+							stateManager.getOwnAndCheck().warmup(mi, dbi, new ArrayList<>(warmupRanges));
+						} catch (MDBCServiceException e) {
+							logger.error("Unable to update for partition : " + warmupRanges + ". " + e.getMessage());
+							continue;
+						}
 					}
 				}
 
@@ -138,6 +141,12 @@ public class MusicTxDigestDaemon implements Runnable {
 			} catch (InterruptedException | SQLException e) {
 				logger.error("MusicTxDigest background daemon stopped " + e.getMessage(), e);
 				Thread.currentThread().interrupt();
+			} finally {
+				try {
+					if (conn!=null && !conn.isClosed()) conn.close();
+				} catch (SQLException e) {
+					logger.error("MusicTxDigest background daemon error closing" + e.getMessage(), e);
+				}
 			}
 		}
 	}

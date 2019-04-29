@@ -21,7 +21,6 @@ package org.onap.music.mdbc;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
@@ -47,6 +46,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -102,10 +102,10 @@ public class StateManager {
     public StateManager() {
     }
     
-	public StateManager(String sqlDBUrl, Properties info, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
+	public StateManager(String sqlDBUrl, Properties newInfo, String mdbcServerName, String sqlDBName) throws MDBCServiceException {
         this.sqlDBName = sqlDBName;
-        this.sqlDBUrl = sqlDBUrl;
-        this.info = info;
+        this.sqlDBUrl = cleanSqlUrl(sqlDBUrl);
+        this.info = new Properties();
         this.mdbcServerName = mdbcServerName;
     
         this.connectionRanges = new ConcurrentHashMap<>();
@@ -117,6 +117,7 @@ public class StateManager {
 		} catch (IOException e) {
 			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage());
 		}
+		info.putAll(newInfo);
         cassandraUrl = info.getProperty(Configuration.KEY_CASSANDRA_URL, Configuration.CASSANDRA_URL_DEFAULT);
         musicmixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
         
@@ -127,6 +128,16 @@ public class StateManager {
         long timeout = (t == null) ? Configuration.DEFAULT_OWNERSHIP_TIMEOUT : Integer.parseInt(t);
         alreadyApplied = new ConcurrentHashMap<>();
         ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied, timeout);
+    }
+
+    protected String cleanSqlUrl(String url){
+	    if(url!=null) {
+            url = url.trim();
+            if (url.length() > 0 && url.charAt(url.length() - 1) == '/') {
+                url= url.substring(0, url.length() - 1);
+            }
+        }
+        return url;
     }
 
     protected void initTxDaemonThread(){
@@ -149,27 +160,21 @@ public class StateManager {
     }
     
     protected void initSqlDatabase() throws MDBCServiceException {
-        try {
-            //\TODO: pass the driver as a variable
-            Class.forName("org.mariadb.jdbc.Driver");
-        }
-        catch (ClassNotFoundException e) {
-            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
-                    ErrorTypes.GENERALSERVICEERROR);
-            return;
-        }
-        try {
-            Connection sqlConnection = DriverManager.getConnection(this.sqlDBUrl, this.info);
-            StringBuilder sql = new StringBuilder("CREATE DATABASE IF NOT EXISTS ")
+        if(!this.sqlDBUrl.toLowerCase().startsWith("jdbc:postgresql")) {
+            try {
+                Connection sqlConnection = DriverManager.getConnection(this.sqlDBUrl, this.info);
+                StringBuilder sql = new StringBuilder("CREATE DATABASE IF NOT EXISTS ")
                     .append(sqlDBName)
                     .append(";");
-            Statement stmt = sqlConnection.createStatement();
-            stmt.execute(sql.toString());
-            sqlConnection.close();
-        } catch (SQLException e) {
-            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL,
+                Statement stmt = sqlConnection.createStatement();
+                stmt.execute(sql.toString());
+                sqlConnection.close();
+            } catch (SQLException e) {
+                logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.UNKNOWNERROR,
+                    ErrorSeverity.CRITICAL,
                     ErrorTypes.GENERALSERVICEERROR);
-            throw new MDBCServiceException(e.getMessage(), e);
+                throw new MDBCServiceException(e.getMessage(), e);
+            }
         }
     }
     
@@ -306,17 +311,9 @@ public class StateManager {
 	public Connection openConnection(String id) {
 		Connection sqlConnection;
     	MdbcConnection newConnection;
-        try {
-            //TODO: pass the driver as a variable
-            Class.forName("org.mariadb.jdbc.Driver");
-        }
-        catch (ClassNotFoundException e) {
-            // TODO Auto-generated catch block
-            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.QUERYERROR, ErrorSeverity.CRITICAL,
-                    ErrorTypes.QUERYERROR);
-        }
-
+        Utils.registerDefaultDrivers();
         //Create connection to local SQL DB
+
 		try {
 			sqlConnection = DriverManager.getConnection(this.sqlDBUrl+"/"+this.sqlDBName, this.info);
 		} catch (SQLException e) {

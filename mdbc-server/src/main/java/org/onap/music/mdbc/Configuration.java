@@ -28,6 +28,8 @@ public class Configuration {
     public static final String KEY_DB_MIXIN_NAME    = "MDBC_DB_MIXIN";
     /** The property name to use to select the MUSIC 'mixin'. */
     public static final String KEY_MUSIC_MIXIN_NAME = "MDBC_MUSIC_MIXIN";
+    /** The property name to select if async staging table update is used */
+    public static final String KEY_ASYNC_STAGING_TABLE_UPDATE = "ASYNC_STAGING_TABLE_UPDATE";
     /** The name of the default mixin to use for the DBInterface. */
     public static final String DB_MIXIN_DEFAULT     = "mysql";//"h2";
     /** The name of the default mixin to use for the MusicInterface. */
@@ -44,4 +46,6 @@ public class Configuration {
     public static final long DEFAULT_OWNERSHIP_TIMEOUT = 5*60*60*1000;//default of 5 hours
     /** The property name to provide comma separated list of ranges to warmup */
     public static final String KEY_WARMUPRANGES = "warmupranges";
+	/** Default async staging table update o ption*/
+	public static final String ASYNC_STAGING_TABLE_UPDATE = "false";
 }
