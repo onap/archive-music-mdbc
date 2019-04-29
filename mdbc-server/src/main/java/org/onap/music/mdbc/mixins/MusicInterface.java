@@ -303,8 +303,8 @@ public interface MusicInterface {
     void deleteOldMriRows(Map<UUID,String> oldRowsAndLocks) throws MDBCServiceException;
 
     List<MusicRangeInformationRow> getAllMriRows() throws MDBCServiceException;
-    
 
+    
     void deleteMriRow(MusicRangeInformationRow row) throws MDBCServiceException;
 
     void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
