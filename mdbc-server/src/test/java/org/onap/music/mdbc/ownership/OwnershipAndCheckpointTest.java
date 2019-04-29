@@ -34,7 +34,6 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -46,8 +45,10 @@ import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
+import org.onap.music.mdbc.MdbcTestUtils.DBType;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.StateManager;
+import org.onap.music.mdbc.MdbcTestUtils;
 import org.onap.music.mdbc.TestUtils;
 import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
@@ -58,13 +59,8 @@ import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
 public class OwnershipAndCheckpointTest {
-    final private static int sqlPort = 13350;
-    final private static String keyspace="metricmusictest";
-    final private static String mriTableName = "musicrangeinformation";
-    final private static String mtdTableName = "musictxdigest";
-    final private static String mdbcServerName = "name";
-    public static final String DATABASE = "mdbcTest";
-	public static final String TABLE= "PERSONS";
+    public static final String DATABASE = MdbcTestUtils.mariaDBDatabaseName;
+	public static final String TABLE= MdbcTestUtils.mariaDBDatabaseName+".PERSONS";
 	public static final String CREATE_TABLE = "CREATE TABLE IF NOT EXISTS " + TABLE + " (\n" +
             "    PersonID int,\n" +
             "    LastName varchar(255),\n" +
@@ -75,11 +71,7 @@ public class OwnershipAndCheckpointTest {
             ");";
 	public static final String DROP_TABLE = "DROP TABLE IF EXISTS " + TABLE + ";";
     //Properties used to connect to music
-    private static Cluster cluster;
-    private static Session session;
-    private static String cassaHost = "localhost";
     private static MusicMixin musicMixin = null;
-    private static DB db;
 	Connection conn;
 	MySQLMixin mysqlMixin;
 	OwnershipAndCheckpoint ownAndCheck;
@@ -90,37 +82,18 @@ public class OwnershipAndCheckpointTest {
 
     @BeforeClass
     public static void init() throws MusicServiceException, ClassNotFoundException, ManagedProcessException {
-        try {
-            EmbeddedCassandraServerHelper.startEmbeddedCassandra();
-        } catch (Exception e) {
-            fail(e.getMessage());
-        }
-        cluster=EmbeddedCassandraServerHelper.getCluster();
-        //cluster = new Cluster.Builder().addContactPoint(cassaHost).withPort(9142).build();
-        cluster.getConfiguration().getSocketOptions().setReadTimeoutMillis(20000);
-        assertNotNull("Invalid configuration for cassandra", cluster);
-        session = EmbeddedCassandraServerHelper.getSession();
-        assertNotNull("Invalid configuration for cassandra", session);
+        MdbcTestUtils.initCassandra();
         Class.forName("org.mariadb.jdbc.Driver");
-        MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
-        CassaLockStore store = new CassaLockStore(MusicDataStoreHandle.mDstoreHandle);
-        assertNotNull("Invalid configuration for music", store);
 		//start embedded mariadb
-		db = DB.newEmbeddedDB(sqlPort);
-		db.start();
-		db.createDB(DATABASE);
+        MdbcTestUtils.startMariaDb();
     }
 
     @AfterClass
     public static void close() throws MusicServiceException, MusicQueryException, ManagedProcessException {
         //TODO: shutdown cassandra
         musicMixin=null;
-        db.stop();
-        try {
-            EmbeddedCassandraServerHelper.cleanEmbeddedCassandra();
-        }
-        catch(NullPointerException e){
-        }
+        MdbcTestUtils.cleanDatabase(DBType.MySQL);
+        MdbcTestUtils.stopCassandra();
     }
 
     private void dropTable() throws SQLException {
@@ -144,25 +117,34 @@ public class OwnershipAndCheckpointTest {
 
     @Before
     public void initTest() throws SQLException {
-        session.execute("DROP KEYSPACE IF EXISTS "+keyspace);
+        MdbcTestUtils.getSession().execute("DROP KEYSPACE IF EXISTS "+MdbcTestUtils.getKeyspace());
         try {
             Properties properties = new Properties();
+/*
             properties.setProperty(MusicMixin.KEY_MY_ID,mdbcServerName);
             properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,keyspace);
             properties.setProperty(MusicMixin.KEY_MUSIC_RFACTOR,"1");
             //StateManager stateManager = new StateManager("dbUrl", properties, "serverName", "dbName");
             ownAndCheck = new OwnershipAndCheckpoint();
             musicMixin =new MusicMixin(stateManager, mdbcServerName,properties);
+*/
+            properties.setProperty(MusicMixin.KEY_MY_ID,MdbcTestUtils.getServerName());
+            properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,MdbcTestUtils.getKeyspace());
+            properties.setProperty(MusicMixin.KEY_MUSIC_RFACTOR,"1");
+            properties.setProperty(MusicMixin.KEY_MUSIC_ADDRESS,MdbcTestUtils.getCassandraUrl());
+            ownAndCheck = new OwnershipAndCheckpoint();
+            musicMixin =new MusicMixin(stateManager, MdbcTestUtils.getServerName(), properties);
         } catch (MDBCServiceException e) {
             fail("error creating music musicMixin " + e.getMessage());
         }
-        this.conn = DriverManager.getConnection("jdbc:mariadb://localhost:"+sqlPort+"/"+DATABASE, "root", "");
-        this.mysqlMixin = new MySQLMixin(musicMixin, "localhost:"+sqlPort+"/"+DATABASE, conn, null);
+        this.conn = MdbcTestUtils.getConnection(DBType.MySQL);
+        Properties info = new Properties();
+        this.mysqlMixin = new MySQLMixin(musicMixin, "localhost:"+MdbcTestUtils.getMariaDbPort()+"/"+DATABASE, conn, info);
         dropAndCreateTable();
     }
 
     private void initDatabase(Range range) throws MDBCServiceException, SQLException {
-        final DatabasePartition partition = TestUtils.createBasicRow(range, musicMixin, mdbcServerName);
+        final DatabasePartition partition = TestUtils.createBasicRow(range, musicMixin, MdbcTestUtils.getServerName());
         String sqlOperation = "INSERT INTO "+TABLE+" (PersonID,LastName,FirstName,Address,City) VALUES "+
             "(1,'SAUREZ','ENRIQUE','GATECH','ATLANTA');";
         StagingTable stagingTable = new StagingTable();
@@ -171,13 +153,15 @@ public class OwnershipAndCheckpointTest {
         executeStatement.execute(sqlOperation);
         this.conn.commit();
         mysqlMixin.postStatementHook(sqlOperation,stagingTable);
+        mysqlMixin.preCommitHook();
         executeStatement.close();
         String id = MDBCUtils.generateUniqueKey().toString();
         TxCommitProgress progressKeeper = new TxCommitProgress();
         progressKeeper.createNewTransactionTracker(id ,this.conn);
         musicMixin.commitLog(partition, null, stagingTable, id, progressKeeper);
         try {
-            TestUtils.unlockRow(keyspace, mriTableName, partition);
+//            TestUtils.unlockRow(keyspace, mriTableName, partition);
+            TestUtils.unlockRow(MdbcTestUtils.getKeyspace(), MdbcTestUtils.getMriTableName(), partition);
         }
         catch(Exception e){
             fail(e.getMessage());
