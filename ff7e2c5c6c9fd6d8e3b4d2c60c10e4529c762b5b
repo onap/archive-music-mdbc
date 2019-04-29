@@ -53,6 +53,24 @@
     },
     {
       "key": {
+        "uuid": "adcc866b_3ff0c20d",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 2161,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-04-29T21:27:40Z",
+      "side": 1,
+      "message": "Yes, I believe it is. Owner was changed to lock id at some point since this commit\u0027s parent",
+      "parentUuid": "bdbf234f_9aeb61e6",
+      "revId": "ff7e2c5c6c9fd6d8e3b4d2c60c10e4529c762b5b",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "30500afd_d923614b",
         "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
         "patchSetId": 7
