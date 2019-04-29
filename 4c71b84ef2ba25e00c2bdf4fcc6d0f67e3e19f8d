@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "57e8547a_a2705c18",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 1783,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-04-29T20:10:27Z",
+      "side": 1,
+      "message": "There are some commented lines in this push that only pollute the code.",
+      "revId": "4c71b84ef2ba25e00c2bdf4fcc6d0f67e3e19f8d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1ec288ed_d9a3400b",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 1883,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-04-29T20:10:27Z",
+      "side": 1,
+      "message": "we should keep this critical for now",
+      "revId": "4c71b84ef2ba25e00c2bdf4fcc6d0f67e3e19f8d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "b7a25fc1_4f3555a9",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MySQLMixin.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 433,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-04-29T20:10:27Z",
+      "side": 1,
+      "message": "Instead of null, we can either use the getSchema function, or use the default schema in mysql which is DATABASE(). Null will break when retrieving the data",
+      "revId": "4c71b84ef2ba25e00c2bdf4fcc6d0f67e3e19f8d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "39dc2dc4_418ed1ff",
+        "filename": "mdbc-server/src/main/resources/logback.xml",
+        "patchSetId": 4
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-04-29T20:10:27Z",
+      "side": 1,
+      "message": "This may be useful in production, to be able to change the configuration on the fly.",
+      "revId": "4c71b84ef2ba25e00c2bdf4fcc6d0f67e3e19f8d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
