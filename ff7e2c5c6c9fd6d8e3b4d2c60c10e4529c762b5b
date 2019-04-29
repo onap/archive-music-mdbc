@@ -1,0 +1,72 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "cf1819d9_db5f1be2",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 2025
+      },
+      "writtenOn": "2019-04-29T21:07:22Z",
+      "side": 1,
+      "message": "A few questions remain.",
+      "revId": "ff7e2c5c6c9fd6d8e3b4d2c60c10e4529c762b5b",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0112db29_8fd14f53",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 1304,
+      "author": {
+        "id": 2025
+      },
+      "writtenOn": "2019-04-29T21:07:22Z",
+      "side": 1,
+      "message": "Should be calling filterAndAdd... twice??",
+      "revId": "ff7e2c5c6c9fd6d8e3b4d2c60c10e4529c762b5b",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "bdbf234f_9aeb61e6",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 2161,
+      "author": {
+        "id": 2025
+      },
+      "writtenOn": "2019-04-29T21:07:22Z",
+      "side": 1,
+      "message": "Is getLockId correct?",
+      "revId": "ff7e2c5c6c9fd6d8e3b4d2c60c10e4529c762b5b",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "30500afd_d923614b",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 7
+      },
+      "lineNbr": 2433,
+      "author": {
+        "id": 2025
+      },
+      "writtenOn": "2019-04-29T21:07:22Z",
+      "side": 1,
+      "message": "Is musicRangeDependencyTableName correct?",
+      "revId": "ff7e2c5c6c9fd6d8e3b4d2c60c10e4529c762b5b",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
