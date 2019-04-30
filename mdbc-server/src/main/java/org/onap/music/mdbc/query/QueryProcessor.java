@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Set;
 import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.avatica.util.Quoting;
 import org.apache.calcite.sql.SqlBasicCall;
@@ -73,10 +73,13 @@ public class QueryProcessor {
     /**
      * 
      * @param query
+     * @param tables set of tables found in sql database. This is only used as a cross reference, 
+     *         the parser will try to find tables in the query first, regardless of whether they
+     *         are in this set
      * @return map of table name to {@link org.onap.music.mdbc.query.SQLOperation}
      * @throws SqlParseException
      */
-    public static Map<String, List<SQLOperation>> parseSqlQuery(String query) throws SQLException {
+    public static Map<String, List<SQLOperation>> parseSqlQuery(String query, Set<String> tables) throws SQLException {
         logger.info(EELFLoggerDelegate.applicationLogger, "Parsing query: "+query);
         query = query.trim();
         if (query.endsWith(";")) {
@@ -94,7 +97,7 @@ public class QueryProcessor {
             sqlNode = getSqlParser(query).parseStmt();
         } catch (SqlParseException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Unable to parse query: " + query +". " + e.getMessage());
-            throw new SQLException("Unable to parse query: " + query);
+            return basicStringParser(query, tables);
         }
 
         SqlBasicVisitor<Void> visitor = new SqlBasicVisitor<Void>() {
@@ -209,5 +212,40 @@ public class QueryProcessor {
         opList.add(op);
         tableOpsMap.put(identifier.toString(), opList);
     }
+    
+    /**
+     * Parse the string using basic string methods if parsing library fails
+     * @param query
+     * @return
+     * @throws SQLException 
+     */
+    private static Map<String, List<SQLOperation>> basicStringParser(String query, Set<String> tables) throws SQLException {
+        if (tables==null) {
+            throw new SQLException("Unable to parse sql query: No tables to look for.");
+        }
+        Map<String, List<SQLOperation>> tableOpsMap = new HashMap<>();
+        SQLOperation op;
+        if (query.toUpperCase().startsWith("INSERT")) {
+            op = SQLOperation.INSERT;
+        } else if (query.toUpperCase().startsWith("UPDATE")) {
+            op = SQLOperation.UPDATE;
+        } else if (query.toUpperCase().startsWith("DELETE")) {
+            op = SQLOperation.DELETE;
+        } else if (query.toUpperCase().startsWith("SELECT")) {
+            op = SQLOperation.SELECT;
+        } else {
+            throw new SQLException("Unable to parse sql query: " + query);
+        }
+        for (String table: tables) {
+            if (query.toLowerCase().contains(table.toLowerCase())) {
+                List<SQLOperation> opList = tableOpsMap.get(table);
+                if (opList == null) opList = new ArrayList<>();
+                opList.add(op);
+                tableOpsMap.put(table.toString(), opList);
+            }
+        }
+        return tableOpsMap;
+    }
+    
 
 }

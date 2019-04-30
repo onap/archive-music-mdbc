@@ -505,7 +505,7 @@ public class MdbcConnection implements Connection {
     public void preStatementHook(final String sql) throws MDBCServiceException, SQLException {
         //TODO: verify ownership of keys here
         //Parse tables from the sql query
-        Map<String, List<SQLOperation>> tableToInstruction = QueryProcessor.parseSqlQuery(sql);
+        Map<String, List<SQLOperation>> tableToInstruction = QueryProcessor.parseSqlQuery(sql, table_set);
         //Check ownership of keys
         List<Range> queryTables = MDBCUtils.getTables(tableToInstruction);
         if (this.partition!=null) {
