@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0e275813_c8cff391",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 9
+      },
+      "lineNbr": 2428,
+      "author": {
+        "id": 2025
+      },
+      "writtenOn": "2019-05-03T14:09:07Z",
+      "side": 1,
+      "message": "Please, everybody double check this.",
+      "revId": "52159a510dc31ee1dacf612a1e05cc8612a117e5",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
