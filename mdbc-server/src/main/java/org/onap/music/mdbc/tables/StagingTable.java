@@ -186,7 +186,10 @@ public class StagingTable {
         }
 		OpType newType = (type==SQLOperation.INSERT)?OpType.INSERT:(type==SQLOperation.DELETE)?
 			OpType.DELETE:OpType.UPDATE;
-	    Row.Builder rowBuilder = Row.newBuilder().setTable(range.getTable()).setType(newType).setVal(newVal);
+	    Row.Builder rowBuilder = Row.newBuilder().setTable(range.getTable()).setType(newType);
+	    if(newVal!=null) {
+	        rowBuilder.setVal(newVal);
+        }
 	    if(keys!=null){
 	        rowBuilder.setKey(keys);
         }
@@ -252,10 +255,10 @@ public class StagingTable {
     }
     
     synchronized public boolean isEventualEmpty() {
-        return (eventuallyBuilder.getRowsCount()==0);
+	    return (eventuallyBuilder!=null) && (eventuallyBuilder.getRowsCount()==0);
     }
-	
-	synchronized public void clear() throws MDBCServiceException {
+
+    synchronized public void clear() throws MDBCServiceException {
         if(!builderInitialized){
             throw new MDBCServiceException("This type of staging table is unmutable, please use the constructor"
                 + "with no parameters");

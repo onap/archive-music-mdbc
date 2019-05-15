@@ -20,12 +20,14 @@
 
 package org.onap.music.mdbc;
 
+import java.util.Properties;
 import org.junit.*;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+import org.onap.music.mdbc.MdbcTestUtils.DBType;
 import org.onap.music.mdbc.mixins.MySQLMixin;
 
 import ch.vorburger.mariadb4j.DB;
@@ -33,8 +35,8 @@ import ch.vorburger.mariadb4j.DB;
 public class MySQLMixinTest {
 
 	public static final String DATABASE = "mdbctest";
-	public static final String TABLE= "Persons";
-	public static final String CREATE_TABLE = "CREATE TABLE IF NOT EXISTS " + TABLE + " (\n" +
+	public static final String TABLE= MdbcTestUtils.getMariaDBDBName();
+	public static final String CREATE_TABLE = "CREATE TABLE IF NOT EXISTS " + MdbcTestUtils.getMariaDBDBName()+ " (\n" +
             "    PersonID int,\n" +
             "    LastName varchar(255),\n" +
             "    FirstName varchar(255),\n" +
@@ -52,10 +54,8 @@ public class MySQLMixinTest {
 	@BeforeClass
 	public static void init() throws Exception {
 		Class.forName("org.mariadb.jdbc.Driver");
-		//start embedded mariadb
-		DB db = DB.newEmbeddedDB(13306);
-		db.start();
-		db.createDB(DATABASE);
+		MdbcTestUtils.startMariaDb();
+
 	}
 	
 	@AfterClass
@@ -65,13 +65,14 @@ public class MySQLMixinTest {
 	
 	@Before
 	public void beforeTest() throws SQLException {
-		this.conn = DriverManager.getConnection("jdbc:mariadb://localhost:13306/"+DATABASE, "root", "");
-		this.mysqlMixin = new MySQLMixin(null, "localhost:13306/"+DATABASE, conn, null);
+		this.conn = MdbcTestUtils.getConnection(DBType.MySQL);
+		Properties info = new Properties();
+		this.mysqlMixin = new MySQLMixin(null, null, conn, info);
 	}
 	
 	@Test
 	public void testGetDataBaseName() throws SQLException {
-		Assert.assertEquals(DATABASE, mysqlMixin.getDatabaseName());
+		Assert.assertEquals(MdbcTestUtils.getMariaDBDBName(), mysqlMixin.getDatabaseName());
 	}
 
 }
