@@ -45,18 +45,18 @@
   -->
   <!--<jmxConfigurator /> -->
 
+  <!--change this when deploying on server -->
+  <property name="log.home" value="." />
   <!--  specify the component name -->
-  <property name="catalina.home" value="/var/log/metric/" />
   <property name="componentName" value="mdbc"></property>
   
   <!--  specify the base path of the log directory -->
-  <property name="logDirPrefix" value="${catalina.base}/logs"></property>
+  <property name="logDirPrefix" value="${log.home}/logs"></property>
   
   <!-- The directories where logs are written -->
   <property name="logDirectory" value="${logDirPrefix}/${componentName}" />
-  <!-- Can easily relocate debug logs by modifying this path. -->
-  <property name="debugLogDirectory" value="${logDirPrefix}/${componentName}" />
-  
+
+   
   <!--  log file names -->
   <property name="generalLogName" value="application" />
   <property name="errorLogName" value="error" />
@@ -73,20 +73,20 @@
   
   <!-- 1610 Logging Fields Format Revisions --> 
   <property name="auditLoggerPattern"
-	value="%X{AuditLogBeginTimestamp}|%X{AuditLogEndTimestamp}|%X{RequestId}|%X{ServiceInstanceId}|%thread|%X{VirtualServerName}|%X{ServiceName}|%X{PartnerName}|%X{StatusCode}|%X{ResponseCode}|%X{ResponseDescription}|%X{InstanceUUID}|%.-5level|%X{AlertSeverity}|%X{ServerIPAddress}|%X{Timer}|%X{ServerFQDN}|%X{ClientIPAddress}|%X{ClassName}|%X{Unused}|%X{ProcessKey}|%X{CustomField1}|%X{CustomField2}|%X{CustomField3}|%X{CustomField4}| %msg%n" />
+	value="%X{AuditLogBeginTimestamp}|%X{AuditLogEndTimestamp}|%X{RequestId}|%X{ServiceInstanceId}|%thread|%X{VirtualServerName}|%X{ServiceName}|%X{PartnerName}|%X{StatusCode}|%X{ResponseCode}|%X{ResponseDescription}|%X{InstanceUUID}|%.-5level|%X{AlertSeverity}|%X{ServerIPAddress}|%X{Timer}|%X{ServerFQDN}|%X{ClientIPAddress}|%X{class}|%X{Unused}|%X{ProcessKey}|%X{CustomField1}|%X{CustomField2}|%X{CustomField3}|%X{CustomField4}| %msg%n" />
 
   <property name="metricsLoggerPattern"
-	value="%X{MetricsLogBeginTimestamp}|%X{MetricsLogEndTimestamp}|%X{RequestId}|%X{ServiceInstanceId}|%thread|%X{VirtualServerName}|%X{ServiceName}|%X{PartnerName}|%X{TargetEntity}|%X{TargetServiceName}|%X{StatusCode}|%X{ResponseCode}|%X{ResponseDescription}|%X{InstanceUUID}|%.-5level|%X{AlertSeverity}|%X{ServerIPAddress}|%X{Timer}|%X{ServerFQDN}|%X{ClientIPAddress}|%X{ClassName}|%X{Unused}|%X{ProcessKey}|%X{TargetVisualEntity}|%X{CustomField1}|%X{CustomField2}|%X{CustomField3}|%X{CustomField4}| %msg%n" />
+	value="%X{MetricsLogBeginTimestamp}|%X{MetricsLogEndTimestamp}|%X{RequestId}|%X{ServiceInstanceId}|%thread|%X{VirtualServerName}|%X{ServiceName}|%X{PartnerName}|%X{TargetEntity}|%X{TargetServiceName}|%X{StatusCode}|%X{ResponseCode}|%X{ResponseDescription}|%X{InstanceUUID}|%.-5level|%X{AlertSeverity}|%X{ServerIPAddress}|%X{Timer}|%X{ServerFQDN}|%X{ClientIPAddress}|%X{class}|%X{Unused}|%X{ProcessKey}|%X{TargetVisualEntity}|%X{CustomField1}|%X{CustomField2}|%X{CustomField3}|%X{CustomField4}| %msg%n" />
 
   <property name="errorLoggerPattern"
-	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{ServiceName}|%X{PartnerName}|%X{TargetEntity}|%X{TargetServiceName}|%X{ClassName}|%X{AlertSeverity}|%X{ErrorCode}|%X{ErrorDescription}| %msg%n" />
+	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{ServiceName}|%X{PartnerName}|%X{TargetEntity}|%X{TargetServiceName}|%X{class}|%X{AlertSeverity}|%X{ErrorCode}|%X{ErrorDescription}| %msg%n" />
 
   <property name="defaultLoggerPattern"
-	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{ClassName}| %msg%n" />
+	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{class}| %msg%n" />
 
   <!-- use %class so library logging calls yield their class name -->
   <property name="applicationLoggerPattern"
-	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%class{36}| %msg%n" />
+	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{class}| %msg%n" />
 
   <!-- Example evaluator filter applied against console appender -->
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -321,7 +321,7 @@
   
    <appender name="EELFDebug"
     class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>${debugLogDirectory}/${debugLogName}.log</file>
+    <file>${logDirectory}/${debugLogName}.log</file>
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy"> 
       <!-- daily rollover --> 
       <fileNamePattern>${logDirectory}/${debugLogName}.%d{yyyy-MM-dd}.log.zip</fileNamePattern> 
@@ -344,25 +344,26 @@
   
  
 
-  <logger name="com.att.eelf" level="info" additivity="false">
+  <logger name="com.att.eelf" level="debug" additivity="false">
     <appender-ref ref="asyncEELF" />
   </logger>
-
-  <logger name="com.att.eelf" level="info" additivity="false">
+   
+  <logger name="com.att.eelf.audit" level="debug" additivity="false">
     <appender-ref ref="asyncEELFAudit" />
   </logger>
   
-  <logger name="com.att.eelf" level="debug" additivity="false">
-    <appender-ref ref="asyncEELFDebug" />
+  <logger name="com.att.eelf.metrics" level="debug" additivity="false">
+        <appender-ref ref="asyncEELFMetrics" />
   </logger>
-	
-  <logger name="com.att.eelf.error" level="info" additivity="false">
-    <appender-ref ref="asyncEELFError" />
+    
+  <logger name="com.att.eelf.error" level="debug" additivity="false">
+  	<appender-ref ref="asyncEELFError" />
   </logger>
-
-  <logger name="com.att.eelf.metrics" level="info" additivity="false">
-    <appender-ref ref="asyncEELFMetrics" />
-  </logger>      
+  
+   <logger name="com.att.eelf.debug" level="debug" additivity="false">
+        <appender-ref ref="asyncEELFDebug" />
+  </logger>
+  
     
   <root level="DEBUG">
     <appender-ref ref="asyncEELF" />
