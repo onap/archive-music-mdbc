@@ -37,6 +37,7 @@ import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
 import org.onap.music.mdbc.mixins.MusicMixin;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
@@ -278,7 +279,7 @@ public class OwnershipAndCheckpoint{
      * @throws MDBCServiceException
      */
     public OwnershipReturn own(MusicInterface mi, List<Range> ranges,
-            DatabasePartition currPartition, UUID opId) throws MDBCServiceException {
+            DatabasePartition currPartition, UUID opId, SQLOperationType lockType) throws MDBCServiceException {
         
         if (ranges == null || ranges.isEmpty()) {
               return null;
@@ -299,7 +300,7 @@ public class OwnershipAndCheckpoint{
         while ( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
                 !timeout(opId)
             ) {
-            takeOwnershipOfDag(mi, currPartition, opId, newLocks, toOwn);
+            takeOwnershipOfDag(mi, currPartition, opId, newLocks, toOwn, lockType);
             currentlyOwn=toOwn;
             //TODO instead of comparing dags, compare rows
             rangesToOwnRows = extractRowsForRange(mi, rangesToOwn, false);
@@ -325,24 +326,25 @@ public class OwnershipAndCheckpoint{
      * @param opId
      * @param newLocks
      * @param toOwn
+     * @param lockType 
      * @throws MDBCServiceException
      */
     private void takeOwnershipOfDag(MusicInterface mi, DatabasePartition partition, UUID opId,
-            Map<UUID, LockResult> newLocks, Dag toOwn) throws MDBCServiceException {
+            Map<UUID, LockResult> newLocks, Dag toOwn, SQLOperationType lockType) throws MDBCServiceException {
         
         while(toOwn.hasNextToOwn()){
             DagNode node = toOwn.nextToOwn();
             MusicRangeInformationRow row = node.getRow();
-            UUID uuid = row.getPartitionIndex();
-            if (partition.isLocked() && partition.getMRIIndex().equals(uuid) ) {
+            UUID uuidToOwn = row.getPartitionIndex();
+            if (partition.isLocked() && partition.getMRIIndex().equals(uuidToOwn) ) {
                 toOwn.setOwn(node);
-                newLocks.put(uuid, new LockResult(true, uuid, partition.getLockId(),
+                newLocks.put(uuidToOwn, new LockResult(true, uuidToOwn, partition.getLockId(),
                         false, partition.getSnapshot()));
-            } else if ( newLocks.containsKey(uuid) || !row.getIsLatest() ) {
+            } else if ( newLocks.containsKey(uuidToOwn) || !row.getIsLatest() ) {
                 toOwn.setOwn(node);
             } else {
-                LockRequest request = new LockRequest(MusicMixin.musicRangeInformationTableName,uuid,
-                        new ArrayList(node.getRangeSet()));
+                LockRequest request = new LockRequest(uuidToOwn,
+                        new ArrayList<>(node.getRangeSet()), lockType);
                 LockResult result = null;
                 boolean owned = false;
                 while(!owned && !timeout(opId)){
@@ -366,7 +368,7 @@ public class OwnershipAndCheckpoint{
                 }
                 if(owned){
                     toOwn.setOwn(node);
-                    newLocks.put(uuid,result);
+                    newLocks.put(uuidToOwn,result);
                 }
                 else{
                     break;

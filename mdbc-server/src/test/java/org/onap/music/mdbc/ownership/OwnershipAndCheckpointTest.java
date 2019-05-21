@@ -51,7 +51,9 @@ import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.MdbcTestUtils;
 import org.onap.music.mdbc.TestUtils;
 import org.onap.music.mdbc.mixins.LockResult;
+import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.MySQLMixin;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
@@ -175,7 +177,7 @@ public class OwnershipAndCheckpointTest {
 
         OwnershipReturn own=null;
         try {
-            own = ownAndCheck.own(musicMixin, ranges, currentPartition, ownOpId);
+            own = ownAndCheck.own(musicMixin, ranges, currentPartition, ownOpId, SQLOperationType.WRITE);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
@@ -250,6 +252,32 @@ public class OwnershipAndCheckpointTest {
         ownAndCheck.warmup(musicMixin,mysqlMixin,ranges);
 
         checkData();
+    }
+
+    
+    @Test
+    public void readOwn() throws Exception {
+        Range range = new Range("TABLE1");
+        MusicInterface mi = MdbcTestUtils.getMusicMixin();
+        List<Range> ranges = new ArrayList<>();
+        ranges.add(range);
+        final DatabasePartition partition = TestUtils.createBasicRow(range, mi, MdbcTestUtils.getServerName());
+        TestUtils.unlockRow(MdbcTestUtils.getKeyspace(), MdbcTestUtils.getMriTableName(), partition);
+
+        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+        MusicInterface.OwnershipReturn own1, own2;
+        try {
+            own1 = ownAndCheck.own(mi, ranges, currentPartition,
+                    MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.READ);
+            // acquire the table again, should be allowed since they're both reads
+            own2 = ownAndCheck.own(mi, ranges, currentPartition,
+                    MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.READ);
+        } catch (MDBCServiceException e) {
+            fail("failure when running own function");
+            return;
+        }
+
+        assertEquals(own1.getRangeId(), own2.getRangeId());
     }
     
     private void cleanAlreadyApplied(OwnershipAndCheckpoint ownAndCheck) {
