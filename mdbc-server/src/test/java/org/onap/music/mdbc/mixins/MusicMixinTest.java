@@ -62,6 +62,8 @@ import org.onap.music.mdbc.Range;
 
 import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.proto.ProtoDigest.Digest.CompleteDigest;
+import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -130,7 +132,8 @@ public class MusicMixinTest {
 
         DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
         try {
-            mixin.getStateManager().getOwnAndCheck().own(mixin,ranges,currentPartition, MDBCUtils.generateTimebasedUniqueKey());
+            mixin.getStateManager().getOwnAndCheck().own(mixin,ranges,currentPartition,
+                    MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.WRITE);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
@@ -186,7 +189,8 @@ public class MusicMixinTest {
         DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
         MusicInterface.OwnershipReturn own = null;
         try {
-            own = mixin.getStateManager().getOwnAndCheck().own(mixin,range123, currentPartition, MDBCUtils.generateTimebasedUniqueKey());
+            own = mixin.getStateManager().getOwnAndCheck().own(mixin,range123, currentPartition,
+                    MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.WRITE);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
@@ -231,7 +235,8 @@ public class MusicMixinTest {
         MusicRangeInformationRow node3Row = mixin.getMusicRangeInformation(db3.getMRIIndex());
         assertFalse(node3Row.getIsLatest());
     }
-
+    
+    
     @Test
     public void relinquish() {
     }

@@ -38,6 +38,7 @@ import org.onap.music.logging.format.ErrorTypes;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.Utils;
 import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;
 
@@ -118,5 +119,22 @@ public class MDBCUtils {
 
 		}
 	    return ranges;
+    }
+
+    /**
+     * determine the type of operation contained in the table to query map
+     * 
+     * @param tableToQueryType
+     * @return write if any table has a write query. Read otherwise
+     */
+    public static SQLOperationType getOperationType(Map<String, List<SQLOperation>> tableToQueryType) {
+        for (List<org.onap.music.mdbc.query.SQLOperation> tablesOps : tableToQueryType.values()) {
+            for (org.onap.music.mdbc.query.SQLOperation op : tablesOps) {
+                if (op.getOperationType() != SQLOperationType.READ) {
+                    return SQLOperationType.WRITE;
+                }
+            }
+        }
+        return SQLOperationType.READ;
     }
 }

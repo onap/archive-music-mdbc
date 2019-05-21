@@ -61,6 +61,7 @@ import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
@@ -107,7 +108,7 @@ public class MusicMixin implements MusicInterface {
     /** The default property value to use for the Cassandra IP address. */
     public static final String DEFAULT_MUSIC_ADDRESS  = "localhost";
     /** The default property value to use for the Cassandra replication factor. */
-    public static final int    DEFAULT_MUSIC_RFACTOR  = 3;
+    public static final int    DEFAULT_MUSIC_RFACTOR  = 1;
     /** The default property value to use for the MDBC timeout */
     public static final long DEFAULT_TIMEOUT = 5*60*60*1000;//default of 5 hours
     /** The default primary string column, if none is provided. */
@@ -1198,7 +1199,7 @@ public class MusicMixin implements MusicInterface {
                          Map<UUID, LockResult> alreadyHeldLocks)
         throws MDBCServiceException{
         List<Range> newRanges = new ArrayList<>();
-        String newFullyQualifiedKey = music_ns + "." + request.getTable() + "." + pending.getKey().toString();
+        String newFullyQualifiedKey = music_ns + "." + musicRangeInformationTableName + "." + pending.getKey().toString();
         String newLockId;
         boolean success;
         if (currentLockRef.containsKey(pending.getKey())) {
@@ -2074,8 +2075,9 @@ public class MusicMixin implements MusicInterface {
 
     @Override
     public LockResult requestLock(LockRequest request) throws MDBCServiceException{
-        String fullyQualifiedKey= music_ns+"."+ request.getTable()+"."+request.getId();
-        String lockId = MusicCore.createLockReference(fullyQualifiedKey);
+        String fullyQualifiedKey= music_ns+"."+ musicRangeInformationTableName + "." + request.getId();
+        boolean isWrite = (request.getLockType()==SQLOperationType.WRITE);
+        String lockId = MusicCore.createLockReference(fullyQualifiedKey, isWrite);
         ReturnType lockReturn = acquireLock(fullyQualifiedKey,lockId);
         if(lockReturn.getResult() == ResultType.FAILURE) {
             //\TODO Improve the exponential backoff
@@ -2090,6 +2092,14 @@ public class MusicMixin implements MusicInterface {
         return new LockResult(true, request.getId(),lockId,true,null);
     }
 
+    /**
+     *  fixes the DAG in case the previous owner failed while trying to own the row
+     * @param latestDag
+     * @param rows
+     * @param ranges
+     * @param locks
+     * @throws MDBCServiceException
+     */
     private void recoverFromFailureAndUpdateDag(Dag latestDag,List<MusicRangeInformationRow> rows,List<Range> ranges,
                                                 Map<UUID,LockResult> locks) throws MDBCServiceException{
         Pair<List<Range>,Set<DagNode>> rangesAndDependents = latestDag.getIncompleteRangesAndDependents();
