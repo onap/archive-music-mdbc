@@ -20,6 +20,7 @@
 package org.onap.music.mdbc.examples;
 
 import java.sql.*;
+import java.util.Scanner;
 import org.apache.calcite.avatica.remote.Driver;
 
 public class MdbcTestClient {
@@ -107,9 +108,11 @@ public class MdbcTestClient {
 
         final String insertSQL = "INSERT INTO Persons VALUES (1, 'Martinez', 'Juan', 'KACB', 'ATLANTA');";
         final String insertSQL1 = "DELETE FROM Persons WHERE PersonID=2;";
-        final String insertSQL2 = "INSERT INTO Persons2 VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
+        final String insertSQL2 = "INSERT INTO Persons VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
         final String insertSQL3 = "UPDATE Persons SET FirstName='JOSH' WHERE LastName='Smith';";
         final String insertSQL4 = "UPDATE Persons SET FirstName='JOHN' WHERE LastName='Smith';";
+        
+        final String selectSQL1 = "SELECT * FROM Persons;";
 
         Statement insertStmt;
         try {
@@ -120,17 +123,31 @@ public class MdbcTestClient {
         }
 
         try {
-            execute = insertStmt.execute(insertSQL);
+            //execute = insertStmt.execute(insertSQL);
             //execute = insertStmt.execute(insertSQL1);
-            execute = insertStmt.execute(insertSQL2);
+            //execute = insertStmt.execute(insertSQL2);
             //execute = insertStmt.execute(insertSQL3);
             //execute = insertStmt.execute(insertSQL4);
+            
+            ///*
+            ResultSet rs = insertStmt.executeQuery(selectSQL1);
+            while (rs.next()) {
+                System.out.printf("%d, %s, %s\n", rs.getInt("PersonID"), rs.getString("FirstName"), rs.getString("LastName"));
+            }
+            //pause for user input
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Please hit <Enter> to complete the transaction and continue");
+            String line = scanner.nextLine();
+            scanner.close();
+            //*/
 
         } catch (SQLException e) {
             e.printStackTrace();
             return;
         }
 
+        
+        
         try {
             connection.commit();
         } catch (SQLException e) {

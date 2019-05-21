@@ -18,7 +18,7 @@
  * ============LICENSE_END======================================================
  */
 
-package org.onap.music.mdbc;
+package org.onap.music.mdbc.mixins;
 
 import java.util.Properties;
 import org.junit.*;
@@ -26,7 +26,7 @@ import org.junit.*;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-
+import org.onap.music.mdbc.MdbcTestUtils;
 import org.onap.music.mdbc.MdbcTestUtils.DBType;
 import org.onap.music.mdbc.mixins.MySQLMixin;
 

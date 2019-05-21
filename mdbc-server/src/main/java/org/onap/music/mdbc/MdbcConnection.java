@@ -54,6 +54,7 @@ import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
 import org.onap.music.mdbc.query.QueryProcessor;
 import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -500,10 +501,10 @@ public class MdbcConnection implements Connection {
     public void preStatementHook(final String sql) throws MDBCServiceException, SQLException {
         //TODO: verify ownership of keys here
         //Parse tables from the sql query
-        Map<String, List<SQLOperation>> tableToInstruction = QueryProcessor.parseSqlQuery(sql, table_set);
+        Map<String, List<SQLOperation>> tableToQueryType = QueryProcessor.parseSqlQuery(sql, table_set);
         //Check ownership of keys
         String defaultSchema = dbi.getSchema();
-        List<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToInstruction);
+        List<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToQueryType);
         if (this.partition!=null) {
             List<Range> snapshot = this.partition.getSnapshot();
             if(snapshot!=null){
@@ -512,8 +513,8 @@ public class MdbcConnection implements Connection {
         }
         // filter out ranges that fall under Eventually consistent
         // category as these tables do not need ownership
-        List<Range> scQueryTables = filterEveTables( queryTables);
-        DatabasePartition tempPartition = own(scQueryTables);
+        List<Range> scQueryTables = filterEveTables(queryTables);
+        DatabasePartition tempPartition = own(scQueryTables, MDBCUtils.getOperationType(tableToQueryType));
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
             statemanager.getOwnAndCheck().reloadAlreadyApplied(this.partition);
@@ -576,7 +577,7 @@ public class MdbcConnection implements Connection {
      * @return
      * @throws MDBCServiceException
      */
-    private DatabasePartition own(List<Range> ranges) throws MDBCServiceException {
+    private DatabasePartition own(List<Range> ranges, SQLOperationType lockType) throws MDBCServiceException {
         if(ranges==null||ranges.isEmpty()){
             return null;
         }
@@ -584,7 +585,7 @@ public class MdbcConnection implements Connection {
         OwnershipAndCheckpoint ownAndCheck = statemanager.getOwnAndCheck();
         UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
         try {
-            final OwnershipReturn ownershipReturn = ownAndCheck.own(mi, ranges, partition, ownOpId);
+            final OwnershipReturn ownershipReturn = ownAndCheck.own(mi, ranges, partition, ownOpId, lockType);
             if(ownershipReturn==null){
                 return null;
             }

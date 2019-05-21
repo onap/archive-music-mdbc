@@ -23,11 +23,12 @@ package org.onap.music.mdbc.mixins;
 import java.util.List;
 import java.util.UUID;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.query.SQLOperationType;
 
 public class LockRequest {
-    private final String table;
     private final UUID id;
     private final List<Range> toLockRanges;
+    private SQLOperationType lockType;
     private int numOfAttempts;
 
     /**
@@ -36,10 +37,24 @@ public class LockRequest {
      * @param id
      * @param toLockRanges
      */
-    public LockRequest(String table, UUID id, List<Range> toLockRanges) {
-        this.table = table;
+    public LockRequest(UUID id, List<Range> toLockRanges) {
         this.id = id;
         this.toLockRanges = toLockRanges;
+        lockType = SQLOperationType.WRITE;
+        numOfAttempts = 1;
+    }
+    
+    /**
+     * 
+     * @param table
+     * @param id
+     * @param toLockRanges
+     * @param lockType
+     */
+    public LockRequest(UUID id, List<Range> toLockRanges, SQLOperationType lockType) {
+        this.id = id;
+        this.toLockRanges = toLockRanges;
+        this.lockType = lockType;
         numOfAttempts = 1;
     }
 
@@ -49,10 +64,6 @@ public class LockRequest {
 
     public List<Range> getToLockRanges() {
         return toLockRanges;
-    }
-
-    public String getTable() {
-        return table;
     }
     
     /**
@@ -65,5 +76,9 @@ public class LockRequest {
 
     public void incrementAttempts() {
         numOfAttempts++;        
+    }
+    
+    public SQLOperationType getLockType() {
+        return lockType;
     }
 }
