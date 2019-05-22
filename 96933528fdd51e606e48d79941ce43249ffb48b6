@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "18c4452a_9565dd9b",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 319,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-05-22T03:13:01Z",
+      "side": 0,
+      "message": "Is the merge still going to happen in the read scenario?",
+      "revId": "96933528fdd51e606e48d79941ce43249ffb48b6",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": true
+    }
+  ]
+}
