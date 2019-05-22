@@ -102,14 +102,6 @@ public class MdbcConnection implements Connection {
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
         }
 
-        // Verify the tables in MUSIC match the tables in the database
-        // and create triggers on any tables that need them
-        try {
-            this.synchronizeTables();
-        } catch (QueryException e) {
-            logger.error("Error syncrhonizing tables");
-            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
-        }
         this.progressKeeper = progressKeeper;
         this.partition = partition;
         this.statemanager = statemanager;
@@ -542,7 +534,7 @@ public class MdbcConnection implements Connection {
      * proxy first starts, and whenever there is the possibility that tables were created or dropped.  It is synchronized
      * in order to prevent multiple threads from running this code in parallel.
      */
-    public void synchronizeTables() throws QueryException {
+    public void createTriggers() throws QueryException {
         Set<String> set1 = dbi.getSQLTableSet();    // set of tables in the database
         logger.debug(EELFLoggerDelegate.applicationLogger, "synchronizing tables:" + set1);
         for (String tableName : set1) {
@@ -550,14 +542,8 @@ public class MdbcConnection implements Connection {
             if (!table_set.contains(tableName.toUpperCase()) && !dbi.getReservedTblNames().contains(tableName.toUpperCase())) {
                 logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+tableName);
                 try {
-                    TableInfo ti = dbi.getTableInfo(tableName);
-                    //mi.initializeMusicForTable(ti,tableName);
-                    //mi.createDirtyRowTable(ti,tableName);
                     dbi.createSQLTriggers(tableName);
                     table_set.add(tableName.toUpperCase());
-                    //dbi.synchronizeData(tableName);
-                    logger.debug(EELFLoggerDelegate.applicationLogger, "synchronized tables:" +
-                        table_set.size() + "/" + set1.size() + "tables uploaded");
                 } catch (Exception e) {
                     logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
                     //logger.error(EELFLoggerDelegate.errorLogger, "Exception synchronizeTables: "+e);

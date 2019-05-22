@@ -193,10 +193,7 @@ public class MySQLMixin implements DBInterface {
 	@Override
 	public String getSchema() {return this.dbName;}
 
-	/**
-	 * Get a set of the table names in the database.
-	 * @return the set
-	 */
+
 	@Override
 	public Set<String> getSQLTableSet() {
 		Set<String> set = new TreeSet<String>();
