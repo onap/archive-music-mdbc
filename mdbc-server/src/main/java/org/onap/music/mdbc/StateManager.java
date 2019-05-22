@@ -114,7 +114,7 @@ public class StateManager {
         //\fixme this might not be used, delete?
         try {
 			info.load(this.getClass().getClassLoader().getResourceAsStream("music.properties"));
-			info.putAll(MDBCUtils.getMdbcProperties());
+			info.putAll(Utils.retrieveMdbcProperties());
 		} catch (IOException e) {
 			logger.error(EELFLoggerDelegate.errorLogger, e.getMessage());
 		}

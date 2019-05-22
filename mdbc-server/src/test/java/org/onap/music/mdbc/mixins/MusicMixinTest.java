@@ -57,7 +57,6 @@ import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.main.MusicCore;
 import org.onap.music.mdbc.DatabasePartition;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 
 import org.onap.music.mdbc.StateManager;
@@ -73,6 +72,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import org.onap.music.mdbc.MdbcTestUtils;
 import org.onap.music.mdbc.TestUtils;
+import org.onap.music.mdbc.Utils;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
@@ -130,17 +130,17 @@ public class MusicMixinTest {
             fail(e.getMessage());
         }
 
-        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+        DatabasePartition currentPartition = new DatabasePartition(Utils.generateTimebasedUniqueKey());
         try {
             mixin.getStateManager().getOwnAndCheck().own(mixin,ranges,currentPartition,
-                    MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.WRITE);
+                    Utils.generateTimebasedUniqueKey(), SQLOperationType.WRITE);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }
     }
 
     private DatabasePartition addRow(List<Range> ranges,boolean isLatest){
-        final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
+        final UUID uuid = Utils.generateTimebasedUniqueKey();
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
             MdbcTestUtils.getServerName(), isLatest);
@@ -186,11 +186,11 @@ public class MusicMixinTest {
         DatabasePartition db4 = addRow(range34, true);
         MILLISECONDS.sleep(10);
         DatabasePartition db5 = addRow(range24, true);
-        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+        DatabasePartition currentPartition = new DatabasePartition(Utils.generateTimebasedUniqueKey());
         MusicInterface.OwnershipReturn own = null;
         try {
             own = mixin.getStateManager().getOwnAndCheck().own(mixin,range123, currentPartition,
-                    MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.WRITE);
+                    Utils.generateTimebasedUniqueKey(), SQLOperationType.WRITE);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
         }

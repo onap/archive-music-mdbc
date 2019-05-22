@@ -25,7 +25,10 @@ import java.io.FileNotFoundException;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicUtil;
+import org.onap.music.mdbc.Utils;
 import org.onap.music.mdbc.configurations.ClusterConfiguration;
+import org.onap.music.mdbc.mixins.MusicInterface;
+import org.onap.music.mdbc.mixins.MusicMixin;
 
 public class ClusterSetup {
     public static final EELFLoggerDelegate LOG = EELFLoggerDelegate.getLogger(ClusterSetup.class);
@@ -53,8 +56,9 @@ public class ClusterSetup {
     }
 
     public void createAll() throws MDBCServiceException {
-        inputConfig.initNamespaces();
-        inputConfig.initTables();
+        MusicMixin mi = new MusicMixin(Utils.retrieveMdbcProperties());
+        inputConfig.initNamespaces(mi);
+        inputConfig.initTables(mi);
     }
 
     public static void main(String[] args) {

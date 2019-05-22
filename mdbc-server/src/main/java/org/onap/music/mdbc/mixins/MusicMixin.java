@@ -55,10 +55,10 @@ import org.onap.music.main.MusicCore;
 import org.onap.music.main.ResultType;
 import org.onap.music.main.ReturnType;
 import org.onap.music.mdbc.DatabasePartition;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.Utils;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.query.SQLOperationType;
@@ -194,19 +194,9 @@ public class MusicMixin implements MusicInterface {
     private Set<String> in_progress    = Collections.synchronizedSet(new HashSet<String>());
     private StateManager stateManager;
     private boolean useCompression;
-
-    public MusicMixin() {
-
-        //this.logger         = null;
-        this.musicAddress   = null;
-        this.music_ns       = null;
-        this.music_rfactor  = 0;
-        this.myId           = null;
-        this.allReplicaIds  = null;
-    }
-
-    public MusicMixin(StateManager stateManager, String mdbcServerName, Properties info) throws MDBCServiceException {
-        // Default values -- should be overridden in the Properties
+    
+    public MusicMixin(Properties info) throws MDBCServiceException {
+     // Default values -- should be overridden in the Properties
         // Default to using the host_ids of the various peers as the replica IDs (this is probably preferred)
         this.musicAddress   = info.getProperty(KEY_MUSIC_ADDRESS, DEFAULT_MUSIC_ADDRESS);
         logger.info(EELFLoggerDelegate.applicationLogger,"MusicSqlManager: musicAddress="+musicAddress);
@@ -225,8 +215,6 @@ public class MusicMixin implements MusicInterface {
 
         this.music_ns       = info.getProperty(KEY_MUSIC_NAMESPACE,DEFAULT_MUSIC_NAMESPACE);
         logger.info(EELFLoggerDelegate.applicationLogger,"MusicSqlManager: music_ns="+music_ns);
-
-        this.stateManager = stateManager;
         
         String c = info.getProperty(KEY_COMPRESSION);
         this.useCompression = (c == null) ? DEFAULT_COMPRESSION: Boolean.parseBoolean(c);
@@ -234,8 +222,15 @@ public class MusicMixin implements MusicInterface {
         String s            = info.getProperty(KEY_MUSIC_RFACTOR);
         this.music_rfactor  = (s == null) ? DEFAULT_MUSIC_RFACTOR : Integer.parseInt(s);
 
+        
         initializeMetricTables();
         commitExecutorThreads = Executors.newFixedThreadPool(4);
+    }
+
+    public MusicMixin(StateManager stateManager, String mdbcServerName, Properties info) throws MDBCServiceException {
+        this(info);
+        
+        this.stateManager = stateManager;
     }
 
     public String getMusicTxDigestTableName(){
@@ -255,7 +250,7 @@ public class MusicMixin implements MusicInterface {
         createKeyspace(this.music_ns,this.music_rfactor);
     }
 
-    public static void createKeyspace(String keyspace, int replicationFactor) throws MDBCServiceException {
+    public void createKeyspace(String keyspace, int replicationFactor) throws MDBCServiceException {
         Map<String,Object> replicationInfo = new HashMap<>();
         replicationInfo.put("'class'", "'NetworkTopologyStrategy'");
 
@@ -1034,7 +1029,7 @@ public class MusicMixin implements MusicInterface {
      */
     @Override
     public UUID generateUniqueKey() {
-        return MDBCUtils.generateUniqueKey();
+        return Utils.generateUniqueKey();
     }
 
     @Override
@@ -1320,7 +1315,7 @@ public class MusicMixin implements MusicInterface {
             return;
         }
 
-        final MusicTxDigestId digestId = new MusicTxDigestId(MDBCUtils.generateUniqueKey(), -1);
+        final MusicTxDigestId digestId = new MusicTxDigestId(Utils.generateUniqueKey(), -1);
         Callable<Boolean> insertDigestCallable =()-> {
             try {
                 createAndAddTxDigest(transactionDigest,digestId.transactionId);
@@ -1396,7 +1391,7 @@ public class MusicMixin implements MusicInterface {
             }
 
             if (serialized != null) {
-                MusicTxDigestId digestId = new MusicTxDigestId(MDBCUtils.generateUniqueKey(), -1);
+                MusicTxDigestId digestId = new MusicTxDigestId(Utils.generateUniqueKey(), -1);
                 addEventualTxDigest(digestId, serialized);
             }
         }
@@ -1552,7 +1547,7 @@ public class MusicMixin implements MusicInterface {
      *      * Redo: list of uiids associated to the Redo Records Table
      *
      */
-    public static void createMusicRangeInformationTable(String namespace, String tableName) throws MDBCServiceException {
+    public void createMusicRangeInformationTable(String namespace, String tableName) throws MDBCServiceException {
         String priKey = "rangeid";
         StringBuilder fields = new StringBuilder();
         fields.append("rangeid uuid, ");
@@ -1658,7 +1653,7 @@ public class MusicMixin implements MusicInterface {
      */
     private UUID createEmptyMriRow(String processId, String lockId, List<Range> ranges)
         throws MDBCServiceException {
-        UUID id = MDBCUtils.generateTimebasedUniqueKey();
+        UUID id = Utils.generateTimebasedUniqueKey();
         logger.info("Creating MRI "+ id + " for ranges " + ranges);
         return createEmptyMriRow(this.music_ns,this.musicRangeInformationTableName,id,processId,lockId,ranges,true);
     }
@@ -1740,7 +1735,7 @@ public class MusicMixin implements MusicInterface {
      *  * LeaseCounter: transaction number under this lease, bigint \TODO this may need to be a varint later
      *  * TransactionDigest: text that contains all the changes in the transaction
      */
-    public static void createMusicEventualTxDigest(String musicEventualTxDigestTableName, String musicNamespace, int musicTxDigestTableNumber) throws MDBCServiceException {
+    public void createMusicEventualTxDigest(String musicEventualTxDigestTableName, String musicNamespace, int musicTxDigestTableNumber) throws MDBCServiceException {
         String tableName = musicEventualTxDigestTableName;
         if (musicTxDigestTableNumber >= 0) {
             tableName = tableName +
@@ -1770,7 +1765,7 @@ public class MusicMixin implements MusicInterface {
      *  * LeaseCounter: transaction number under this lease, bigint \TODO this may need to be a varint later
      *  * TransactionDigest: text that contains all the changes in the transaction
      */
-    public static void createMusicTxDigest(String musicTxDigestTableName, String musicNamespace, int musicTxDigestTableNumber) throws MDBCServiceException {
+    public void createMusicTxDigest(String musicTxDigestTableName, String musicNamespace, int musicTxDigestTableNumber) throws MDBCServiceException {
         String tableName = musicTxDigestTableName;
         if (musicTxDigestTableNumber >= 0) {
             tableName = tableName +
@@ -1792,7 +1787,7 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
-    public static void createMusicRangeDependencyTable(String musicNamespace,String musicRangeDependencyTableName)
+    public void createMusicRangeDependencyTable(String musicNamespace,String musicRangeDependencyTableName)
         throws MDBCServiceException {
         String tableName = musicRangeDependencyTableName;
         String priKey = "range";
@@ -2126,7 +2121,7 @@ public class MusicMixin implements MusicInterface {
     }
 
     private MusicRangeInformationRow createAndAssignLock(List<Range> ranges) throws MDBCServiceException {
-        UUID newUUID = MDBCUtils.generateTimebasedUniqueKey();
+        UUID newUUID = Utils.generateTimebasedUniqueKey();
         DatabasePartition newPartition = new DatabasePartition(ranges,newUUID,null);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(newUUID,newPartition,new ArrayList<>(),
             null,getMyHostId(),true);
@@ -2373,7 +2368,7 @@ public class MusicMixin implements MusicInterface {
      *      * TxTimeID, TIMEUUID.
      *      * LastTxDigestID, uuid. (not needed as of now!!)
      */
-    public static void createMusicNodeInfoTable(String musicNodeInfoTableName, String musicNamespace, int nodeInfoTableNumber) throws MDBCServiceException {
+    public void createMusicNodeInfoTable(String musicNodeInfoTableName, String musicNamespace, int nodeInfoTableNumber) throws MDBCServiceException {
         String tableName = musicNodeInfoTableName;
         if(nodeInfoTableNumber >= 0) {
             tableName = tableName +
