@@ -41,7 +41,6 @@ import org.json.JSONTokener;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.Configuration;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.query.SQLOperation;
@@ -732,7 +731,7 @@ NEW.field refers to the new value
 				 
 				JSONObject jo = new JSONObject();
 				if (!getTableInfo(tableName).hasKey()) {
-						String musicKey = MDBCUtils.generateUniqueKey().toString();
+						String musicKey = org.onap.music.mdbc.Utils.generateUniqueKey().toString();
 						jo.put(mi.getMusicDefaultPrimaryKeyName(), musicKey);	
 				}
 					

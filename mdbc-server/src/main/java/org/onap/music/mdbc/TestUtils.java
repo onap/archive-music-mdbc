@@ -41,7 +41,7 @@ public class TestUtils {
 
     public static DatabasePartition createBasicRow(Range range, MusicInterface mixin, String mdbcServerName)
         throws MDBCServiceException {
-        final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
+        final UUID uuid = Utils.generateTimebasedUniqueKey();
         List<Range> ranges = new ArrayList<>();
         ranges.add(range);
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);

@@ -32,8 +32,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.DatabasePartition;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.Utils;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
@@ -50,7 +50,7 @@ public class DagTest {
 
     private MusicRangeInformationRow createNewRow(List<Range> ranges, String lockid, boolean isLatest,
                                                   List<MusicTxDigestId> redoLog) {
-        UUID id = MDBCUtils.generateTimebasedUniqueKey();
+        UUID id = Utils.generateTimebasedUniqueKey();
         DatabasePartition dbPartition = new DatabasePartition(ranges, id, lockid);
         return new MusicRangeInformationRow(id, dbPartition, redoLog, lockid, "id", isLatest);
     }
@@ -152,17 +152,17 @@ public class DagTest {
             new Range("schema.range1")
         ));
         List<MusicTxDigestId> redo1 = new ArrayList<>(Arrays.asList(
-            new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
+            new MusicTxDigestId(null,Utils.generateUniqueKey(),0)
         ));
         rows.add(createNewRow(new ArrayList<>(ranges),"",false,redo1));
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo2 = new ArrayList<>(Arrays.asList(
-            new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
+            new MusicTxDigestId(null,Utils.generateUniqueKey(),0)
         ));
         rows.add(createNewRow(new ArrayList<>(ranges),"",false,redo2));
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo3 = new ArrayList<>(Arrays.asList(
-            new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
+            new MusicTxDigestId(null,Utils.generateUniqueKey(),0)
         ));
         rows.add(createNewRow(new ArrayList<>(ranges),"",true,redo3));
         Dag dag = Dag.getDag(rows, ranges);
@@ -198,20 +198,20 @@ public class DagTest {
             new Range("schema.range1")
         ));
         List<MusicTxDigestId> redo1 = new ArrayList<>(Arrays.asList(
-            new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
+            new MusicTxDigestId(null,Utils.generateUniqueKey(),0)
         ));
         rows.add(createNewRow(new ArrayList<>(ranges),"",false,redo1));
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo2 = new ArrayList<>(Arrays.asList(
-            new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0),
-            new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),1)
+            new MusicTxDigestId(null,Utils.generateUniqueKey(),0),
+            new MusicTxDigestId(null,Utils.generateUniqueKey(),1)
         ));
         MusicRangeInformationRow newRow = createNewRow(new ArrayList<>(ranges), "", false, redo2);
         alreadyApplied.put(new Range("schema.range1"),Pair.of(new MriReference(newRow.getPartitionIndex()), 0));
         rows.add(newRow);
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo3 = new ArrayList<>(Arrays.asList(
-            new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
+            new MusicTxDigestId(null,Utils.generateUniqueKey(),0)
         ));
         rows.add(createNewRow(new ArrayList<>(ranges),"",true,redo3));
         Dag dag = Dag.getDag(rows, ranges);

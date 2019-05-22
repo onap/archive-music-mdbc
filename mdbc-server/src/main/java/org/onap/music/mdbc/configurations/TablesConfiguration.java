@@ -22,8 +22,8 @@ package org.onap.music.mdbc.configurations;
 import com.datastax.driver.core.ResultSet;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.Utils;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
@@ -76,7 +76,7 @@ public class TablesConfiguration {
             String partitionId;
             if(partitionInfo.partitionId==null || partitionInfo.partitionId.isEmpty()){
                 //1) Create a row in the partition info table
-                partitionId = MDBCUtils.generateTimebasedUniqueKey().toString();
+                partitionId = Utils.generateTimebasedUniqueKey().toString();
             }
             else{
                 partitionId = partitionInfo.partitionId;
