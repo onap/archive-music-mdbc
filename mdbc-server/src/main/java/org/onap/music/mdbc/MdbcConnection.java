@@ -91,7 +91,7 @@ public class MdbcConnection implements Connection {
             throw new MDBCServiceException("Connection is null");
         }
         this.jdbcConn = c;
-        info.putAll(MDBCUtils.getMdbcProperties());
+        info.putAll(Utils.retrieveMdbcProperties());
         String mixinDb  = info.getProperty(Configuration.KEY_DB_MIXIN_NAME, Configuration.DB_MIXIN_DEFAULT);
         this.dbi       = MixinFactory.createDBInterface(mixinDb, mi, url, jdbcConn, info);
         this.mi        = mi;
@@ -504,7 +504,7 @@ public class MdbcConnection implements Connection {
         Map<String, List<SQLOperation>> tableToQueryType = QueryProcessor.parseSqlQuery(sql, table_set);
         //Check ownership of keys
         String defaultSchema = dbi.getSchema();
-        List<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToQueryType);
+        List<Range> queryTables = Utils.getTables(defaultSchema, tableToQueryType);
         if (this.partition!=null) {
             List<Range> snapshot = this.partition.getSnapshot();
             if(snapshot!=null){
@@ -514,7 +514,7 @@ public class MdbcConnection implements Connection {
         // filter out ranges that fall under Eventually consistent
         // category as these tables do not need ownership
         List<Range> scQueryTables = filterEveTables(queryTables);
-        DatabasePartition tempPartition = own(scQueryTables, MDBCUtils.getOperationType(tableToQueryType));
+        DatabasePartition tempPartition = own(scQueryTables, Utils.getOperationType(tableToQueryType));
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
             statemanager.getOwnAndCheck().reloadAlreadyApplied(this.partition);
@@ -583,7 +583,7 @@ public class MdbcConnection implements Connection {
         }
         DatabasePartition newPartition = null;
         OwnershipAndCheckpoint ownAndCheck = statemanager.getOwnAndCheck();
-        UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
+        UUID ownOpId = Utils.generateTimebasedUniqueKey();
         try {
             final OwnershipReturn ownershipReturn = ownAndCheck.own(mi, ranges, partition, ownOpId, lockType);
             if(ownershipReturn==null){

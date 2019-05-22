@@ -28,6 +28,8 @@ import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicCore;
+import org.onap.music.mdbc.Utils;
+import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicMixin;
 
 public class ClusterConfiguration {
@@ -43,17 +45,17 @@ public class ClusterConfiguration {
 
     private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(ClusterConfiguration.class);
 
-    public void initNamespaces() throws MDBCServiceException{
-        MusicMixin.createKeyspace(internalNamespace,internalReplicationFactor);
-        MusicMixin.createKeyspace(musicNamespace,musicReplicationFactor);
+    public void initNamespaces(MusicMixin mi) throws MDBCServiceException {
+        mi.createKeyspace(internalNamespace,internalReplicationFactor);
+        mi.createKeyspace(musicNamespace,musicReplicationFactor);
     }
 
-    public void initTables() throws MDBCServiceException{
-        MusicMixin.createMusicRangeInformationTable(musicNamespace, mriTableName);
-        MusicMixin.createMusicTxDigest(mtxdTableName,musicNamespace, -1);
-        MusicMixin.createMusicEventualTxDigest(eventualMtxdTableName,musicNamespace, -1);
-        MusicMixin.createMusicNodeInfoTable(nodeInfoTableName,musicNamespace,-1);
-        MusicMixin.createMusicRangeDependencyTable(musicNamespace,rangeDependencyTableName);
+    public void initTables(MusicMixin mi) throws MDBCServiceException {
+        mi.createMusicRangeInformationTable(musicNamespace, mriTableName);
+        mi.createMusicTxDigest(mtxdTableName,musicNamespace, -1);
+        mi.createMusicEventualTxDigest(eventualMtxdTableName,musicNamespace, -1);
+        mi.createMusicNodeInfoTable(nodeInfoTableName,musicNamespace,-1);
+        mi.createMusicRangeDependencyTable(musicNamespace,rangeDependencyTableName);
     }
 
     private void initInternalTable() throws MDBCServiceException {

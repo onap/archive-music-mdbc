@@ -248,8 +248,6 @@ public class MdbcTestUtils {
     }
 
     public static MusicMixin getMusicMixin() throws MDBCServiceException {
-        initNamespaces();
-        initTables();
         MusicMixin mixin=null;
         try {
             Properties properties = new Properties();
@@ -257,24 +255,26 @@ public class MdbcTestUtils {
             properties.setProperty(MusicMixin.KEY_MUSIC_NAMESPACE,MdbcTestUtils.getKeyspace());
             properties.setProperty(MusicMixin.KEY_MUSIC_RFACTOR,"1");
             properties.setProperty(MusicMixin.KEY_MUSIC_ADDRESS,MdbcTestUtils.getCassandraUrl());
-            mixin =new MusicMixin(null, MdbcTestUtils.getServerName(),properties);
+            mixin = new MusicMixin(null, MdbcTestUtils.getServerName(),properties);
+            initNamespaces(mixin);
+            initTables(mixin);
         } catch (MDBCServiceException e) {
             fail("error creating music mixin");
         }
         return mixin;
     }
 
-    public static void initNamespaces() throws MDBCServiceException{
-        MusicMixin.createKeyspace("music_internal",1);
-        MusicMixin.createKeyspace(keyspace,1);
+    public static void initNamespaces(MusicMixin mixin) throws MDBCServiceException{
+        mixin.createKeyspace("music_internal",1);
+        mixin.createKeyspace(keyspace,1);
     }
 
-    public static void initTables() throws MDBCServiceException{
-        MusicMixin.createMusicRangeInformationTable(keyspace, mriTableName);
-        MusicMixin.createMusicTxDigest(mtdTableName,keyspace, -1);
-        MusicMixin.createMusicEventualTxDigest(eventualMtxdTableName,keyspace, -1);
-        MusicMixin.createMusicNodeInfoTable(nodeInfoTableName,keyspace,-1);
-        MusicMixin.createMusicRangeDependencyTable(keyspace,rangeDependencyTableName);
+    public static void initTables(MusicMixin mixin) throws MDBCServiceException{
+        mixin.createMusicRangeInformationTable(keyspace, mriTableName);
+        mixin.createMusicTxDigest(mtdTableName,keyspace, -1);
+        mixin.createMusicEventualTxDigest(eventualMtxdTableName,keyspace, -1);
+        mixin.createMusicNodeInfoTable(nodeInfoTableName,keyspace,-1);
+        mixin.createMusicRangeDependencyTable(keyspace,rangeDependencyTableName);
     }
 
 }

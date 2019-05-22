@@ -55,10 +55,6 @@ public class Music2Mixin extends MusicMixin {
 	
 	private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Music2Mixin.class);
 
-	public Music2Mixin() {
-		super();
-	}
-
 	public Music2Mixin(StateManager stateManager, String url, Properties info) throws MDBCServiceException {
 		super(stateManager, url, info);
 	}

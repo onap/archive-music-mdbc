@@ -21,8 +21,8 @@ package org.onap.music.mdbc.configurations;
 
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.DatabasePartition;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.Utils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -75,7 +75,7 @@ public class NodeConfiguration {
     public void saveToFile(String file){
         try {
             String serialized = this.toJson();
-            MDBCUtils.saveToFile(serialized,file,LOG);
+            Utils.saveToFile(serialized,file,LOG);
         } catch (IOException e) {
             e.printStackTrace();
             // Exit with error

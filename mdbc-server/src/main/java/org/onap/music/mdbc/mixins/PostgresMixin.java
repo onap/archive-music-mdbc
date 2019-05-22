@@ -36,7 +36,6 @@ import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.Configuration;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.mixins.MySQLMixin.StagingTableUpdateRunnable;

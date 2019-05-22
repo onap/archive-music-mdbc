@@ -44,12 +44,12 @@ import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.mdbc.DatabasePartition;
-import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.MdbcTestUtils.DBType;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.MdbcTestUtils;
 import org.onap.music.mdbc.TestUtils;
+import org.onap.music.mdbc.Utils;
 import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
@@ -157,7 +157,7 @@ public class OwnershipAndCheckpointTest {
         mysqlMixin.postStatementHook(sqlOperation,stagingTable);
         mysqlMixin.preCommitHook();
         executeStatement.close();
-        String id = MDBCUtils.generateUniqueKey().toString();
+        String id = Utils.generateUniqueKey().toString();
         TxCommitProgress progressKeeper = new TxCommitProgress();
         progressKeeper.createNewTransactionTracker(id ,this.conn);
         musicMixin.commitLog(partition, null, stagingTable, id, progressKeeper);
@@ -173,7 +173,7 @@ public class OwnershipAndCheckpointTest {
     private OwnershipReturn cleanAndOwnPartition(List<Range> ranges, UUID ownOpId) throws SQLException {
         dropAndCreateTable();
         cleanAlreadyApplied(ownAndCheck);
-        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+        DatabasePartition currentPartition = new DatabasePartition(Utils.generateTimebasedUniqueKey());
 
         OwnershipReturn own=null;
         try {
@@ -215,7 +215,7 @@ public class OwnershipAndCheckpointTest {
 
         List<Range> ranges = new ArrayList<>();
         ranges.add(range);
-        UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
+        UUID ownOpId = Utils.generateTimebasedUniqueKey();
         OwnershipReturn own = cleanAndOwnPartition(ranges,ownOpId);
 
         Map<MusicRangeInformationRow, LockResult> locks = new HashMap<>();
@@ -239,7 +239,7 @@ public class OwnershipAndCheckpointTest {
 
         List<Range> ranges = new ArrayList<>();
         ranges.add(range);
-        UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
+        UUID ownOpId = Utils.generateTimebasedUniqueKey();
         OwnershipReturn own = cleanAndOwnPartition(ranges,ownOpId);
 
 
@@ -264,14 +264,14 @@ public class OwnershipAndCheckpointTest {
         final DatabasePartition partition = TestUtils.createBasicRow(range, mi, MdbcTestUtils.getServerName());
         TestUtils.unlockRow(MdbcTestUtils.getKeyspace(), MdbcTestUtils.getMriTableName(), partition);
 
-        DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
+        DatabasePartition currentPartition = new DatabasePartition(Utils.generateTimebasedUniqueKey());
         MusicInterface.OwnershipReturn own1, own2;
         try {
             own1 = ownAndCheck.own(mi, ranges, currentPartition,
-                    MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.READ);
+                    Utils.generateTimebasedUniqueKey(), SQLOperationType.READ);
             // acquire the table again, should be allowed since they're both reads
             own2 = ownAndCheck.own(mi, ranges, currentPartition,
-                    MDBCUtils.generateTimebasedUniqueKey(), SQLOperationType.READ);
+                    Utils.generateTimebasedUniqueKey(), SQLOperationType.READ);
         } catch (MDBCServiceException e) {
             fail("failure when running own function");
             return;
