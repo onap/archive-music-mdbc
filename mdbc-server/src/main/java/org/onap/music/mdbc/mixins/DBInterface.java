@@ -49,6 +49,7 @@ public interface DBInterface {
 	void close();
 	/**
 	 * Get a set of the table names in the database. The table names should be returned in UPPER CASE.
+	 * @see #getSQLRangeSet()
 	 * @return the set
 	 */
 	@Deprecated

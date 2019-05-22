@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.QueryException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
 import org.onap.music.logging.format.ErrorSeverity;
@@ -175,6 +176,17 @@ public class StateManager {
                     ErrorTypes.GENERALSERVICEERROR);
                 throw new MDBCServiceException(e.getMessage(), e);
             }
+        }
+        
+        // Verify the tables in MUSIC match the tables in the database
+        // and create triggers on any tables that need them
+        try {
+            MdbcConnection mdbcConn = (MdbcConnection) openConnection("init");
+            mdbcConn.createTriggers();
+            closeConnection("init");
+        } catch (QueryException e) {
+            logger.error("Error syncrhonizing tables");
+            logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
         }
     }
     

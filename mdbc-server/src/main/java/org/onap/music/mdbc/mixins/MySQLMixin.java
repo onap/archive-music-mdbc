@@ -107,6 +107,7 @@ public class MySQLMixin implements DBInterface {
 		this.tables = new HashMap<String, TableInfo>();
 		useAsyncStagingUpdate = Boolean.parseBoolean(info.getProperty(Configuration.KEY_ASYNC_STAGING_TABLE_UPDATE,
 																Configuration.ASYNC_STAGING_TABLE_UPDATE));
+		this.deleteStagingStatement = getStagingDeletePreparedStatement();
 	}
 
 	class StagingTableUpdateRunnable implements Runnable{
@@ -193,10 +194,7 @@ public class MySQLMixin implements DBInterface {
 	@Override
 	public String getSchema() {return this.dbName;}
 
-	/**
-	 * Get a set of the table names in the database.
-	 * @return the set
-	 */
+
 	@Override
 	public Set<String> getSQLTableSet() {
 		Set<String> set = new TreeSet<String>();
@@ -356,7 +354,7 @@ mysql> describe tables;
 					Statement stmt = jdbcConn.createStatement();
 					stmt.execute(CREATE_TBL_SQL);
 					stmt.close();
-					this.deleteStagingStatement = getStagingDeletePreparedStatement();
+					
 					logger.info(EELFLoggerDelegate.applicationLogger,"createSQLTriggers: Server side dirty table created.");
 					server_tbl_created = true;
 				} catch (SQLException e) {
