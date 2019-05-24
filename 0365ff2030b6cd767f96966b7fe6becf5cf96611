@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d707f0da_fd005d3a",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 199,
+      "author": {
+        "id": 2025
+      },
+      "writtenOn": "2019-05-24T16:45:27Z",
+      "side": 0,
+      "message": "MixinFactory.createMusicInterface is dynamically calling the no-argument constructor to MusicMixin.  Removing this causes a NullPointerException in StateManager.openConnection when musicInterface is null.",
+      "revId": "0365ff2030b6cd767f96966b7fe6becf5cf96611",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": true
+    }
+  ]
+}
