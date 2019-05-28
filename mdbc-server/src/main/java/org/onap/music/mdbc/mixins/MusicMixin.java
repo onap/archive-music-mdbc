@@ -2184,6 +2184,15 @@ public class MusicMixin implements MusicInterface {
     }
 
 
+    @Override
+    public void relinquish(DatabasePartition partition) throws MDBCServiceException {
+        String ownerId = partition.getLockId();
+        String rangeId = partition.getMRIIndex().toString();
+        if(ownerId==null||ownerId.isEmpty()||rangeId==null||rangeId.isEmpty()){
+            return;
+        }
+        unlockKeyInMusic(musicRangeInformationTableName, rangeId, ownerId);
+    }
 
     @Override
     public void relinquish(String ownerId, String rangeId) throws MDBCServiceException{
@@ -2200,7 +2209,7 @@ public class MusicMixin implements MusicInterface {
     private boolean canTryRelinquishing(){
         //\TODO: Fix this!!!! REALLY IMPORTANT TO BE FIX
         // This should actually have some mechanism to relinquish ownership
-        return false;
+        return true;
     }
 
     @Override
@@ -2219,7 +2228,7 @@ public class MusicMixin implements MusicInterface {
         if(lockQueueSize> 1){
             //If there is any other node waiting, we just relinquish ownership
             try {
-                relinquish(partition.getLockId(),partition.getMRIIndex().toString());
+                relinquish(partition);
             } catch (MDBCServiceException e) {
                 logger.error("Error relinquishing lock, will use timeout to solve");
             }

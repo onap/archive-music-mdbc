@@ -389,7 +389,7 @@ public class StateManager {
 
 	private void relinquish(DatabasePartition partition){
         try {
-            musicInterface.relinquish(partition.getLockId(),partition.getMRIIndex().toString());
+            musicInterface.relinquish(partition);
         } catch (MDBCServiceException e) {
             logger.error("Relinquish failed, would need to forcefully obtain lock later");
         }
