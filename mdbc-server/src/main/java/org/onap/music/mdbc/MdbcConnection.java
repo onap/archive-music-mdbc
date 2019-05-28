@@ -218,8 +218,9 @@ public class MdbcConnection implements Connection {
 
         //\TODO try to execute outside of the critical path of commit
         try {
-            if(partition != null)
-                relinquishIfRequired(partition);
+            if(partition != null) {
+                mi.relinquish(partition);
+            }
         } catch (MDBCServiceException e) {
             logger.warn("Error trying to relinquish: "+partition.toString());
         }
@@ -256,7 +257,7 @@ public class MdbcConnection implements Connection {
             logger.debug("Connection was closed for id:" + id);
         }
         try {
-            mi.relinquish(partition.getLockId(),partition.getMRIIndex().toString());
+            mi.relinquish(partition);
         } catch (MDBCServiceException e) {
             throw new SQLException("Failure during relinquish of partition",e);
         }
