@@ -309,7 +309,8 @@ public interface MusicInterface {
 
     void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
 
-    LockResult requestLock(LockRequest request) throws MDBCServiceException;
+    String createLock(LockRequest request) throws MDBCServiceException;
+    LockResult acquireLock(LockRequest request, String lockId) throws MDBCServiceException;
 
     void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
 

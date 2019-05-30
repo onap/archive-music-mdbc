@@ -1535,7 +1535,7 @@ public class MusicMixin implements MusicInterface {
         try {
             newRow = executeMusicLockedGet(music_ns, musicRangeDependencyTableName,pQueryObject,tableWithoutDot,null);
         } catch (MDBCServiceException e) {
-            logger.error("Get operationt error: Failure to get row from MRI "+musicRangeInformationTableName+" trying for table "+tableWithoutDot);
+            logger.error("Get operation  error: Failure to get row from " + musicRangeDependencyTableName + " trying for table " + tableWithoutDot);
             throw new MDBCServiceException("Initialization error:Failure to add new row to transaction information for table "+tableWithoutDot, e);
         }
         return getRangeDependenciesFromCassandraRow(newRow);
@@ -2074,10 +2074,16 @@ public class MusicMixin implements MusicInterface {
     }
 
     @Override
-    public LockResult requestLock(LockRequest request) throws MDBCServiceException{
+    public String createLock(LockRequest request) throws MDBCServiceException{
         String fullyQualifiedKey= music_ns+"."+ musicRangeInformationTableName + "." + request.getId();
         boolean isWrite = (request.getLockType()==SQLOperationType.WRITE);
         String lockId = MusicCore.createLockReference(fullyQualifiedKey, isWrite);
+        return lockId;
+    }
+
+    @Override
+    public LockResult acquireLock(LockRequest request, String lockId) throws MDBCServiceException{
+        String fullyQualifiedKey= music_ns+"."+ musicRangeInformationTableName + "." + request.getId();
         ReturnType lockReturn = acquireLock(fullyQualifiedKey,lockId);
         if(lockReturn.getResult() == ResultType.FAILURE) {
             //\TODO Improve the exponential backoff
@@ -2091,6 +2097,7 @@ public class MusicMixin implements MusicInterface {
         }
         return new LockResult(true, request.getId(),lockId,true,null);
     }
+
 
     /**
      *  fixes the DAG in case the previous owner failed while trying to own the row
