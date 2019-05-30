@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "65e09964_a0eaf42a",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/MdbcConnection.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 222,
+      "author": {
+        "id": 4900
+      },
+      "writtenOn": "2019-05-30T06:09:59Z",
+      "side": 1,
+      "message": "This could potentially incur in a heavy penalty, each transaction will need to go through the ownership process",
+      "revId": "e37a365130bd6859f282dab67b79f944bf0d9ef1",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": true
+    }
+  ]
+}
