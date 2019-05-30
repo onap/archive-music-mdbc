@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6d726767_614071f1",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
+        "patchSetId": 1
+      },
+      "lineNbr": 375,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-05-30T14:02:05Z",
+      "side": 1,
+      "message": "If you haven\u0027t owned the partition, you need to release your lock here.",
+      "revId": "fbf6a0a4affb9b82897e4913278294afb447386d",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
