@@ -276,11 +276,11 @@ public interface MusicInterface {
 
 	/**
      * This functions relinquishes a range
-     * @param ownerId id of the current ownerh
+     * @param lockId id of the lock to be relinquished
      * @param rangeId id of the range to be relinquished
      * @throws MusicLockingException
      */
-	void relinquish(String ownerId, String rangeId) throws MDBCServiceException;
+	void relinquish(String lockId, String rangeId) throws MDBCServiceException;
 
     /**
      * This function return all the range indexes that are currently hold by any of the connections in the system
@@ -309,7 +309,8 @@ public interface MusicInterface {
 
     void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
 
-    LockResult requestLock(LockRequest request) throws MDBCServiceException;
+    String createLock(LockRequest request) throws MDBCServiceException;
+    LockResult acquireLock(LockRequest request, String lockId) throws MDBCServiceException;
 
     void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
 

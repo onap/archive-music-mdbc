@@ -345,11 +345,12 @@ public class OwnershipAndCheckpoint{
             } else {
                 LockRequest request = new LockRequest(uuidToOwn,
                         new ArrayList<>(node.getRangeSet()), lockType);
+                String lockId = mi.createLock(request);
                 LockResult result = null;
                 boolean owned = false;
                 while(!owned && !timeout(opId)){
                     try {
-                        result = mi.requestLock(request);
+                        result = mi.acquireLock(request, lockId);
                         if (result.wasSuccessful()) {
                             owned = true;
                             continue;
@@ -371,6 +372,7 @@ public class OwnershipAndCheckpoint{
                     newLocks.put(uuidToOwn,result);
                 }
                 else{
+		    mi.relinquish(lockId, partition.getMRIIndex().toString());
                     break;
                 }
             }
