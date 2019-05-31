@@ -402,6 +402,8 @@ public class AvaticaSite {
   public void setRef(Ref x) {
   }
 
+  // This method is not implemented in the base Avatica jar version which is being used currently;
+  // Added implementation to enable Blob database writes
   public void setBlob(Blob x) {
      InputStream iStream;
     try {
@@ -416,8 +418,21 @@ public class AvaticaSite {
     }
     
   }
-
+  
+  // This method is not implemented in the base Avatica jar version which is being used currently;
+  // Added implementation to enable Clob database writes
   public void setClob(Clob x) {
+      Reader iStream;
+      try {
+          iStream = x.getCharacterStream();
+          int length =0;
+          while(iStream.read() != -1)
+              length ++;
+           setBytes(x.getSubString(1, length).getBytes());
+           
+      } catch (SQLException | IOException e) {
+          throw new RuntimeException(e);
+      }
   }
 
   public void setArray(Array x) {

@@ -41,6 +41,7 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import javax.sql.rowset.serial.SerialBlob;
+import javax.sql.rowset.serial.SerialClob;
 import org.apache.calcite.avatica.AvaticaSite;
 import org.apache.calcite.avatica.AvaticaUtils;
 import org.apache.calcite.avatica.ColumnMetaData;
@@ -848,7 +849,9 @@ public abstract class AbstractCursor implements Cursor {
       throw new IllegalStateException("Unhandled value type: " + o.getClass());
     }
     
-    
+    // This method is not implemented in the base Avatica jar version which is being used currently;
+    // Added implementation to enable Blob database reads; this has unintended consequences if entire object
+    // cannot be loaded into memory
     @Override public Blob getBlob() throws SQLException {
         
         Object o = getObject();
@@ -857,13 +860,31 @@ public abstract class AbstractCursor implements Cursor {
         }
         if (o instanceof byte[]) {
             byte[] byteArr = (byte[] )o;
-            //System.out.println(new String(byteArr, StandardCharsets.UTF_8));
             return new SerialBlob(byteArr);
         } 
         
         throw new IllegalStateException("Unhandled value type: " + o.getClass());
         
     }
+    
+    // This method is not implemented in the base Avatica jar version which is being used currently;
+    // Added implementation to enable Clob database writes; this has unintended consequences if entire object
+    // cannot be loaded into memory
+    @Override public Clob getClob() throws SQLException {
+        
+        Object o = getObject();
+        if (null == o) {
+          return null;
+        }
+        if (o instanceof byte[]) {
+            byte[] byteArr = (byte[] )o;
+            return new SerialClob(new String(byteArr).toCharArray());
+        } 
+        
+        throw new IllegalStateException("Unhandled value type: " + o.getClass());
+        
+    }
+    
   }
 
   /**

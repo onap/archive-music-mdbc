@@ -333,7 +333,8 @@ mysql> describe tables;
 		case "text":
 		case "varchar":		return Types.VARCHAR;
 		case "mediumblob":
-		case "blob":		return Types.VARCHAR;
+		case "longblob":    
+		case "blob":		return Types.BLOB;
 		default:
 			logger.error(EELFLoggerDelegate.errorLogger,"unrecognized and/or unsupported data type "+nm);
 			return Types.VARCHAR;
