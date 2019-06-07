@@ -276,6 +276,13 @@ public interface MusicInterface {
 
 	/**
      * This functions relinquishes a range
+     * @param partition db partition to be relinquished
+     * @throws MusicLockingException
+     */
+	public void relinquish(DatabasePartition partition) throws MDBCServiceException;
+	
+	/**
+     * This functions relinquishes a range
      * @param lockId id of the lock to be relinquished
      * @param rangeId id of the range to be relinquished
      * @throws MusicLockingException
