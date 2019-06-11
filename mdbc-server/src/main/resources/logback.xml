@@ -82,11 +82,11 @@
 	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{ServiceName}|%X{PartnerName}|%X{TargetEntity}|%X{TargetServiceName}|%X{class}|%X{AlertSeverity}|%X{ErrorCode}|%X{ErrorDescription}| %msg%n" />
 
   <property name="defaultLoggerPattern"
-	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{class}| %msg%n" />
+	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{class}|%X{ConnectionId}| %msg%n" />
 
   <!-- use %class so library logging calls yield their class name -->
   <property name="applicationLoggerPattern"
-	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{class}| %msg%n" />
+	value="%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}|%X{RequestId}|%thread|%X{class}|%X{ConnectionId}| %msg%n" />
 
   <!-- Example evaluator filter applied against console appender -->
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
