@@ -90,6 +90,7 @@ public class MdbcServerLogic extends JdbcMeta{
 	
 	@Override
     protected Connection getConnection(String id) throws SQLException {
+	    logger.mdcPut("ConnectionId", id);
         if (id == null) {
             throw new NullPointerException("Connection id is null");
         }
@@ -106,6 +107,7 @@ public class MdbcServerLogic extends JdbcMeta{
 
 	@Override
 	public void openConnection(ConnectionHandle ch, Map<String, String> information) {
+	    logger.mdcPut("ConnectionId", ch.id);
         Properties fullInfo = new Properties();
         fullInfo.putAll(this.info);
         if (information != null) {
@@ -157,6 +159,7 @@ public class MdbcServerLogic extends JdbcMeta{
             connectionCache.invalidate(ch.id);
             this.manager.closeConnection(ch.id);
             logger.info("connection closed with id {}", ch.id);
+            logger.mdcRemove("ConnectionId");
         }
 	}
 
