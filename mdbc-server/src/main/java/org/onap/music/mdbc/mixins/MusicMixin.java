@@ -1152,11 +1152,11 @@ public class MusicMixin implements MusicInterface {
         return query;
     }
 
-    protected ReturnType acquireLock(String fullyQualifiedKey, String lockId) throws MDBCServiceException{
+    private ReturnType acquireLock(String fullyQualifiedKey, String lockRef) throws MDBCServiceException{
         ReturnType lockReturn;
         //\TODO Handle better failures to acquire locks
         try {
-            lockReturn = MusicCore.acquireLock(fullyQualifiedKey,lockId);
+            lockReturn = MusicCore.acquireLock(fullyQualifiedKey,lockRef);
         } catch (MusicLockingException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Lock was not acquire correctly for key "+fullyQualifiedKey);
             throw new MDBCServiceException("Lock was not acquire correctly for key "+fullyQualifiedKey, e);
@@ -1200,24 +1200,24 @@ public class MusicMixin implements MusicInterface {
         throws MDBCServiceException{
         List<Range> newRanges = new ArrayList<>();
         String newFullyQualifiedKey = music_ns + "." + musicRangeInformationTableName + "." + pending.getKey().toString();
-        String newLockId;
+        String newLockRef;
         boolean success;
         if (currentLockRef.containsKey(pending.getKey())) {
-            newLockId = currentLockRef.get(pending.getKey());
-            success = (MusicCore.whoseTurnIsIt(newFullyQualifiedKey) == newLockId);
+            newLockRef = currentLockRef.get(pending.getKey());
+            success = (MusicCore.whoseTurnIsIt(newFullyQualifiedKey) == newLockRef);
         } else {
-            newLockId = MusicCore.createLockReference(newFullyQualifiedKey);
+            newLockRef = MusicCore.createLockReference(newFullyQualifiedKey);
             ReturnType newLockReturn = acquireLock(fullyQualifiedKey, lockId);
             success = newLockReturn.getResult().compareTo(ResultType.SUCCESS) == 0;
         }
         if (!success) {
             pendingToLock.addAll(pending.getValue());
-            currentLockRef.put(pending.getKey(), newLockId);
+            currentLockRef.put(pending.getKey(), newLockRef);
         } else {
             if(alreadyHeldLocks.containsKey(pending.getKey())){
                 throw new MDBCServiceException("Adding key that already exist");
             }
-            alreadyHeldLocks.put(pending.getKey(),new LockResult(pending.getKey(), newLockId, true,
+            alreadyHeldLocks.put(pending.getKey(),new LockResult(pending.getKey(), newLockRef, true,
                 pending.getValue()));
             newRanges.addAll(pending.getValue());
         }
@@ -1230,9 +1230,9 @@ public class MusicMixin implements MusicInterface {
 
     protected String createAndAssignLock(String fullyQualifiedKey, DatabasePartition partition) throws MDBCServiceException {
         UUID mriIndex = partition.getMRIIndex();
-        String lockId;
-        lockId = MusicCore.createLockReference(fullyQualifiedKey);
-        if(lockId==null) {
+        String lockRef;
+        lockRef = MusicCore.createLockReference(fullyQualifiedKey);
+        if(lockRef==null) {
            throw new MDBCServiceException("lock reference is null");
         }
         ReturnType lockReturn;
@@ -1245,9 +1245,9 @@ public class MusicMixin implements MusicInterface {
                 } catch (InterruptedException e) {
                     logger.warn("Error sleeping for acquiring the lock");
                 }
-                logger.warn("Error acquiring lock id: ["+lockId+"] for key: ["+fullyQualifiedKey+"]");
+                logger.warn("Error acquiring lock id: ["+lockRef+"] for key: ["+fullyQualifiedKey+"]");
             }
-            lockReturn = acquireLock(fullyQualifiedKey,lockId);
+            lockReturn = acquireLock(fullyQualifiedKey,lockRef);
         }while((lockReturn == null||lockReturn.getResult().compareTo(ResultType.SUCCESS) != 0 )&&(counter++<3));
 
         //\TODO this is wrong, we should have a better way to obtain a lock forcefully, clean the queue and obtain the lock
@@ -1255,8 +1255,8 @@ public class MusicMixin implements MusicInterface {
             logger.error("Lock acquire returned invalid error: "+lockReturn.getResult().name());
             return null;
         }
-        partition.setLockId(lockId);
-        return lockId;
+        partition.setLockRef(lockRef);
+        return lockRef;
     }
 
     protected void changeIsLatestToMRI(MusicRangeInformationRow row, boolean isLatest, LockResult lock) throws MDBCServiceException{
@@ -1267,7 +1267,7 @@ public class MusicMixin implements MusicInterface {
             musicTxDigestTableName, isLatest);
         ReturnType returnType = MusicCore.criticalPut(music_ns, musicRangeInformationTableName, row.getPartitionIndex().toString(),
             appendQuery, 
-            lock.getLockId()
+            lock.getLockRef()
             , null);
         if(returnType.getResult().compareTo(ResultType.SUCCESS) != 0 ){
             logger.error(EELFLoggerDelegate.errorLogger, "Error when executing change isLatest operation with return type: "+returnType.getMessage());
@@ -1310,8 +1310,8 @@ public class MusicMixin implements MusicInterface {
         UUID mriIndex = partition.getMRIIndex();
         String fullyQualifiedMriKey = music_ns+"."+ this.musicRangeInformationTableName+"."+mriIndex;
         //0. See if reference to lock was already created
-        String lockId = partition.getLockId();
-        if(mriIndex==null || lockId == null || lockId.isEmpty()) {
+        String lockRef = partition.getLockRef();
+        if(mriIndex==null || lockRef == null || lockRef.isEmpty()) {
             throw new MDBCServiceException("Not able to commit, as you are no longer the lock-holder for this partition");
         }
 
@@ -1332,7 +1332,7 @@ public class MusicMixin implements MusicInterface {
         };
         Callable<Boolean> appendCallable=()-> {
             try {
-                appendToRedoLog(music_ns, mriIndex, digestId.transactionId, lockId, musicTxDigestTableName,
+                appendToRedoLog(music_ns, mriIndex, digestId.transactionId, lockRef, musicTxDigestTableName,
                     musicRangeInformationTableName);
                 return true;
             } catch (MDBCServiceException e) {
@@ -2024,7 +2024,7 @@ public class MusicMixin implements MusicInterface {
     @Override
     public void releaseLocks(Map<UUID,LockResult> newLocks) throws MDBCServiceException{
         for(Map.Entry<UUID,LockResult> lock : newLocks.entrySet()) {
-            unlockKeyInMusic(musicRangeInformationTableName, lock.getKey().toString(), lock.getValue().getLockId());
+            unlockKeyInMusic(musicRangeInformationTableName, lock.getKey().toString(), lock.getValue().getLockRef());
         }
     }
 
@@ -2035,7 +2035,7 @@ public class MusicMixin implements MusicInterface {
             if(lock == null)
                 continue;
             unlockKeyInMusic(musicRangeInformationTableName, r.getPartitionIndex().toString(),
-                lock.getLockId());
+                lock.getLockRef());
             newLocks.remove(r.getPartitionIndex());
         }
     }
@@ -2045,7 +2045,7 @@ public class MusicMixin implements MusicInterface {
         for(Map.Entry<UUID,LockResult> lock : newLocks.entrySet()) {
             UUID id = lock.getKey();
             if(id!=finalRow){
-                unlockKeyInMusic(musicRangeInformationTableName, id.toString(), lock.getValue().getLockId());
+                unlockKeyInMusic(musicRangeInformationTableName, id.toString(), lock.getValue().getLockRef());
                 toErase.add(id);
             }
         }
@@ -2077,14 +2077,14 @@ public class MusicMixin implements MusicInterface {
     public String createLock(LockRequest request) throws MDBCServiceException{
         String fullyQualifiedKey= music_ns+"."+ musicRangeInformationTableName + "." + request.getId();
         boolean isWrite = (request.getLockType()==SQLOperationType.WRITE);
-        String lockId = MusicCore.createLockReference(fullyQualifiedKey, isWrite);
-        return lockId;
+        String lockRef = MusicCore.createLockReference(fullyQualifiedKey, isWrite);
+        return lockRef;
     }
 
     @Override
-    public LockResult acquireLock(LockRequest request, String lockId) throws MDBCServiceException{
+    public LockResult acquireLock(LockRequest request, String lockRef) throws MDBCServiceException {
         String fullyQualifiedKey= music_ns+"."+ musicRangeInformationTableName + "." + request.getId();
-        ReturnType lockReturn = acquireLock(fullyQualifiedKey,lockId);
+        ReturnType lockReturn = acquireLock(fullyQualifiedKey,lockRef);
         if(lockReturn.getResult() == ResultType.FAILURE) {
             //\TODO Improve the exponential backoff
             int n = request.getNumOfAttempts();
@@ -2095,7 +2095,13 @@ public class MusicMixin implements MusicInterface {
                     + (r.nextInt(high - low) + low);
             return new LockResult(false, backOffTimems);
         }
-        return new LockResult(true, request.getId(),lockId,true,null);
+        return new LockResult(true, request.getId(),lockRef,true,null);
+    }
+    
+    @Override
+    public void refreshPartitionLease(DatabasePartition partition) throws MDBCServiceException {
+        String fullyQualifiedKey= music_ns+"."+ musicRangeInformationTableName + "." + partition.getMRIIndex();
+        acquireLock(fullyQualifiedKey, partition.getLockRef());
     }
 
 
@@ -2151,7 +2157,7 @@ public class MusicMixin implements MusicInterface {
             MusicRangeInformationRow row = latestRows.get(0);
             LockResult lockresult = locks.get(row.getPartitionIndex());
             if (lockresult!=null) {
-                return new OwnershipReturn(ownershipId, lockresult.getLockId(), row.getPartitionIndex(), ranges, extendedDag);
+                return new OwnershipReturn(ownershipId, lockresult.getLockRef(), row.getPartitionIndex(), ranges, extendedDag);
             }
         }
         List<MusicRangeInformationRow> changed = setReadOnlyAnyDoubleRow(extendedDag, latestRows,locks);
@@ -2172,7 +2178,7 @@ public class MusicMixin implements MusicInterface {
         releaseLocks(changed,locks);
         releaseAllLocksExcept(row.getPartitionIndex(),locks);
         LockResult ownRow = locks.get(row.getPartitionIndex());
-        return new OwnershipReturn(ownershipId, ownRow.getLockId(), ownRow.getIndex(),ranges,extendedDag);
+        return new OwnershipReturn(ownershipId, ownRow.getLockRef(), ownRow.getIndex(),ranges,extendedDag);
     }
 
     /**
@@ -2193,20 +2199,20 @@ public class MusicMixin implements MusicInterface {
 
     @Override
     public void relinquish(DatabasePartition partition) throws MDBCServiceException {
-        String ownerId = partition.getLockId();
+        String lockRef = partition.getLockRef();
         String rangeId = partition.getMRIIndex().toString();
-        if(ownerId==null||ownerId.isEmpty()||rangeId==null||rangeId.isEmpty()){
+        if(lockRef==null||lockRef.isEmpty()||rangeId==null||rangeId.isEmpty()){
             return;
         }
-        unlockKeyInMusic(musicRangeInformationTableName, rangeId, ownerId);
+        unlockKeyInMusic(musicRangeInformationTableName, rangeId, lockRef);
     }
 
     @Override
-    public void relinquish(String lockId, String rangeId) throws MDBCServiceException{
-        if(lockId==null||lockId.isEmpty()||rangeId==null||rangeId.isEmpty()){
+    public void relinquish(String lockRef, String rangeId) throws MDBCServiceException{
+        if(lockRef==null||lockRef.isEmpty()||rangeId==null||rangeId.isEmpty()){
             return;
         }
-        unlockKeyInMusic(musicRangeInformationTableName, rangeId, lockId);
+        unlockKeyInMusic(musicRangeInformationTableName, rangeId, lockRef);
     }
 
     /**
@@ -2239,7 +2245,7 @@ public class MusicMixin implements MusicInterface {
             } catch (MDBCServiceException e) {
                 logger.error("Error relinquishing lock, will use timeout to solve");
             }
-            partition.setLockId("");
+            partition.setLockRef("");
         }
     }
 

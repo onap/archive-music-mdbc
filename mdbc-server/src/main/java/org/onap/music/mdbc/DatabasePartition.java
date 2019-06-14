@@ -38,7 +38,7 @@ public class DatabasePartition {
     private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(DatabasePartition.class);
 
     private UUID musicRangeInformationIndex;//Index that can be obtained either from
-    private String lockId;
+    private String lockRef;
     protected List<Range> ranges;
 
     private boolean ready;
@@ -56,7 +56,7 @@ public class DatabasePartition {
         this(new ArrayList<Range>(), mriIndex,"");
     }
 
-    public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String lockId) {
+    public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String lockRef) {
         if(mriIndex==null){
             ready = false;
         }
@@ -66,7 +66,7 @@ public class DatabasePartition {
         ranges = knownRanges;
 
         this.setMusicRangeInformationIndex(mriIndex);
-        this.setLockId(lockId);
+        this.setLockRef(lockRef);
     }
 
     /**
@@ -75,13 +75,13 @@ public class DatabasePartition {
      */
     public synchronized void updateDatabasePartition(DatabasePartition otherPartition){
         musicRangeInformationIndex = otherPartition.musicRangeInformationIndex;//Index that can be obtained either from
-        lockId = otherPartition.lockId;
+        lockRef = otherPartition.lockRef;
         ranges = otherPartition.ranges;
         ready = otherPartition.ready;
     }
 
     public String toString(){
-        StringBuilder builder = new StringBuilder().append("Row: ["+musicRangeInformationIndex.toString()+"], lockId: ["+lockId +"], ranges: [");
+        StringBuilder builder = new StringBuilder().append("Row: ["+musicRangeInformationIndex.toString()+"], lockRef: ["+lockRef +"], ranges: [");
         for(Range r: ranges){
             builder.append(r.toString()).append(",");
         }
@@ -90,7 +90,7 @@ public class DatabasePartition {
     }
 
 
-    public synchronized boolean isLocked(){return lockId != null && !lockId.isEmpty(); }
+    public synchronized boolean isLocked(){return lockRef != null && !lockRef.isEmpty(); }
 
     public synchronized boolean isReady() {
         return ready;
@@ -179,12 +179,12 @@ public class DatabasePartition {
         return range;
     }
 
-    public synchronized String getLockId() {
-        return lockId;
+    public synchronized String getLockRef() {
+        return lockRef;
     }
 
-    public synchronized void setLockId(String lockId) {
-        this.lockId = lockId;
+    public synchronized void setLockRef(String lockRef) {
+        this.lockRef = lockRef;
     }
 
     public synchronized boolean isContained(Range range){

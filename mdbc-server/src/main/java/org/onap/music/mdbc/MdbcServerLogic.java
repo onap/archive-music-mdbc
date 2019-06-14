@@ -36,6 +36,7 @@ import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 import org.apache.calcite.avatica.MissingResultsException;
 import org.apache.calcite.avatica.NoSuchStatementException;
+import org.apache.calcite.avatica.Meta.ConnectionHandle;
 import org.apache.calcite.avatica.jdbc.JdbcMeta;
 import org.apache.calcite.avatica.remote.TypedValue;
 
@@ -327,6 +328,12 @@ public class MdbcServerLogic extends JdbcMeta{
             }
         }
     }
+
+	@Override
+	public void heartbeat(ConnectionHandle ch) {
+	    this.manager.heartbeat(ch.id);
+	    return;
+	}
 }
 
 

@@ -148,7 +148,7 @@ public class StateManager {
                 this));
         txDaemon.setName("TxDaemon");
         txDaemon.setDaemon(true);
-        txDaemon.start();
+        //txDaemon.start();
     }
 
     /**
@@ -417,5 +417,16 @@ public class StateManager {
         for(String connection: this.connectionRanges.keySet()) {
             closeConnection(connection);
         } 
+    }
+
+    /**
+     * Signify to the statemanager that the connection with this id is still alive
+     * @param id connection that is alive
+     */
+    public void heartbeat(String id) {
+        MdbcConnection connection = mdbcConnections.get(id);
+        if (connection!=null) {
+            connection.refreshLocks();
+        }
     }
 }

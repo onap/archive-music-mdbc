@@ -43,16 +43,16 @@ import static org.junit.Assert.*;
 
 public class DagTest {
 
-    private MusicRangeInformationRow createNewRow(List<Range> ranges, String lockid, boolean isLatest){
+    private MusicRangeInformationRow createNewRow(List<Range> ranges, String lockRef, boolean isLatest){
         List<MusicTxDigestId> redoLog = new ArrayList<>();
-        return createNewRow(ranges,lockid,isLatest,redoLog);
+        return createNewRow(ranges,lockRef,isLatest,redoLog);
     }
 
-    private MusicRangeInformationRow createNewRow(List<Range> ranges, String lockid, boolean isLatest,
+    private MusicRangeInformationRow createNewRow(List<Range> ranges, String lockRef, boolean isLatest,
                                                   List<MusicTxDigestId> redoLog) {
         UUID id = MDBCUtils.generateTimebasedUniqueKey();
-        DatabasePartition dbPartition = new DatabasePartition(ranges, id, lockid);
-        return new MusicRangeInformationRow(id, dbPartition, redoLog, lockid, "id", isLatest);
+        DatabasePartition dbPartition = new DatabasePartition(ranges, id, lockRef);
+        return new MusicRangeInformationRow(id, dbPartition, redoLog, lockRef, "id", isLatest);
     }
 
     @Test

@@ -55,7 +55,7 @@ public class TestUtils {
     public static void unlockRow(String keyspace, String mriTableName, DatabasePartition partition)
         throws MusicLockingException {
         String fullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+partition.getMRIIndex().toString();
-        MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
+        MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockRef());
     }
 
     public static void createKeyspace(String keyspace, Session session) {

@@ -27,16 +27,16 @@ import org.onap.music.mdbc.Range;
 public class LockResult{
     private boolean successful;
     private UUID musicRangeInformationIndex;
-    private String lockId;
+    private String lockRef;
     private List<Range> ranges;
     private boolean newLock;
     /** back off time in milliseconds */
     private long backOffPeriodms;
 
-    public LockResult(boolean succesful, UUID rowId, String lockId, boolean newLock, List<Range> ranges){
+    public LockResult(boolean succesful, UUID rowId, String lockRef, boolean newLock, List<Range> ranges){
         this.successful = true;
         this.musicRangeInformationIndex = rowId;
-        this.lockId=lockId;
+        this.lockRef=lockRef;
         this.newLock=newLock;
         this.ranges=ranges;
     }
@@ -48,10 +48,10 @@ public class LockResult{
      * @param ranges
      */
     @Deprecated
-    public LockResult(UUID rowId, String lockId, boolean newLock, List<Range> ranges){
+    public LockResult(UUID rowId, String lockRef, boolean newLock, List<Range> ranges){
         this.successful = true;
         this.musicRangeInformationIndex = rowId;
-        this.lockId=lockId;
+        this.lockRef=lockRef;
         this.newLock=newLock;
         this.ranges=ranges;
     }
@@ -64,8 +64,8 @@ public class LockResult{
         return successful;
     }
     
-    public String getLockId(){
-        return lockId;
+    public String getLockRef(){
+        return lockRef;
     }
     public boolean isNewLock(){
         return newLock;

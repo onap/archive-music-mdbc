@@ -609,4 +609,12 @@ public class MdbcConnection implements Connection {
         return transactionDigest;
     }
 
+    public void refreshLocks() {
+        try {
+            mi.refreshPartitionLease(this.partition);
+        } catch (MDBCServiceException e) {
+            e.printStackTrace();
+        }
+    }
+
 }

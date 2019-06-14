@@ -288,7 +288,7 @@ public class OwnershipAndCheckpoint{
         //Init timeout clock
         startOwnershipTimeoutClock(opId);
         if (currPartition.isLocked()&&currPartition.getSnapshot().containsAll(ranges)) {
-            return new OwnershipReturn(opId,currPartition.getLockId(),currPartition.getMRIIndex(),
+            return new OwnershipReturn(opId,currPartition.getLockRef(),currPartition.getMRIIndex(),
                     currPartition.getSnapshot(),null);
         }
         //Find
@@ -338,19 +338,19 @@ public class OwnershipAndCheckpoint{
             UUID uuidToOwn = row.getPartitionIndex();
             if (partition.isLocked() && partition.getMRIIndex().equals(uuidToOwn) ) {
                 toOwn.setOwn(node);
-                newLocks.put(uuidToOwn, new LockResult(true, uuidToOwn, partition.getLockId(),
+                newLocks.put(uuidToOwn, new LockResult(true, uuidToOwn, partition.getLockRef(),
                         false, partition.getSnapshot()));
             } else if ( newLocks.containsKey(uuidToOwn) || !row.getIsLatest() ) {
                 toOwn.setOwn(node);
             } else {
                 LockRequest request = new LockRequest(uuidToOwn,
                         new ArrayList<>(node.getRangeSet()), lockType);
-                String lockId = mi.createLock(request);
+                String lockRef = mi.createLock(request);
                 LockResult result = null;
                 boolean owned = false;
                 while(!owned && !timeout(opId)){
                     try {
-                        result = mi.acquireLock(request, lockId);
+                        result = mi.acquireLock(request, lockRef);
                         if (result.wasSuccessful()) {
                             owned = true;
                             continue;
@@ -367,12 +367,11 @@ public class OwnershipAndCheckpoint{
                         logger.warn("Locking failed, retrying",e);
                     }
                 }
-                if(owned){
+                if (owned) {
                     toOwn.setOwn(node);
                     newLocks.put(uuidToOwn,result);
-                }
-                else{
-		    mi.relinquish(lockId, partition.getMRIIndex().toString());
+                } else {
+                    mi.relinquish(lockRef, partition.getMRIIndex().toString());
                     break;
                 }
             }

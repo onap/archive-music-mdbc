@@ -316,8 +316,22 @@ public interface MusicInterface {
 
     void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
 
+    /**
+     * Creates a music lock based on the request parameter
+     * @param request
+     * @return lockRef of the lock created
+     * @throws MDBCServiceException
+     */
     String createLock(LockRequest request) throws MDBCServiceException;
-    LockResult acquireLock(LockRequest request, String lockId) throws MDBCServiceException;
+
+    public LockResult acquireLock(LockRequest request, String lockRef) throws MDBCServiceException;
+
+    /**
+     * Refresh the lock lease timer
+     * @param Database partition that you are updating
+     * @throws MDBCServiceException
+     */
+    public void refreshPartitionLease(DatabasePartition partition) throws MDBCServiceException;
 
     void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
 
@@ -336,6 +350,7 @@ public interface MusicInterface {
      */
     OwnershipReturn mergeLatestRowsIfNecessary(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
             Map<UUID, LockResult> locks, UUID ownershipId) throws MDBCServiceException;
+
 
 }
 
