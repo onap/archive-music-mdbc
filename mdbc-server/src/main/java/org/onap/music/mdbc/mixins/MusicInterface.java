@@ -211,12 +211,12 @@ public interface MusicInterface {
     List<Range> getRangeDependencies(List<Range> range) throws MDBCServiceException;
 	
 	/**
-     * This function is used to create a new row in the MRI table
+     * This function is used to create a new locked row in the MRI table
      * @param info the information used to create the row
      * @return the new partition object that contain the new information used to create the row
      * @throws MDBCServiceException
      */
-	DatabasePartition createMusicRangeInformation(MusicRangeInformationRow info) throws MDBCServiceException;
+	DatabasePartition createLockedMRIRow(MusicRangeInformationRow info) throws MDBCServiceException;
 
     /**
      * This function is used to create all the required music dependencies

@@ -19,28 +19,34 @@
  */
 package org.onap.music.mdbc.tables;
 
-import java.sql.Timestamp;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.onap.music.mdbc.DatabasePartition;
 
 public final class MusicRangeInformationRow implements Comparable<MusicRangeInformationRow>{
 	private final DatabasePartition dbPartition;
-	private final UUID partitionIndex;
 	private final List<MusicTxDigestId> redoLog;
-	private String ownerId;
-	private final String metricProcessId;
 	private boolean isLatest;
+	private Set<UUID> prevRowIndexes;
 
-	public MusicRangeInformationRow (UUID partitionIndex, DatabasePartition dbPartition, List<MusicTxDigestId> redoLog,
-		String ownerId, String metricProcessId, boolean isLatest) {
-	    this.partitionIndex=partitionIndex;
-		this.dbPartition = dbPartition;
-		this.redoLog = redoLog;
-		this.ownerId = ownerId;
-		this.metricProcessId = metricProcessId;
-		this.isLatest = isLatest;
+	public MusicRangeInformationRow (DatabasePartition dbPartition, List<MusicTxDigestId> redoLog,
+            boolean isLatest) {
+            this.dbPartition = dbPartition;
+            this.redoLog = redoLog;
+            this.isLatest = isLatest;
+            this.prevRowIndexes = new HashSet<>();
+    }
+	
+	public MusicRangeInformationRow (DatabasePartition dbPartition, List<MusicTxDigestId> redoLog,
+	        boolean isLatest, Set<UUID> prevPartitions) {
+	        this.dbPartition = dbPartition;
+	        this.redoLog = redoLog;
+	        this.isLatest = isLatest;
+	        this.prevRowIndexes = prevPartitions;
 	}
 
 	public UUID getPartitionIndex() {
@@ -59,21 +65,13 @@ public final class MusicRangeInformationRow implements Comparable<MusicRangeInfo
 		return redoLog;
 	}
 
-	public String getOwnerId() {
-		return ownerId;
-	}
-
-	public String getMetricProcessId() {
-		return metricProcessId;
-	}
-
 	public long getTimestamp(){
-	    return partitionIndex.timestamp();
+	    return dbPartition.getMRIIndex().timestamp();
     }
-
-    public void setOwnerId(String newOwnerId){
-	   this.ownerId=newOwnerId;
-    }
+	
+	public Set<UUID> getPrevRowIndexes() {
+	    return this.prevRowIndexes;
+	}
 
     @Override
     public int compareTo(MusicRangeInformationRow o) {
@@ -95,6 +93,6 @@ public final class MusicRangeInformationRow implements Comparable<MusicRangeInfo
 
     @Override
     public int hashCode(){
-        return partitionIndex.hashCode();
+        return dbPartition.hashCode();
     }
 }
