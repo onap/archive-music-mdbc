@@ -281,8 +281,11 @@ public interface MusicInterface {
      */
 	public void relinquish(DatabasePartition partition) throws MDBCServiceException;
 	
+    @Deprecated
 	/**
-     * This functions relinquishes a range
+     * This functions relinquishes a range;
+     * Deprecated because it does not have the mechanism to set the partition lock to null
+     * see relinquish(DatabasePartition partition)
      * @param lockId id of the lock to be relinquished
      * @param rangeId id of the range to be relinquished
      * @throws MusicLockingException

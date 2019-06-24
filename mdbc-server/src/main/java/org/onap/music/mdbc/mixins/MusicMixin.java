@@ -1307,6 +1307,11 @@ public class MusicMixin implements MusicInterface {
             return;
         }
 
+        //Add creation type of transaction digest
+        if(transactionDigest == null || transactionDigest.isEmpty()) {
+            return;
+        }
+        
         UUID mriIndex = partition.getMRIIndex();
         String fullyQualifiedMriKey = music_ns+"."+ this.musicRangeInformationTableName+"."+mriIndex;
         //0. See if reference to lock was already created
@@ -1315,10 +1320,6 @@ public class MusicMixin implements MusicInterface {
             throw new MDBCServiceException("Not able to commit, as you are no longer the lock-holder for this partition");
         }
 
-        //Add creation type of transaction digest
-        if(transactionDigest == null || transactionDigest.isEmpty()) {
-            return;
-        }
 
         final MusicTxDigestId digestId = new MusicTxDigestId(MDBCUtils.generateUniqueKey(), -1);
         Callable<Boolean> insertDigestCallable =()-> {
@@ -2193,12 +2194,13 @@ public class MusicMixin implements MusicInterface {
 
     @Override
     public void relinquish(DatabasePartition partition) throws MDBCServiceException {
-        String ownerId = partition.getLockId();
+        String lockId = partition.getLockId();
         String rangeId = partition.getMRIIndex().toString();
-        if(ownerId==null||ownerId.isEmpty()||rangeId==null||rangeId.isEmpty()){
+        if(lockId==null||lockId.isEmpty()||rangeId==null||rangeId.isEmpty()){
             return;
         }
-        unlockKeyInMusic(musicRangeInformationTableName, rangeId, ownerId);
+        unlockKeyInMusic(musicRangeInformationTableName, rangeId, lockId);
+        partition.setLockId(null);
     }
 
     @Override
@@ -2206,7 +2208,9 @@ public class MusicMixin implements MusicInterface {
         if(lockId==null||lockId.isEmpty()||rangeId==null||rangeId.isEmpty()){
             return;
         }
+        
         unlockKeyInMusic(musicRangeInformationTableName, rangeId, lockId);
+        
     }
 
     /**

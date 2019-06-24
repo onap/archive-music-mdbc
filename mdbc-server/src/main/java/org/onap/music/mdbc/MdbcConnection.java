@@ -240,6 +240,15 @@ public class MdbcConnection implements Connection {
         }
         jdbcConn.rollback();
         progressKeeper.reinitializeTxProgress(id);
+        
+        //\TODO try to execute outside of the critical path of commit
+        try {
+            if(partition != null) {
+                mi.relinquish(partition);
+            }
+        } catch (MDBCServiceException e) {
+            logger.warn("Error trying to relinquish: "+partition.toString());
+        }
     }
 
     /**

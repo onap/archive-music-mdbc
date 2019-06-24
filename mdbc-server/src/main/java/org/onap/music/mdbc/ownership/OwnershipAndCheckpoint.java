@@ -367,12 +367,13 @@ public class OwnershipAndCheckpoint{
                         logger.warn("Locking failed, retrying",e);
                     }
                 }
+                // TODO look into updating the partition object with the latest lockId; 
                 if(owned){
                     toOwn.setOwn(node);
                     newLocks.put(uuidToOwn,result);
                 }
                 else{
-		    mi.relinquish(lockId, partition.getMRIIndex().toString());
+                    mi.relinquish(lockId,uuidToOwn.toString());
                     break;
                 }
             }

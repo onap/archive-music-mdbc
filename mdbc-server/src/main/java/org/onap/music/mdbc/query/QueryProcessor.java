@@ -96,7 +96,7 @@ public class QueryProcessor {
         try {
             sqlNode = getSqlParser(query).parseStmt();
         } catch (SqlParseException e) {
-            logger.error(EELFLoggerDelegate.errorLogger, "Unable to parse query: " + query +". " + e.getMessage());
+            logger.warn(EELFLoggerDelegate.errorLogger, "Unable to parse query: " + query + "; Falling back to Secondary basic parser",e);
             return basicStringParser(query, tables);
         }
 
