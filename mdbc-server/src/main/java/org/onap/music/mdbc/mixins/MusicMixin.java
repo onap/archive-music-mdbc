@@ -2270,25 +2270,29 @@ public class MusicMixin implements MusicInterface {
     private static Row executeMusicLockedGet(String keyspace, String table, PreparedQueryObject cqlObject, String primaryKey,
                                              String lock)
         throws MDBCServiceException{
-        ResultSet result;
-        if(lock != null && !lock.isEmpty()) {
-            try {
-                result = MusicCore.criticalGet(keyspace, table, primaryKey, cqlObject, lock);
-            } catch (MusicServiceException e) {
-                e.printStackTrace();
-                throw new MDBCServiceException("Error executing critical get", e);
+        ResultSet result = null;
+        int triesRemaining = 3;
+        while (result==null && triesRemaining>0) {
+            if(lock != null && !lock.isEmpty()) {
+                try {
+                    result = MusicCore.criticalGet(keyspace, table, primaryKey, cqlObject, lock);
+                } catch (MusicServiceException e) {
+                    e.printStackTrace();
+                    throw new MDBCServiceException("Error executing critical get", e);
+                }
             }
-        }
-        else{
-            try {
-                result = MusicCore.atomicGet(keyspace,table,primaryKey,cqlObject);
-            } catch (MusicServiceException|MusicLockingException|MusicQueryException e) {
-                e.printStackTrace();
-                throw new MDBCServiceException("Error executing atomic get", e);
+            else{
+                try {
+                    result = MusicCore.atomicGet(keyspace,table,primaryKey,cqlObject);
+                } catch (MusicServiceException|MusicLockingException|MusicQueryException e) {
+                    e.printStackTrace();
+                    throw new MDBCServiceException("Error executing atomic get", e);
+                }
             }
+            triesRemaining--;
         }
         if(result==null){
-            throw new MDBCServiceException("Error executing atomic get for primary key: "+primaryKey);
+            throw new MDBCServiceException("Error executing atomic get for primary key: " + primaryKey + " and lock: " + lock);
         }
         if(result.isExhausted()){
             return null;
