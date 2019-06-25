@@ -45,10 +45,10 @@ public class TestUtils {
         List<Range> ranges = new ArrayList<>();
         ranges.add(range);
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
-        MusicRangeInformationRow newRow = new MusicRangeInformationRow(uuid,dbPartition, new ArrayList<>(), "",
-            mdbcServerName, true);
+        new MusicRangeInformationRow(dbPartition, new ArrayList<>(), true);
+        MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), true);
         DatabasePartition partition=null;
-        partition = mixin.createMusicRangeInformation(newRow);
+        partition = mixin.createLockedMRIRow(newRow);
         return partition;
     }
 
@@ -76,7 +76,7 @@ public class TestUtils {
 
     public static HashSet<String> getMriColNames(){
         return new HashSet<>(
-                Arrays.asList("rangeid","keys","txredolog","ownerid","metricprocessid")
+                Arrays.asList("rangeid","keys","txredolog","prevmrirows")
         );
     }
 
@@ -99,8 +99,7 @@ public class TestUtils {
             throw new Exception("Codec registry for cluster is invalid");
         }
         expectedTypes.put("txredolog",DataType.list(TupleType.of(currentVer,registry,DataType.text(),DataType.uuid())));
-        expectedTypes.put("ownerid",DataType.text());
-        expectedTypes.put("metricprocessid",DataType.text());
+        expectedTypes.put("prevmrirow",DataType.set(DataType.uuid()));
         return expectedTypes;
     }
 

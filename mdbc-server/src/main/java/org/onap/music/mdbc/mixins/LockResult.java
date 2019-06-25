@@ -34,7 +34,7 @@ public class LockResult{
     private long backOffPeriodms;
 
     public LockResult(boolean succesful, UUID rowId, String lockId, boolean newLock, List<Range> ranges){
-        this.successful = true;
+        this.successful = succesful;
         this.musicRangeInformationIndex = rowId;
         this.lockId=lockId;
         this.newLock=newLock;

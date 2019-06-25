@@ -52,7 +52,7 @@ public class DagTest {
                                                   List<MusicTxDigestId> redoLog) {
         UUID id = MDBCUtils.generateTimebasedUniqueKey();
         DatabasePartition dbPartition = new DatabasePartition(ranges, id, lockid);
-        return new MusicRangeInformationRow(id, dbPartition, redoLog, lockid, "id", isLatest);
+        return new MusicRangeInformationRow(dbPartition, redoLog, isLatest);
     }
 
     @Test
