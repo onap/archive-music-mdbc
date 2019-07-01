@@ -142,6 +142,7 @@ public class OwnershipAndCheckpointTest {
         this.conn = MdbcTestUtils.getConnection(DBType.MySQL);
         Properties info = new Properties();
         this.mysqlMixin = new MySQLMixin(musicMixin, "localhost:"+MdbcTestUtils.getMariaDbPort()+"/"+DATABASE, conn, info);
+        this.mysqlMixin.initTables();
         dropAndCreateTable();
     }
 
