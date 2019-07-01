@@ -34,10 +34,15 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
-
-import org.apache.commons.lang3.NotImplementedException;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.QueryException;
 import org.onap.music.logging.EELFLoggerDelegate;
@@ -55,7 +60,6 @@ import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
 import org.onap.music.mdbc.query.QueryProcessor;
 import org.onap.music.mdbc.query.SQLOperation;
 import org.onap.music.mdbc.query.SQLOperationType;
-import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
@@ -501,6 +505,14 @@ public class MdbcConnection implements Connection {
      * @param sql the SQL statement that is about to be executed
      */
     public void preStatementHook(final String sql) throws MDBCServiceException, SQLException {
+       
+        // some debug specific logic
+        if(sql.startsWith("DEBUG")) {
+            // if the SQL follows this convention: "DEBUG:TABLE_A,TABLE_B",
+            // DAG information pertaining to the tables will get printed
+            throw new SQLException("\nThis call was made for debugging purposes only\n" + statemanager.getOwnAndCheck().getDebugInfo(mi,sql.split(":")[1]));
+        }
+        
         //TODO: verify ownership of keys here
         //Parse tables from the sql query
         Map<String, List<SQLOperation>> tableToQueryType = QueryProcessor.parseSqlQuery(sql, table_set);

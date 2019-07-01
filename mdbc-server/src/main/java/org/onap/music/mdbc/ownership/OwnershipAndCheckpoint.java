@@ -25,7 +25,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
@@ -36,7 +35,6 @@ import org.onap.music.mdbc.mixins.LockRequest;
 import org.onap.music.mdbc.mixins.LockResult;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
-import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
@@ -378,6 +376,51 @@ public class OwnershipAndCheckpoint{
                 }
             }
         }
+    }
+    
+    public String getDebugInfo(MusicInterface mi, String rangesStr) {
+        
+        List<Range> ranges = new ArrayList<Range>();
+        Arrays.stream(rangesStr.split(",")).forEach(a -> ranges.add(new Range(a)));
+        
+        StringBuffer buffer = new StringBuffer();
+        List<Range> rangesToOwn;
+        try {
+            rangesToOwn = mi.getRangeDependencies(ranges);
+            List<MusicRangeInformationRow> rangesToOwnRows = extractRowsForRange(mi,rangesToOwn, false);
+            Dag toOwn =  Dag.getDag(rangesToOwnRows,rangesToOwn);
+            while(toOwn.hasNextToOwn()){
+                DagNode node = null;
+                try {
+                    node = toOwn.nextToOwn();
+                    MusicRangeInformationRow row = node.getRow();
+          
+                    buffer.append("\n-------------\n");
+                    buffer.append(row.getDBPartition()).append(",");
+                    buffer.append(row.getPrevRowIndexes()).append(",");
+                    buffer.append(row.getIsLatest()).append("");
+                    
+                    
+                } catch (Exception e) {
+                    buffer.append("\n------missing MRI------\n");
+                } finally {
+                    
+                    if(node != null) {
+                        toOwn.setOwn(node);
+                    }
+                    
+                }
+                 
+            }
+            
+
+        } catch (MDBCServiceException e) {
+            buffer.setLength(0);
+            buffer.append(" Debugging info could not be determined");
+        }
+        
+        return buffer.toString();
+        
     }
     
     
