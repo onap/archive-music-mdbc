@@ -304,6 +304,10 @@ public class Dag {
         addNewNode(row,dependencies);
     }
 
+    /**
+     * 
+     * @return All ranges in every node of the DAG
+     */
     public Set<Range> getAllRanges(){
         Set<Range> ranges = new HashSet<>();
         for(DagNode node : nodes.values()){

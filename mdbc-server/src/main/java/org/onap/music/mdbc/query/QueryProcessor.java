@@ -35,6 +35,7 @@ import org.apache.calcite.sql.SqlInsert;
 import org.apache.calcite.sql.SqlJoin;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.SqlOrderBy;
 import org.apache.calcite.sql.SqlSelect;
 import org.apache.calcite.sql.SqlUpdate;
 import org.apache.calcite.sql.fun.SqlInOperator;
@@ -122,6 +123,9 @@ public class QueryProcessor {
             case SELECT:
                 parseSelect((SqlSelect) sqlNode, tableOpsMap);
                 break;
+            case ORDER_BY:
+                parseSelect((SqlSelect)((SqlOrderBy) sqlNode).query, tableOpsMap);
+                break;    
             default:
                 logger.error("Unhandled sql query type " + sqlNode.getKind() +" for query " + query);
         }
