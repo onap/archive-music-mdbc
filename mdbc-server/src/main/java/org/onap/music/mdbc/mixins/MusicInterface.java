@@ -22,7 +22,7 @@ package org.onap.music.mdbc.mixins;
 import com.datastax.driver.core.ResultSet;
 import java.nio.ByteBuffer;
 import java.util.*;
-
+import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
@@ -339,6 +339,15 @@ public interface MusicInterface {
      */
     OwnershipReturn mergeLatestRowsIfNecessary(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
             Map<UUID, LockResult> locks, UUID ownershipId) throws MDBCServiceException;
+    
+    /**
+     * Update pointer to where this server has successfully replayed transactions
+     * This is an eventual operation for minimal performance hits
+     * @param r
+     * @param playbackPointer
+     */
+    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer);
 
+    
 }
 

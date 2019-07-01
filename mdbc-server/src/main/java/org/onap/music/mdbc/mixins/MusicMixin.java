@@ -124,7 +124,9 @@ public class MusicMixin implements MusicInterface {
     private String musicEventualTxDigestTableName = "musicevetxdigest";
     public static final String musicRangeInformationTableName = "musicrangeinformation";
     private String musicRangeDependencyTableName = "musicrangedependency";
-    private String musicNodeInfoTableName = "nodeinfo";
+    private String musicNodeInfoTableName = "musicnodeinfo";
+    /** Table mapping mdbc nodes to their current checkpoint status */
+    private String musicMdbcCheckpointsTableName = "musicmdbccheckpoints";
 
     private static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(MusicMixin.class);
 
@@ -339,9 +341,10 @@ public class MusicMixin implements MusicInterface {
             createMusicNodeInfoTable();
             createMusicRangeInformationTable(this.music_ns,this.musicRangeInformationTableName);
             createMusicRangeDependencyTable(this.music_ns,this.musicRangeDependencyTableName);
+            createMusicMdbcCheckpointTable();
         }
         catch(MDBCServiceException e){
-            logger.error(EELFLoggerDelegate.errorLogger,"Error creating tables in MUSIC");
+            logger.error(EELFLoggerDelegate.errorLogger,"Error creating tables in MUSIC: " + e.getErrorMessage());
         }
     }
 
@@ -1795,6 +1798,27 @@ public class MusicMixin implements MusicInterface {
             throw(e);
         }
     }
+    
+    private void createMusicMdbcCheckpointTable() throws MDBCServiceException {
+        createMusicMdbcCheckpointTable(this.music_ns, this.musicMdbcCheckpointsTableName);
+    }
+    
+    public static void createMusicMdbcCheckpointTable(String namespace, String checkpointTable) throws MDBCServiceException {
+        String priKey = "txid";
+        StringBuilder fields = new StringBuilder();
+        fields.append("txid uuid, ");
+        fields.append("compressed boolean, ");
+        fields.append("transactiondigest blob ");//notice lack of ','
+        String cql =
+                String.format("CREATE TABLE IF NOT EXISTS %s.%s (mdbcnode UUID, mridigest UUID, digestindex int, PRIMARY KEY (mdbcnode));",
+                        namespace, checkpointTable);
+        try {
+            executeMusicWriteQuery(namespace,checkpointTable,cql);
+        } catch (MDBCServiceException e) {
+            logger.error("Initialization error: Failure to create redo records table");
+            throw(e);
+        }
+    }
 
     /**
      * Writes the transaction history to the txDigest
@@ -2466,9 +2490,24 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
+    @Deprecated //used only in testing, should use other method instead
 	public StateManager getStateManager() {
 		return stateManager;
 	}
+
+    @Override
+    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) {
+        String cql = String.format("INSERT INTO %s.%s (mdbcnode, mridigest, digestindex) VALUES ("
+                + this.myId + ", " + playbackPointer.getLeft() + ", " + playbackPointer.getRight() + ");",
+                music_ns, this.musicMdbcCheckpointsTableName);
+        PreparedQueryObject pQueryObject = new PreparedQueryObject();
+        pQueryObject.appendQueryString(cql);
+        try {
+            MusicCore.nonKeyRelatedPut(pQueryObject,"eventual");
+        } catch (MusicServiceException e) {
+            logger.warn(EELFLoggerDelegate.applicationLogger, "Unable to update the checkpoint location", e);
+        }
+    }
     
     
 }

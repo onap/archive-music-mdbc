@@ -32,6 +32,8 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.update.Update;
+import org.apache.commons.lang3.tuple.Pair;
+import org.apache.zookeeper.KeeperException.UnimplementedException;
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.logging.EELFLoggerDelegate;
@@ -1061,6 +1063,16 @@ public class PostgresMixin implements DBInterface {
         logger.debug(EELFLoggerDelegate.applicationLogger, "getSQLTableSet returning: " + set);
         System.out.println("getSQLTableSet returning: " + set);
         return set;
+    }
+
+    @Override
+    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) {
+        throw new org.apache.commons.lang.NotImplementedException();
+    }
+
+    @Override
+    public void initTables() {
+        throw new org.apache.commons.lang.NotImplementedException();
     }
 
 }

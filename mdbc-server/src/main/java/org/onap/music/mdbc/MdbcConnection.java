@@ -539,21 +539,27 @@ public class MdbcConnection implements Connection {
         dbi.postStatementHook(sql, transactionDigest);
     }
 
+    public void initDatabase() throws QueryException {
+        dbi.initTables();
+        createTriggers();
+    }
+    
     /**
      * Synchronize the list of tables in SQL with the list in MUSIC. This function should be called when the
      * proxy first starts, and whenever there is the possibility that tables were created or dropped.  It is synchronized
      * in order to prevent multiple threads from running this code in parallel.
      */
-    public void createTriggers() throws QueryException {
-        Set<String> set1 = dbi.getSQLTableSet();    // set of tables in the database
+    private void createTriggers() throws QueryException {
+        //TODO: this should probably be in the dbinterface, maybe as an abstract class
+        Set<Range> set1 = dbi.getSQLRangeSet();    // set of tables in the database
         logger.debug(EELFLoggerDelegate.applicationLogger, "synchronizing tables:" + set1);
-        for (String tableName : set1) {
+        for (Range r : set1) {
             // This map will be filled in if this table was previously discovered
-            if (!table_set.contains(tableName.toUpperCase()) && !dbi.getReservedTblNames().contains(tableName.toUpperCase())) {
-                logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+tableName);
+            if (!table_set.contains(r.getTable().toUpperCase()) && !dbi.getReservedTblNames().contains(r.getTable().toUpperCase())) {
+                logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+r.getTable());
                 try {
-                    dbi.createSQLTriggers(tableName);
-                    table_set.add(tableName.toUpperCase());
+                    dbi.createSQLTriggers(r.getTable());
+                    table_set.add(r.getTable().toUpperCase());
                 } catch (Exception e) {
                     logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
                     //logger.error(EELFLoggerDelegate.errorLogger, "Exception synchronizeTables: "+e);

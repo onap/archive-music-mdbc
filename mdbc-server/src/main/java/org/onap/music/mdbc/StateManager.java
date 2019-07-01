@@ -182,7 +182,7 @@ public class StateManager {
         // and create triggers on any tables that need them
         try {
             MdbcConnection mdbcConn = (MdbcConnection) openConnection("init");
-            mdbcConn.createTriggers();
+            mdbcConn.initDatabase();
             closeConnection("init");
         } catch (QueryException e) {
             logger.error("Error syncrhonizing tables");
