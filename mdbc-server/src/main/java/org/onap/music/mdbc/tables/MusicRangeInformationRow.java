@@ -19,6 +19,7 @@
  */
 package org.onap.music.mdbc.tables;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,8 +50,15 @@ public final class MusicRangeInformationRow implements Comparable<MusicRangeInfo
 	        this.prevRowIndexes = prevPartitions;
 	}
 
+	public MusicRangeInformationRow(DatabasePartition dbPartition, boolean isLatest, Set<UUID> prevPartitions) {
+	    this.dbPartition = dbPartition;
+	    this.redoLog = new ArrayList<MusicTxDigestId>();
+	    this.isLatest = isLatest;
+	    this.prevRowIndexes = prevPartitions;
+    }
+
 	public UUID getPartitionIndex() {
-		return dbPartition.getMRIIndex();
+	    return dbPartition.getMRIIndex();
 	}
 
 	public boolean getIsLatest(){ return isLatest; }

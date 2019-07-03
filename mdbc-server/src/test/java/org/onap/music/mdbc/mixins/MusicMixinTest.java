@@ -115,7 +115,7 @@ public class MusicMixinTest {
     @Test
     public void own() {
         Range range = new Range("TEST.TABLE1");
-        List<Range> ranges = new ArrayList<>();
+        Set<Range> ranges = new HashSet<>();
         ranges.add(range);
         DatabasePartition partition=null;
         try {
@@ -139,7 +139,7 @@ public class MusicMixinTest {
         }
     }
 
-    private DatabasePartition addRow(List<Range> ranges,boolean isLatest){
+    private DatabasePartition addRow(Set<Range> ranges,boolean isLatest){
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
         DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), isLatest);
@@ -161,19 +161,19 @@ public class MusicMixinTest {
     @Ignore  // TODO: Move ownership tests to OwnershipAndCheckpointTest 
     @Test(timeout=1000)
     public void own2() throws InterruptedException, MDBCServiceException {
-        List<Range> range12 = new ArrayList<>( Arrays.asList(
+        Set<Range> range12 = new HashSet<>( Arrays.asList(
             new Range("TEST.RANGE1"),
             new Range("TEST.RANGE2")
         ));
-        List<Range> range34 = new ArrayList<>( Arrays.asList(
+        Set<Range> range34 = new HashSet<>( Arrays.asList(
             new Range("TEST.RANGE3"),
             new Range("TEST.RANGE4")
         ));
-        List<Range> range24 = new ArrayList<>( Arrays.asList(
+        Set<Range> range24 = new HashSet<>( Arrays.asList(
             new Range("TEST.RANGE2"),
             new Range("TEST.RANGE4")
         ));
-        List<Range> range123 = new ArrayList<>( Arrays.asList(
+        Set<Range> range123 = new HashSet<>( Arrays.asList(
             new Range("TEST.RANGE1"),
             new Range("TEST.RANGE2"),
             new Range("TEST.RANGE3")
@@ -225,7 +225,7 @@ public class MusicMixinTest {
         MusicRangeInformationRow row = mixin.getMusicRangeInformation(own.getRangeId());
         assertTrue(row.getIsLatest());
         DatabasePartition dbPartition = row.getDBPartition();
-        List<Range> snapshot = dbPartition.getSnapshot();
+        Set<Range> snapshot = dbPartition.getSnapshot();
         assertEquals(3,snapshot.size());
         MusicRangeInformationRow node5row = mixin.getMusicRangeInformation(node5.getId());
         assertFalse(node5row.getIsLatest());

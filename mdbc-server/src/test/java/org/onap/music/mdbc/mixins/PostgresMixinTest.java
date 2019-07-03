@@ -24,6 +24,7 @@ import static org.junit.Assert.*;
 
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -207,7 +208,7 @@ public class PostgresMixinTest {
         assertFalse(st.isEmpty());
         cleanTestTable();
         checkEmptyTestTable();
-        List<Range> ranges = new ArrayList<>();
+        Set<Range> ranges = new HashSet<>();
         ranges.add(new Range("public.testtable"));
         try {
             mixin.applyTxDigest(st,ranges);

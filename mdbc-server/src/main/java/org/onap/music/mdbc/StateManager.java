@@ -86,7 +86,7 @@ public class StateManager {
     private String mdbcServerName;
     private Map<String,DatabasePartition> connectionRanges;//Each connection owns its own database partition
     private final Lock eventualLock  = new ReentrantLock();
-    private List<Range> eventualRanges;
+    private Set<Range> eventualRanges;
     /** lock for warmupRanges */
     private final Lock warmupLock = new ReentrantLock();
     /** a set of ranges that should be periodically updated with latest information, if null all tables should be warmed up */
@@ -255,24 +255,24 @@ public class StateManager {
 	 * Get a list of ranges that are eventually consistent
 	 * @return
 	 */
-    public List<Range> getEventualRanges() {
+    public Set<Range> getEventualRanges() {
         eventualLock.lock();
-        List<Range> returnArray;
+        Set<Range> returnSet;
         try {
             if(eventualRanges!=null){
-                returnArray = new ArrayList<>(eventualRanges);
+                returnSet = new HashSet<>(eventualRanges);
             }
             else{
-                returnArray= new ArrayList<>();
+                returnSet= new HashSet<>();
             }
         }
         finally{
             eventualLock.unlock();
         }
-        return returnArray;
+        return returnSet;
     }
 
-    public void setEventualRanges(List<Range> eventualRanges) {
+    public void setEventualRanges(Set<Range> eventualRanges) {
         eventualLock.lock();
         try {
             this.eventualRanges = eventualRanges;

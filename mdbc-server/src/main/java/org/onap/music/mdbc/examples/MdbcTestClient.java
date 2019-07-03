@@ -106,11 +106,13 @@ public class MdbcTestClient {
             e.printStackTrace();
         }
 
-        final String insertSQL = "INSERT INTO Persons VALUES (1, 'Martinez', 'Juan', 'KACB', 'ATLANTA');";
-        final String insertSQL1 = "DELETE FROM Persons WHERE PersonID=2;";
-        final String insertSQL2 = "INSERT INTO Persons VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
+        final String insertSQL = "INSERT INTO Persons VALUES (1, 'Smith', 'Juan', 'KACB', 'ATLANTA');";
+        final String insertSQL1 = "INSERT INTO Persons2 VALUES (1, 'Smith', 'Juan', 'KACB', 'ATLANTA');";
+        final String insertSQL2 = "INSERT INTO Persons3 VALUES (2, 'Smith', 'JOHN', 'GNOC', 'BEDMINSTER');";
         final String insertSQL3 = "UPDATE Persons SET FirstName='JOSH' WHERE LastName='Smith';";
-        final String insertSQL4 = "UPDATE Persons SET FirstName='JOHN' WHERE LastName='Smith';";
+        final String insertSQL4 = "UPDATE Persons2 SET FirstName='JOHN' WHERE LastName='Smith';";
+        final String insertSQL5 = "UPDATE Persons SET FirstName='JOHN' WHERE LastName='Smith';";
+        final String insertSQL6 = "UPDATE Persons3 SET FirstName='JOHN' WHERE LastName='Smith';";
         
         final String selectSQL1 = "SELECT * FROM Persons;";
 
@@ -123,13 +125,55 @@ public class MdbcTestClient {
         }
 
         try {
-            //execute = insertStmt.execute(insertSQL);
-            //execute = insertStmt.execute(insertSQL1);
-            //execute = insertStmt.execute(insertSQL2);
-            //execute = insertStmt.execute(insertSQL3);
-            //execute = insertStmt.execute(insertSQL4);
+            /*
+             * insert into 1
+             * insert into 2
+             * insert into 3
+             * insert into 1,2
+             * insert into 1,3
+             */
+            execute = insertStmt.execute(insertSQL);
+            connection.commit();
             
-            ///*
+            connection.close();
+            connection = DriverManager.getConnection("jdbc:avatica:remote:url=" + "http://localhost:30000/test"+ ";serialization=protobuf");
+            connection.setAutoCommit(false);
+            insertStmt = connection.createStatement();
+            
+            execute = insertStmt.execute(insertSQL1);
+            connection.commit();
+            
+            connection.close();
+            connection = DriverManager.getConnection("jdbc:avatica:remote:url=" + "http://localhost:30000/test"+ ";serialization=protobuf");
+            connection.setAutoCommit(false);
+            insertStmt = connection.createStatement();
+            
+            execute = insertStmt.execute(insertSQL2);
+            connection.commit();
+            
+            connection.close();
+            connection = DriverManager.getConnection("jdbc:avatica:remote:url=" + "http://localhost:30000/test"+ ";serialization=protobuf");
+            connection.setAutoCommit(false);
+            insertStmt = connection.createStatement();
+            
+            System.out.println("1,2");
+            execute = insertStmt.execute(insertSQL3);
+            execute = insertStmt.execute(insertSQL4);
+            connection.commit();
+            
+            connection.close();
+            connection = DriverManager.getConnection("jdbc:avatica:remote:url=" + "http://localhost:30000/test"+ ";serialization=protobuf");
+            connection.setAutoCommit(false);
+            insertStmt = connection.createStatement();
+            
+            System.out.println("1,3,2");
+            
+            execute = insertStmt.execute(insertSQL5);
+            execute = insertStmt.execute(insertSQL6);
+            execute = insertStmt.execute(insertSQL4);
+            connection.commit();
+            
+            /*
             ResultSet rs = insertStmt.executeQuery(selectSQL1);
             while (rs.next()) {
                 System.out.printf("%d, %s, %s\n", rs.getInt("PersonID"), rs.getString("FirstName"), rs.getString("LastName"));

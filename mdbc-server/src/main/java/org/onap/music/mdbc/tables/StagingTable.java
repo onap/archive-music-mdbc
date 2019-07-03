@@ -266,7 +266,7 @@ public class StagingTable {
 		digestBuilder.clear();
 	}
 
-	synchronized public boolean areEventualContained(List<Range> ranges){
+	synchronized public boolean areEventualContained(Set<Range> ranges){
 	    return eventuallyConsistentRanges.containsAll(ranges);
     }
 }

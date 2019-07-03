@@ -22,7 +22,7 @@ package org.onap.music.mdbc;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
-
+import java.util.Set;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.mixins.MusicMixin;
 
@@ -83,7 +83,7 @@ public class Range implements Cloneable{
 
     }
 
-    public static boolean overlaps(List<Range> ranges, String table){
+    public static boolean overlaps(Set<Range> ranges, String table) {
 		//\TODO check if parallel stream makes sense here
         return ranges.stream().map((Range r) -> r.table.toUpperCase().equals(table.toUpperCase())).anyMatch((Boolean b) -> b);
 	}

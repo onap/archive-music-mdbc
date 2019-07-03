@@ -53,7 +53,7 @@ public class StateManagerTest {
 
     @Test
     public void testGetEventualRanges() throws NoSuchFieldException, SecurityException {
-        List<Range> evList = new ArrayList<>();
+        Set<Range> evList = new HashSet<>();
         evList.add(new Range("eventualRange"));
         FieldSetter.setField(stateManager, stateManager.getClass().getDeclaredField("eventualRanges"), evList);
         assertEquals(evList, stateManager.getEventualRanges());
@@ -61,7 +61,7 @@ public class StateManagerTest {
     
     @Test
     public void testSetEventualRanges() {
-        List<Range> evList = new ArrayList<>();
+        Set<Range> evList = new HashSet<>();
         evList.add(new Range("eventualRange"));
         stateManager.setEventualRanges(evList);
         assertEquals(evList, stateManager.getEventualRanges());
@@ -116,7 +116,7 @@ public class StateManagerTest {
         allRanges.add(new Range("eventualRange"));
         Mockito.when(dbiMock.getSQLRangeSet()).thenReturn(allRanges);
         
-        List<Range> eventualRanges = new ArrayList<Range>();
+        Set<Range> eventualRanges = new HashSet<Range>();
         eventualRanges.add(new Range("eventualRange"));
         stateManager.setEventualRanges(eventualRanges);
         

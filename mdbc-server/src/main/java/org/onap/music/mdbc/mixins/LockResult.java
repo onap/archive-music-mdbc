@@ -21,6 +21,7 @@
 package org.onap.music.mdbc.mixins;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.onap.music.mdbc.Range;
 
@@ -28,12 +29,12 @@ public class LockResult{
     private boolean successful;
     private UUID musicRangeInformationIndex;
     private String lockId;
-    private List<Range> ranges;
+    private Set<Range> ranges;
     private boolean newLock;
     /** back off time in milliseconds */
     private long backOffPeriodms;
 
-    public LockResult(boolean succesful, UUID rowId, String lockId, boolean newLock, List<Range> ranges){
+    public LockResult(boolean succesful, UUID rowId, String lockId, boolean newLock, Set<Range> ranges){
         this.successful = succesful;
         this.musicRangeInformationIndex = rowId;
         this.lockId=lockId;
@@ -48,7 +49,7 @@ public class LockResult{
      * @param ranges
      */
     @Deprecated
-    public LockResult(UUID rowId, String lockId, boolean newLock, List<Range> ranges){
+    public LockResult(UUID rowId, String lockId, boolean newLock, Set<Range> ranges){
         this.successful = true;
         this.musicRangeInformationIndex = rowId;
         this.lockId=lockId;
@@ -74,7 +75,7 @@ public class LockResult{
         return musicRangeInformationIndex;
     }
     
-    public List<Range> getRanges() {
+    public Set<Range> getRanges() {
         return ranges;
     }
     
