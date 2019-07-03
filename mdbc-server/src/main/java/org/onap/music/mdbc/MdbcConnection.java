@@ -518,16 +518,16 @@ public class MdbcConnection implements Connection {
         Map<String, List<SQLOperation>> tableToQueryType = QueryProcessor.parseSqlQuery(sql, table_set);
         //Check ownership of keys
         String defaultSchema = dbi.getSchema();
-        List<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToQueryType);
+        Set<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToQueryType);
         if (this.partition!=null) {
-            List<Range> snapshot = this.partition.getSnapshot();
+            Set<Range> snapshot = this.partition.getSnapshot();
             if(snapshot!=null){
                 queryTables.addAll(snapshot);
             }
         }
         // filter out ranges that fall under Eventually consistent
         // category as these tables do not need ownership
-        List<Range> scQueryTables = filterEveTables(queryTables);
+        Set<Range> scQueryTables = filterEveTables(queryTables);
         DatabasePartition tempPartition = own(scQueryTables, MDBCUtils.getOperationType(tableToQueryType));
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
@@ -537,7 +537,7 @@ public class MdbcConnection implements Connection {
     }
 
 
-    private List<Range> filterEveTables(List<Range> queryTables) {
+    private Set<Range> filterEveTables(Set<Range> queryTables) {
         queryTables.removeAll(statemanager.getEventualRanges());
         return queryTables;
     }
@@ -561,17 +561,17 @@ public class MdbcConnection implements Connection {
      * proxy first starts, and whenever there is the possibility that tables were created or dropped.  It is synchronized
      * in order to prevent multiple threads from running this code in parallel.
      */
-    private void createTriggers() throws QueryException {
-        //TODO: this should probably be in the dbinterface, maybe as an abstract class
-        Set<Range> set1 = dbi.getSQLRangeSet();    // set of tables in the database
+    public void createTriggers() throws QueryException {
+        Set<String> set1 = dbi.getSQLTableSet();    // set of tables in the database
         logger.debug(EELFLoggerDelegate.applicationLogger, "synchronizing tables:" + set1);
-        for (Range r : set1) {
+        for (String tableName : set1) {
             // This map will be filled in if this table was previously discovered
-            if (!table_set.contains(r.getTable().toUpperCase()) && !dbi.getReservedTblNames().contains(r.getTable().toUpperCase())) {
-                logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+r.getTable());
+            if (!table_set.contains(tableName.toUpperCase()) && !dbi.getReservedTblNames().contains(tableName.toUpperCase())) {
+                logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+tableName);
                 try {
-                    dbi.createSQLTriggers(r.getTable());
-                    table_set.add(r.getTable().toUpperCase());
+                    dbi.createSQLTriggers(tableName);
+                    mi.createPartitionIfNeeded(new Range(tableName));
+                    table_set.add(tableName.toUpperCase());
                 } catch (Exception e) {
                     logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
                     //logger.error(EELFLoggerDelegate.errorLogger, "Exception synchronizeTables: "+e);
@@ -591,7 +591,7 @@ public class MdbcConnection implements Connection {
      * @return
      * @throws MDBCServiceException
      */
-    private DatabasePartition own(List<Range> ranges, SQLOperationType lockType) throws MDBCServiceException {
+    private DatabasePartition own(Set<Range> ranges, SQLOperationType lockType) throws MDBCServiceException {
         if(ranges==null||ranges.isEmpty()){
             return null;
         }

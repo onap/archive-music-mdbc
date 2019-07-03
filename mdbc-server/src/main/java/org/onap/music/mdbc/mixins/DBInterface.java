@@ -134,13 +134,13 @@ public interface DBInterface {
 	 * @throws SQLException if replay cannot occur correctly
 	 * @throws MDBCServiceException 
 	 */
-	void replayTransaction(StagingTable digest, List<Range> ranges) throws SQLException, MDBCServiceException;
+	void replayTransaction(StagingTable digest, Set<Range> ranges) throws SQLException, MDBCServiceException;
 
 	void disableForeignKeyChecks() throws SQLException;
 
 	void enableForeignKeyChecks() throws SQLException;
 
-	void applyTxDigest(StagingTable txDigest, List<Range> ranges) throws SQLException, MDBCServiceException;
+	void applyTxDigest(StagingTable txDigest, Set<Range> ranges) throws SQLException, MDBCServiceException;
 
 	Connection getSQLConnection();
 

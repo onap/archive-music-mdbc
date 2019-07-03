@@ -46,24 +46,24 @@ import org.onap.music.mdbc.tables.*;
 public interface MusicInterface {
 	class OwnershipReturn{
 	    private final UUID ownershipId;
-		private final String ownerId;
+		private final String lockId;
 		private final UUID rangeId;
-		private final List<Range> ranges;
+		private final Set<Range> ranges;
 		private final Dag dag;
-		public OwnershipReturn(UUID ownershipId, String ownerId, UUID rangeId, List<Range> ranges, Dag dag){
+		public OwnershipReturn(UUID ownershipId, String ownerId, UUID rangeId, Set<Range> ranges, Dag dag){
 		    this.ownershipId=ownershipId;
-			this.ownerId=ownerId;
+			this.lockId=ownerId;
 			this.rangeId=rangeId;
 			this.ranges=ranges;
 			this.dag=dag;
 		}
 		public String getOwnerId(){
-			return ownerId;
+			return lockId;
 		}
 		public UUID getRangeId(){
 			return rangeId;
 		}
-		public List<Range> getRanges(){  return ranges; }
+		public Set<Range> getRanges(){  return ranges; }
 		public Dag getDag(){return dag;}
 		public UUID getOwnershipId() { return ownershipId; }
 	}
@@ -189,7 +189,7 @@ public interface MusicInterface {
 	 * @param progressKeeper data structure that is used to handle to detect failures, and know what to do
 	 * @throws MDBCServiceException
 	 */
-	void commitLog(DatabasePartition partition, List<Range> eventualRanges, StagingTable transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
+	void commitLog(DatabasePartition partition, Set<Range> eventualRanges, StagingTable transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
 
     /**
@@ -208,7 +208,7 @@ public interface MusicInterface {
      */
 	RangeDependency getMusicRangeDependency(Range baseRange) throws MDBCServiceException;
 
-    List<Range> getRangeDependencies(List<Range> range) throws MDBCServiceException;
+    public Set<Range> getRangeDependencies(Set<Range> range) throws MDBCServiceException;
 	
 	/**
      * This function is used to create a new locked row in the MRI table
@@ -329,17 +329,21 @@ public interface MusicInterface {
      * 
      * Does not merge rows if a single previous row is sufficient to match new partition needed
      * 
-     * @param extendedDag
-     * @param latestRows
-     * @param ranges
-     * @param locks
+     * @param currentlyOwned
+     * @param locksForOwnership
      * @param ownershipId
      * @return
      * @throws MDBCServiceException
      */
-    OwnershipReturn mergeLatestRowsIfNecessary(Dag extendedDag, List<MusicRangeInformationRow> latestRows, List<Range> ranges,
-            Map<UUID, LockResult> locks, UUID ownershipId) throws MDBCServiceException;
+    OwnershipReturn mergeLatestRowsIfNecessary(Dag currentlyOwned, Map<UUID, LockResult> locksForOwnership, UUID ownershipId)
+            throws MDBCServiceException;
     
+    /**
+     * Create ranges in MRI table, if not already present
+     * @param range to add into mri table
+     */
+    public void createPartitionIfNeeded(Range rangeToCreate) throws MDBCServiceException;
+
     /**
      * Update pointer to where this server has successfully replayed transactions
      * This is an eventual operation for minimal performance hits
@@ -348,6 +352,5 @@ public interface MusicInterface {
      */
     public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer);
 
-    
 }
 

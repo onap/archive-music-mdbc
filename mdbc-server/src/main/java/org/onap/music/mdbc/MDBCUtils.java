@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -98,12 +99,12 @@ public class MDBCUtils {
 		return prop;
 	}
 
-	public static List<Range> getTables(Map<String,List<SQLOperation>> queryParsed){
+	public static Set<Range> getTables(Map<String,List<SQLOperation>> queryParsed){
 		return getTables(null, queryParsed);
 	}
 
-	public static List<Range> getTables(String defaultDatabaseName, Map<String,List<SQLOperation>> queryParsed){
-	    List<Range> ranges = new ArrayList<>();
+	public static Set<Range> getTables(String defaultDatabaseName, Map<String,List<SQLOperation>> queryParsed){
+	    Set<Range> ranges = new HashSet<>();
 	    for(String table: queryParsed.keySet()){
 	        String[] parts = table.split("\\.");
 	        if(parts.length==2){

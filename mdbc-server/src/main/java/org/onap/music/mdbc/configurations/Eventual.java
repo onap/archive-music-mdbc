@@ -20,6 +20,7 @@
 package org.onap.music.mdbc.configurations;
 
 import java.util.List;
+import java.util.Set;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.Range;
 
@@ -30,18 +31,18 @@ public class Eventual {
     
     private transient static EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(Eventual.class);
 
-    protected List<Range> ranges;
+    protected Set<Range> ranges;
 
-    public Eventual(List<Range> ranges) {
+    public Eventual(Set<Range> ranges) {
         super();
         this.ranges = ranges;
     }
 
-    public List<Range> getRanges() {
+    public Set<Range> getRanges() {
         return ranges;
     }
 
-    public void setRanges(List<Range> ranges) {
+    public void setRanges(Set<Range> ranges) {
         this.ranges = ranges;
     }
 

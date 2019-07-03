@@ -43,12 +43,12 @@ import static org.junit.Assert.*;
 
 public class DagTest {
 
-    private MusicRangeInformationRow createNewRow(List<Range> ranges, String lockid, boolean isLatest){
+    private MusicRangeInformationRow createNewRow(Set<Range> ranges, String lockid, boolean isLatest){
         List<MusicTxDigestId> redoLog = new ArrayList<>();
         return createNewRow(ranges,lockid,isLatest,redoLog);
     }
 
-    private MusicRangeInformationRow createNewRow(List<Range> ranges, String lockid, boolean isLatest,
+    private MusicRangeInformationRow createNewRow(Set<Range> ranges, String lockid, boolean isLatest,
                                                   List<MusicTxDigestId> redoLog) {
         UUID id = MDBCUtils.generateTimebasedUniqueKey();
         DatabasePartition dbPartition = new DatabasePartition(ranges, id, lockid);
@@ -58,14 +58,14 @@ public class DagTest {
     @Test
     public void getDag() throws InterruptedException, MDBCServiceException {
         List<MusicRangeInformationRow> rows = new ArrayList<>();
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
            new Range("schema.range1")
         ));
-        rows.add(createNewRow(new ArrayList<>(ranges),"",false));
+        rows.add(createNewRow(new HashSet<>(ranges),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",false));
+        rows.add(createNewRow(new HashSet<>(ranges),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true));
         Dag dag = Dag.getDag(rows, ranges);
         DagNode node1 = dag.getNode(rows.get(0).getPartitionIndex());
         DagNode node2 = dag.getNode(rows.get(1).getPartitionIndex());
@@ -92,15 +92,15 @@ public class DagTest {
         List<Range> range2 = new ArrayList<>( Arrays.asList(
            new Range("schema.range2")
         ));
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range2"),
             new Range("schema.range1")
         ));
-        rows.add(createNewRow(new ArrayList<>(range1),"",false));
+        rows.add(createNewRow(new HashSet<>(range1),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",false));
+        rows.add(createNewRow(new HashSet<>(range2),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true));
         Dag dag = Dag.getDag(rows, ranges);
         DagNode node1 = dag.getNode(rows.get(0).getPartitionIndex());
         DagNode node2 = dag.getNode(rows.get(1).getPartitionIndex());
@@ -122,14 +122,14 @@ public class DagTest {
     @Test
     public void nextToOwn() throws InterruptedException, MDBCServiceException {
         List<MusicRangeInformationRow> rows = new ArrayList<>();
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range1")
         ));
-        rows.add(createNewRow(new ArrayList<>(ranges),"",false));
+        rows.add(createNewRow(new HashSet<>(ranges),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",false));
+        rows.add(createNewRow(new HashSet<>(ranges),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true));
         Dag dag = Dag.getDag(rows, ranges);
         int counter = 0;
         while(dag.hasNextToOwn()){
@@ -148,23 +148,23 @@ public class DagTest {
     @Test
     public void nextToApply() throws InterruptedException {
         List<MusicRangeInformationRow> rows = new ArrayList<>();
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range1")
         ));
         List<MusicTxDigestId> redo1 = new ArrayList<>(Arrays.asList(
             new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
         ));
-        rows.add(createNewRow(new ArrayList<>(ranges),"",false,redo1));
+        rows.add(createNewRow(new HashSet<>(ranges),"",false,redo1));
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo2 = new ArrayList<>(Arrays.asList(
             new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
         ));
-        rows.add(createNewRow(new ArrayList<>(ranges),"",false,redo2));
+        rows.add(createNewRow(new HashSet<>(ranges),"",false,redo2));
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo3 = new ArrayList<>(Arrays.asList(
             new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
         ));
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true,redo3));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true,redo3));
         Dag dag = Dag.getDag(rows, ranges);
         int nodeCounter = 0;
         HashSet<Range> rangesSet = new HashSet<>(ranges);
@@ -194,26 +194,26 @@ public class DagTest {
     public void nextToApply2() throws InterruptedException, MDBCServiceException {
         Map<Range, Pair<MriReference, Integer>> alreadyApplied = new HashMap<>();
         List<MusicRangeInformationRow> rows = new ArrayList<>();
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range1")
         ));
         List<MusicTxDigestId> redo1 = new ArrayList<>(Arrays.asList(
             new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
         ));
-        rows.add(createNewRow(new ArrayList<>(ranges),"",false,redo1));
+        rows.add(createNewRow(new HashSet<>(ranges),"",false,redo1));
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo2 = new ArrayList<>(Arrays.asList(
             new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0),
             new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),1)
         ));
-        MusicRangeInformationRow newRow = createNewRow(new ArrayList<>(ranges), "", false, redo2);
+        MusicRangeInformationRow newRow = createNewRow(new HashSet<>(ranges), "", false, redo2);
         alreadyApplied.put(new Range("schema.range1"),Pair.of(new MriReference(newRow.getPartitionIndex()), 0));
         rows.add(newRow);
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo3 = new ArrayList<>(Arrays.asList(
             new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),0)
         ));
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true,redo3));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true,redo3));
         Dag dag = Dag.getDag(rows, ranges);
         HashSet<Range> rangesSet = new HashSet<>(ranges);
         dag.setAlreadyApplied(alreadyApplied, rangesSet);
@@ -249,22 +249,22 @@ public class DagTest {
         List<Range> range2 = new ArrayList<>( Arrays.asList(
             new Range("schema.range2")
         ));
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range2"),
             new Range("schema.range1")
         ));
-        rows.add(createNewRow(new ArrayList<>(range1),"",false));
+        rows.add(createNewRow(new HashSet<>(range1),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",false));
+        rows.add(createNewRow(new HashSet<>(range2),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true));
         List<MusicRangeInformationRow> rows2 = new ArrayList<>(rows);
         List<MusicRangeInformationRow> rows3 = new ArrayList<>(rows);
         MILLISECONDS.sleep(10);
-        rows3.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows3.add(createNewRow(new HashSet<>(ranges),"",true));
         Dag dag = Dag.getDag(rows, ranges);
-        Dag dag2 = Dag.getDag(rows2, new ArrayList<>(ranges));
-        Dag dag3 = Dag.getDag(rows3, new ArrayList<>(ranges));
+        Dag dag2 = Dag.getDag(rows2, new HashSet<>(ranges));
+        Dag dag3 = Dag.getDag(rows3, new HashSet<>(ranges));
         assertFalse(dag.isDifferent(dag2));
         assertFalse(dag2.isDifferent(dag));
         assertTrue(dag.isDifferent(dag3));
@@ -282,19 +282,19 @@ public class DagTest {
         List<Range> range2 = new ArrayList<>( Arrays.asList(
             new Range("schema.range2")
         ));
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range2"),
             new Range("schema.range1")
         ));
-        rows.add(createNewRow(new ArrayList<>(range1),"",false));
+        rows.add(createNewRow(new HashSet<>(range1),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",false));
+        rows.add(createNewRow(new HashSet<>(range2),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range1),"",true));
+        rows.add(createNewRow(new HashSet<>(range1),"",true));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",true));
+        rows.add(createNewRow(new HashSet<>(range2),"",true));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true));
         Dag dag = Dag.getDag(rows, ranges);
         List<DagNode> oldestDoubles = dag.getOldestDoubles();
         assertTrue(oldestDoubles.contains(dag.getNode(rows.get(2).getPartitionIndex())));
@@ -312,22 +312,22 @@ public class DagTest {
             new Range("schema.range2"),
             new Range("schema.range3")
         ));
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range2"),
             new Range("schema.range1")
         ));
-        rows.add(createNewRow(new ArrayList<>(range1),"",false));
+        rows.add(createNewRow(new HashSet<>(range1),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",false));
+        rows.add(createNewRow(new HashSet<>(range2),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range1),"",true));
+        rows.add(createNewRow(new HashSet<>(range1),"",true));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",true));
+        rows.add(createNewRow(new HashSet<>(range2),"",true));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true));
         Dag dag = Dag.getDag(rows, ranges);
-        Pair<List<Range>, Set<DagNode>> incompleteRangesAndDependents = dag.getIncompleteRangesAndDependents();
-        List<Range> incomplete = incompleteRangesAndDependents.getKey();
+        Pair<Set<Range>, Set<DagNode>> incompleteRangesAndDependents = dag.getIncompleteRangesAndDependents();
+        Set<Range> incomplete = incompleteRangesAndDependents.getKey();
         Set<DagNode> dependents = incompleteRangesAndDependents.getValue();
         assertEquals(1,incomplete.size());
         assertTrue(incomplete.contains(new Range("schema.range3")));
@@ -346,22 +346,22 @@ public class DagTest {
             new Range("schema.range2"),
             new Range("schema.range3")
         ));
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range2"),
             new Range("schema.range1")
         ));
-        rows.add(createNewRow(new ArrayList<>(range1),"",false));
+        rows.add(createNewRow(new HashSet<>(range1),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",false));
+        rows.add(createNewRow(new HashSet<>(range2),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range1),"",true));
+        rows.add(createNewRow(new HashSet<>(range1),"",true));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",true));
+        rows.add(createNewRow(new HashSet<>(range2),"",true));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true));
         Dag dag = Dag.getDag(rows, ranges);
-        Pair<List<Range>, Set<DagNode>> incompleteRangesAndDependents = dag.getIncompleteRangesAndDependents();
-        List<Range> incomplete = incompleteRangesAndDependents.getKey();
+        Pair<Set<Range>, Set<DagNode>> incompleteRangesAndDependents = dag.getIncompleteRangesAndDependents();
+        Set<Range> incomplete = incompleteRangesAndDependents.getKey();
         Set<DagNode> dependents = incompleteRangesAndDependents.getValue();
         assertEquals(2,incomplete.size());
         assertTrue(incomplete.contains(new Range("schema.range3")));
@@ -381,26 +381,26 @@ public class DagTest {
             new Range("schema.range2"),
             new Range("schema.range3")
         ));
-        List<Range> ranges = new ArrayList<>( Arrays.asList(
+        Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range2"),
             new Range("schema.range1")
         ));
-        List<Range> allRanges = new ArrayList<>( Arrays.asList(
+        Set<Range> allRanges = new HashSet<>( Arrays.asList(
             new Range("schema.range2"),
             new Range("schema.range3"),
             new Range("schema.range1")
         ));
-        rows.add(createNewRow(new ArrayList<>(range1),"",false));
+        rows.add(createNewRow(new HashSet<>(range1),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",false));
+        rows.add(createNewRow(new HashSet<>(range2),"",false));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range1),"",true));
+        rows.add(createNewRow(new HashSet<>(range1),"",true));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(range2),"",true));
+        rows.add(createNewRow(new HashSet<>(range2),"",true));
         MILLISECONDS.sleep(10);
-        rows.add(createNewRow(new ArrayList<>(ranges),"",true));
+        rows.add(createNewRow(new HashSet<>(ranges),"",true));
         Dag dag = Dag.getDag(rows, ranges);
-        MusicRangeInformationRow newRow = createNewRow(new ArrayList<>(allRanges), "", true);
+        MusicRangeInformationRow newRow = createNewRow(new HashSet<>(allRanges), "", true);
         dag.addNewNodeWithSearch(newRow,allRanges);
         DagNode newNode = dag.getNode(newRow.getPartitionIndex());
         DagNode node = dag.getNode(rows.get(4).getPartitionIndex());
