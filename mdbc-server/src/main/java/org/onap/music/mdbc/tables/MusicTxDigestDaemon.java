@@ -51,7 +51,7 @@ public class MusicTxDigestDaemon implements Runnable {
 	 * @param dbi interface to the database that will replay the operations
 	 * @param ranges only these ranges will be applied from the digests
 	 */
-	public void replayDigest(MusicInterface mi, DBInterface dbi, List<Range> ranges) throws MDBCServiceException {
+	public void replayDigest(MusicInterface mi, DBInterface dbi, Set<Range> ranges) throws MDBCServiceException {
 		StagingTable transaction;
 		String nodeName = stateManager.getMdbcServerName();
 
@@ -117,11 +117,11 @@ public class MusicTxDigestDaemon implements Runnable {
 					List<Range> missingRanges = new ArrayList<>();
 					if (currentPartitions.size() != 0) {
 						for (DatabasePartition part : currentPartitions) {
-							List<Range> partitionRanges = part.getSnapshot();
+							Set<Range> partitionRanges = part.getSnapshot();
 							warmupRanges.removeAll(partitionRanges);
 						}
 						try {
-							stateManager.getOwnAndCheck().warmup(mi, dbi, new ArrayList<>(warmupRanges));
+							stateManager.getOwnAndCheck().warmup(mi, dbi, new HashSet<>(warmupRanges));
 						} catch (MDBCServiceException e) {
 							logger.error("Unable to update for partition : " + warmupRanges + ". " + e.getMessage());
 							continue;

@@ -49,17 +49,17 @@ public class NodeConfiguration {
         this.sqlDatabaseName = sqlDatabaseName;
     }
 
-    protected List<Range> toRanges(List<String> tables){
-        List<Range> newRange = new ArrayList<>();
+    protected Set<Range> toRanges(List<String> tables){
+        Set<Range> newRange = new HashSet<>();
          for(String table: tables) {
             newRange.add(new Range(table));
         }
         return newRange;
     }
 
-    protected List<Range> toRanges(String tables){
+    protected Set<Range> toRanges(String tables){
         if(tables.isEmpty()){
-            return new ArrayList<>();
+            return new HashSet<>();
         }
         String[] tablesArray=tables.split(",");
         return toRanges(new ArrayList<>(Arrays.asList(tablesArray)));

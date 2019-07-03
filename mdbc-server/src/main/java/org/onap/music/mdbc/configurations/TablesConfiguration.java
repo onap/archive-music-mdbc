@@ -38,6 +38,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class TablesConfiguration {
@@ -113,7 +114,7 @@ public class TablesConfiguration {
         final ResultSet resultSet = MusicCore.quorumGet(checkRowsInTable);
         while(resultSet!=null && !resultSet.isExhausted()){
             final MusicRangeInformationRow mriRowFromCassandraRow = MusicMixin.getMRIRowFromCassandraRow(resultSet.one());
-            List<Range> ranges = mriRowFromCassandraRow.getDBPartition().getSnapshot();
+            Set<Range> ranges = mriRowFromCassandraRow.getDBPartition().getSnapshot();
             for(Range range: partition.getTables()) {
                 if (Range.overlaps(ranges,range.getTable())){
                     throw new MDBCServiceException("MRI row already exists");
