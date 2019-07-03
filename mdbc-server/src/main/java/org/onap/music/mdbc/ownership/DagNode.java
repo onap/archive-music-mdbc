@@ -61,7 +61,9 @@ public class DagNode {
         startIndex = new HashMap<>();
     }
 
-    public MusicRangeInformationRow getRow() { return row;}
+    public MusicRangeInformationRow getRow() {
+        return row;
+    }
 
     public synchronized void setOwned(){
         owned = true;

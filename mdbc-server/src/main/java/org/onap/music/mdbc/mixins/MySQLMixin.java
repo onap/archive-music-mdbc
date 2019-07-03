@@ -902,7 +902,8 @@ NEW.field refers to the new value
 	 * @param transaction - base 64 encoded, serialized digest
 	 * @throws MDBCServiceException 
 	 */
-	public void replayTransaction(StagingTable transaction, List<Range> ranges) throws SQLException, MDBCServiceException {
+	@Override
+	public void replayTransaction(StagingTable transaction, Set<Range> ranges) throws SQLException, MDBCServiceException {
 		boolean autocommit = jdbcConn.getAutoCommit();
 		jdbcConn.setAutoCommit(false);
 		Statement jdbcStmt = jdbcConn.createStatement();
@@ -944,7 +945,7 @@ NEW.field refers to the new value
 	}
 
 	@Override
-	public void applyTxDigest(StagingTable txDigest,List<Range> ranges) throws SQLException, MDBCServiceException {
+	public void applyTxDigest(StagingTable txDigest,Set<Range> ranges) throws SQLException, MDBCServiceException {
 		replayTransaction(txDigest,ranges);
 	}
 

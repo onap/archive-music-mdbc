@@ -814,7 +814,8 @@ public class PostgresMixin implements DBInterface {
      * 
      * @param transaction - base 64 encoded, serialized digest
      */
-    public void replayTransaction(StagingTable transaction, List<Range> ranges)
+    @Override
+    public void replayTransaction(StagingTable transaction, Set<Range> ranges)
             throws SQLException, MDBCServiceException {
         boolean autocommit = jdbcConn.getAutoCommit();
         jdbcConn.setAutoCommit(false);
@@ -856,7 +857,7 @@ public class PostgresMixin implements DBInterface {
     }
 
     @Override
-    public void applyTxDigest(StagingTable txDigest, List<Range> ranges) throws SQLException, MDBCServiceException {
+    public void applyTxDigest(StagingTable txDigest, Set<Range> ranges) throws SQLException, MDBCServiceException {
         replayTransaction(txDigest, ranges);
     }
 

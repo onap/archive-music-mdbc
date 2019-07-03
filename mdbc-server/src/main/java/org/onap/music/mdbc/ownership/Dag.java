@@ -62,7 +62,7 @@ public class Dag {
         rowsPerLatestRange = null;
     }
 
-    private void createDag(List<MusicRangeInformationRow> rows, List<Range> ranges){
+    private void createDag(List<MusicRangeInformationRow> rows, Set<Range> ranges){
         this.ranges = new ArrayList<>(ranges);
         Map<Range,DagNode> latestRow = new HashMap<>();
         //sort to make sure rows are in chronological order
@@ -72,7 +72,7 @@ public class Dag {
                 DagNode node = new DagNode(row);
                 nodes.put(row.getPartitionIndex(),node);
                 for(Range range : ranges){
-                    List<Range> nodeRanges = row.getDBPartition().getSnapshot();
+                    Set<Range> nodeRanges = row.getDBPartition().getSnapshot();
                     for(Range nRange : nodeRanges){
                         if(nRange.overlaps(range)){
                             if(latestRow.containsKey(range)){
@@ -88,7 +88,7 @@ public class Dag {
         }
     }
 
-    public static Dag getDag(List<MusicRangeInformationRow> rows, List<Range> ranges){
+    public static Dag getDag(List<MusicRangeInformationRow> rows, Set<Range> ranges){
         Dag newDag = new Dag(true);
         newDag.createDag(rows,ranges);
         return newDag;
@@ -116,7 +116,7 @@ public class Dag {
         });
     }
 
-    public DagNode getNode(UUID rowId) throws MDBCServiceException {
+    public DagNode getNode(UUID rowId) {
         if(!nodes.containsKey(rowId)){
             return null;
         }
@@ -141,7 +141,7 @@ public class Dag {
         return nextNode;
     }
 
-    public synchronized DagNode nextToApply(List<Range> ranges){
+    public synchronized DagNode nextToApply(Set<Range> ranges){
         if(!readyInit){
             initApplyDatastructures();
         }
@@ -283,7 +283,7 @@ public class Dag {
         }
     }
 
-    public void addNewNodeWithSearch(MusicRangeInformationRow row, List<Range> ranges) throws MDBCServiceException {
+    public void addNewNodeWithSearch(MusicRangeInformationRow row, Set<Range> ranges) throws MDBCServiceException {
         Map<Range,DagNode> newestNode = new HashMap<>();
         for(DagNode node : nodes.values()){
             for(Range range : ranges) {
@@ -389,8 +389,8 @@ public class Dag {
         return toDisable;
     }
 
-    public Pair<List<Range>,Set<DagNode>> getIncompleteRangesAndDependents() throws MDBCServiceException {
-        List<Range> incomplete = new ArrayList<>();
+    public Pair<Set<Range>, Set<DagNode>> getIncompleteRangesAndDependents() throws MDBCServiceException {
+        Set<Range> incomplete = new HashSet<>();
         Set<DagNode> dependents = new HashSet<>();
         Map<Range,Set<DagNode>> rowsPerLatestRange = getIsLatestPerRange();
         List<DagNode> toDisable = getOldestDoubleRows(rowsPerLatestRange);

@@ -170,7 +170,7 @@ public class OwnershipAndCheckpointTest {
         }
     }
 
-    private OwnershipReturn cleanAndOwnPartition(List<Range> ranges, UUID ownOpId) throws SQLException {
+    private OwnershipReturn cleanAndOwnPartition(Set<Range> ranges, UUID ownOpId) throws SQLException {
         dropAndCreateTable();
         cleanAlreadyApplied(ownAndCheck);
         DatabasePartition currentPartition = new DatabasePartition(MDBCUtils.generateTimebasedUniqueKey());
@@ -213,7 +213,7 @@ public class OwnershipAndCheckpointTest {
 
         initDatabase(range);
 
-        List<Range> ranges = new ArrayList<>();
+        Set<Range> ranges = new HashSet<>();
         ranges.add(range);
         UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
         OwnershipReturn own = cleanAndOwnPartition(ranges,ownOpId);
@@ -237,7 +237,7 @@ public class OwnershipAndCheckpointTest {
 
         initDatabase(range);
 
-        List<Range> ranges = new ArrayList<>();
+        Set<Range> ranges = new HashSet<>();
         ranges.add(range);
         UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
         OwnershipReturn own = cleanAndOwnPartition(ranges,ownOpId);
@@ -259,7 +259,7 @@ public class OwnershipAndCheckpointTest {
     public void readOwn() throws Exception {
         Range range = new Range("TABLE1");
         MusicInterface mi = MdbcTestUtils.getMusicMixin();
-        List<Range> ranges = new ArrayList<>();
+        Set<Range> ranges = new HashSet<>();
         ranges.add(range);
         final DatabasePartition partition = TestUtils.createBasicRow(range, mi, MdbcTestUtils.getServerName());
         TestUtils.unlockRow(MdbcTestUtils.getKeyspace(), MdbcTestUtils.getMriTableName(), partition);

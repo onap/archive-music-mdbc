@@ -518,16 +518,16 @@ public class MdbcConnection implements Connection {
         Map<String, List<SQLOperation>> tableToQueryType = QueryProcessor.parseSqlQuery(sql, table_set);
         //Check ownership of keys
         String defaultSchema = dbi.getSchema();
-        List<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToQueryType);
+        Set<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToQueryType);
         if (this.partition!=null) {
-            List<Range> snapshot = this.partition.getSnapshot();
+            Set<Range> snapshot = this.partition.getSnapshot();
             if(snapshot!=null){
                 queryTables.addAll(snapshot);
             }
         }
         // filter out ranges that fall under Eventually consistent
         // category as these tables do not need ownership
-        List<Range> scQueryTables = filterEveTables(queryTables);
+        Set<Range> scQueryTables = filterEveTables(queryTables);
         DatabasePartition tempPartition = own(scQueryTables, MDBCUtils.getOperationType(tableToQueryType));
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
@@ -537,7 +537,7 @@ public class MdbcConnection implements Connection {
     }
 
 
-    private List<Range> filterEveTables(List<Range> queryTables) {
+    private Set<Range> filterEveTables(Set<Range> queryTables) {
         queryTables.removeAll(statemanager.getEventualRanges());
         return queryTables;
     }
@@ -565,6 +565,7 @@ public class MdbcConnection implements Connection {
                 logger.info(EELFLoggerDelegate.applicationLogger, "New table discovered: "+tableName);
                 try {
                     dbi.createSQLTriggers(tableName);
+                    mi.createPartitionIfNeeded(new Range(dbi.getSchema() +"." + tableName));
                     table_set.add(tableName.toUpperCase());
                 } catch (Exception e) {
                     logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(),AppMessages.UNKNOWNERROR, ErrorSeverity.CRITICAL, ErrorTypes.QUERYERROR);
@@ -585,7 +586,7 @@ public class MdbcConnection implements Connection {
      * @return
      * @throws MDBCServiceException
      */
-    private DatabasePartition own(List<Range> ranges, SQLOperationType lockType) throws MDBCServiceException {
+    private DatabasePartition own(Set<Range> ranges, SQLOperationType lockType) throws MDBCServiceException {
         if(ranges==null||ranges.isEmpty()){
             return null;
         }

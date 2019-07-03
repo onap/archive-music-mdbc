@@ -39,7 +39,7 @@ public class DatabasePartition {
 
     private UUID musicRangeInformationIndex;//Index that can be obtained either from
     private String lockId;
-    protected List<Range> ranges;
+    protected Set<Range> ranges;
 
     private boolean ready;
 
@@ -49,14 +49,14 @@ public class DatabasePartition {
      */
 
     public DatabasePartition() {
-        this(new ArrayList<Range>(),null,"");
+        this(new HashSet<Range>(),null,"");
     }
 
     public DatabasePartition(UUID mriIndex) {
-        this(new ArrayList<Range>(), mriIndex,"");
+        this(new HashSet<Range>(), mriIndex,"");
     }
-
-    public DatabasePartition(List<Range> knownRanges, UUID mriIndex, String lockId) {
+    
+    public DatabasePartition(Set<Range> knownRanges, UUID mriIndex, String lockId) {
         if(mriIndex==null){
             ready = false;
         }
@@ -139,9 +139,9 @@ public class DatabasePartition {
      * Get all the ranges that are currently owned
      * @return ranges
      */
-    public synchronized List<Range> getSnapshot() {
-        List<Range> newRange = new ArrayList<>();
-        for(Range r : ranges){
+    public synchronized Set<Range> getSnapshot() {
+        Set<Range> newRange = new HashSet<>();
+        for (Range r: ranges){
             newRange.add(r.clone());
         }
         return newRange;
