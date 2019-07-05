@@ -82,9 +82,13 @@ public class MdbcConnection implements Connection {
     private final TxCommitProgress progressKeeper;
     private final DBInterface dbi;
     private final StagingTable transactionDigest;
+    /** Set of tables in db */
     private final Set<String> table_set;
     private final StateManager statemanager;
+    /** partition owned for this transaction */
     private DatabasePartition partition;
+    /** ranges needed for this transaction */
+    private Set<Range> rangesUsed;
 
     public MdbcConnection(String id, String url, Connection c, Properties info, MusicInterface mi,
             TxCommitProgress progressKeeper, DatabasePartition partition, StateManager statemanager) throws MDBCServiceException {
@@ -188,7 +192,8 @@ public class MdbcConnection implements Connection {
         dbi.preCommitHook();
         try {
             logger.debug(EELFLoggerDelegate.applicationLogger, " commit ");
-            // transaction was committed -- add all the updates into the REDO-Log in MUSIC
+            partition = mi.splitPartitionIfNecessary(partition, rangesUsed);
+            // transaction is committed -- add all the updates into the REDO-Log in MUSIC
             mi.commitLog(partition, statemanager.getEventualRanges(), transactionDigest, id, progressKeeper);
         } catch (MDBCServiceException e) {
             //If the commit fail, then a new commitId should be used
@@ -519,16 +524,15 @@ public class MdbcConnection implements Connection {
         //Check ownership of keys
         String defaultSchema = dbi.getSchema();
         Set<Range> queryTables = MDBCUtils.getTables(defaultSchema, tableToQueryType);
-        if (this.partition!=null) {
-            Set<Range> snapshot = this.partition.getSnapshot();
-            if(snapshot!=null){
-                queryTables.addAll(snapshot);
-            }
+        if (this.rangesUsed==null) {
+            rangesUsed=queryTables;
+        } else {
+            rangesUsed.addAll(queryTables);
         }
         // filter out ranges that fall under Eventually consistent
         // category as these tables do not need ownership
-        Set<Range> scQueryTables = filterEveTables(queryTables);
-        DatabasePartition tempPartition = own(scQueryTables, MDBCUtils.getOperationType(tableToQueryType));
+        Set<Range> scRanges = filterEveTables(rangesUsed);
+        DatabasePartition tempPartition = own(scRanges, MDBCUtils.getOperationType(tableToQueryType));
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
             statemanager.getOwnAndCheck().reloadAlreadyApplied(this.partition);
