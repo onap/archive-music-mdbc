@@ -132,6 +132,7 @@ public class MdbcTestClient {
              * insert into 1,2
              * insert into 1,3
              */
+            System.out.println("1");
             execute = insertStmt.execute(insertSQL);
             connection.commit();
             
@@ -140,6 +141,7 @@ public class MdbcTestClient {
             connection.setAutoCommit(false);
             insertStmt = connection.createStatement();
             
+            System.out.println("2");
             execute = insertStmt.execute(insertSQL1);
             connection.commit();
             
@@ -148,6 +150,7 @@ public class MdbcTestClient {
             connection.setAutoCommit(false);
             insertStmt = connection.createStatement();
             
+            System.out.println("3");
             execute = insertStmt.execute(insertSQL2);
             connection.commit();
             
@@ -166,11 +169,11 @@ public class MdbcTestClient {
             connection.setAutoCommit(false);
             insertStmt = connection.createStatement();
             
-            System.out.println("1,3,2");
+            System.out.println("1,3");
             
             execute = insertStmt.execute(insertSQL5);
             execute = insertStmt.execute(insertSQL6);
-            execute = insertStmt.execute(insertSQL4);
+            //execute = insertStmt.execute(insertSQL4);
             connection.commit();
             
             /*
