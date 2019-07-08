@@ -26,7 +26,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
+import java.util.UUID;
+import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
@@ -144,4 +145,16 @@ public interface DBInterface {
 	Connection getSQLConnection();
 
 	String getSchema();
+	
+	/**
+	 * Update pointer to where this server has successfully replayed transactions
+	 * @param r
+	 * @param playbackPointer
+	 */
+    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer);
+    
+    /**
+     * Initialize the SQL database by creating any tables necessary
+     */
+    public void initTables();
 }

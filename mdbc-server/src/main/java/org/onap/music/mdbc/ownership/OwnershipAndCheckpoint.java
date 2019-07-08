@@ -227,6 +227,15 @@ public class OwnershipAndCheckpoint{
         }
     }
 
+    /**
+     * Apply tx digest for ranges, update checkpoint location (alreadyApplied)
+     * @param mi
+     * @param di
+     * @param ranges
+     * @param node
+     * @param pair
+     * @throws MDBCServiceException
+     */
     private void applyDigestAndUpdateDataStructures(MusicInterface mi, DBInterface di, List<Range> ranges, DagNode node,
                                                     Pair<MusicTxDigestId, List<Range>> pair) throws MDBCServiceException {
         final StagingTable txDigest;
@@ -242,9 +251,33 @@ public class OwnershipAndCheckpoint{
         for (Range r : pair.getValue()) {
             MusicRangeInformationRow row = node.getRow();
             alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
+            
+            updateCheckpointLocations(mi, di, r, row.getPartitionIndex(), pair.getKey().index);
         }
     }
 
+    /**
+     * Update external checkpoint markers in sql db and music
+     * @param mi
+     * @param di
+     * @param r
+     * @param partitionIndex
+     * @param index
+     */
+    private void updateCheckpointLocations(MusicInterface mi, DBInterface dbi, Range r, UUID partitionIndex, int index) {
+        dbi.updateCheckpointLocations(r, Pair.of(partitionIndex, index));
+        mi.updateCheckpointLocations(r, Pair.of(partitionIndex, index));
+    }
+
+    /**
+     * Forceably apply changes in tx digest for ranges
+     * @param mi
+     * @param db
+     * @param extendedDag
+     * @param ranges
+     * @param ownOpId
+     * @throws MDBCServiceException
+     */
     private void applyRequiredChanges(MusicInterface mi, DBInterface db, Dag extendedDag, List<Range> ranges, UUID ownOpId)
         throws MDBCServiceException {
         Set<Range> rangeSet = new HashSet<Range>(ranges);
