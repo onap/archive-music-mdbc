@@ -374,6 +374,12 @@ public class OwnershipAndCheckpoint{
                         false, partition.getSnapshot()));
             } else if ( ownershipLocks.containsKey(uuidToOwn) || !row.getIsLatest() ) {
                 toOwn.setOwn(node);
+                if (ownershipLocks.containsKey(uuidToOwn) && !row.getIsLatest()) {
+                    //previously owned partition that is no longer latest, don't need anymore
+                    LockResult result = ownershipLocks.get(uuidToOwn);
+                    ownershipLocks.remove(uuidToOwn);
+                    mi.relinquish(result.getLockId(), uuidToOwn.toString());
+                }
             } else {
                 LockRequest request = new LockRequest(uuidToOwn,
                         new ArrayList<>(node.getRangeSet()), lockType);
