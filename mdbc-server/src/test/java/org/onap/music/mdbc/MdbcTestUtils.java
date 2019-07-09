@@ -68,7 +68,7 @@ public class MdbcTestUtils {
     final private static String nodeInfoTableName = "nodeinfo";
     //Mariadb variables
     static DB db=null;
-    final public static String mariaDBDatabaseName="test";
+    final public static String mariaDBDatabaseName="TEST";
     final static Integer mariaDbPort=13306;
 
 
