@@ -1263,15 +1263,15 @@ public class MusicMixin implements MusicInterface {
         return lockId;
     }
 
-    protected void changeIsLatestToMRI(MusicRangeInformationRow row, boolean isLatest, LockResult lock) throws MDBCServiceException{
+    protected void changeIsLatestToMRI(UUID mrirow, boolean isLatest, String lockref) throws MDBCServiceException{
        
-        if(lock == null)
+        if(lockref == null)
             return;
-        PreparedQueryObject appendQuery = createChangeIsLatestToMriQuery(musicRangeInformationTableName, row.getPartitionIndex(),
+        PreparedQueryObject appendQuery = createChangeIsLatestToMriQuery(musicRangeInformationTableName, mrirow,
             musicTxDigestTableName, isLatest);
-        ReturnType returnType = MusicCore.criticalPut(music_ns, musicRangeInformationTableName, row.getPartitionIndex().toString(),
+        ReturnType returnType = MusicCore.criticalPut(music_ns, musicRangeInformationTableName, mrirow.toString(),
             appendQuery, 
-            lock.getLockId()
+            lockref
             , null);
         if(returnType.getResult().compareTo(ResultType.SUCCESS) != 0 ){
             logger.error(EELFLoggerDelegate.errorLogger, "Error when executing change isLatest operation with return type: "+returnType.getMessage());
@@ -2140,8 +2140,10 @@ public class MusicMixin implements MusicInterface {
         List<MusicRangeInformationRow> returnInfo = new ArrayList<>();
         List<DagNode> toDisable = latestDag.getOldestDoubles();
         for(DagNode node : toDisable){
-            changeIsLatestToMRI(node.getRow(),false,locks.get(node.getId()));
-            latestDag.setIsLatest(node.getId(),false);
+            LockResult lockToDisable = locks.get(node.getId());
+            if (lockToDisable!=null) {
+                changeIsLatestToMRI(node.getRow().getPartitionIndex(),false,lockToDisable.getLockId());
+            }            latestDag.setIsLatest(node.getId(),false);
             returnInfo.add(node.getRow());
         }
         return returnInfo;
@@ -2185,6 +2187,51 @@ public class MusicMixin implements MusicInterface {
         return new OwnershipReturn(ownershipId, createdRow.getDBPartition().getLockId(), createdRow.getPartitionIndex(),
                 createdRow.getDBPartition().getSnapshot(), currentlyOwned);
     }
+    
+    
+    @Override
+    public DatabasePartition splitPartitionIfNecessary(DatabasePartition partition, Set<Range> rangesUsed)
+            throws MDBCServiceException {
+        Set<Range> rangesOwned = partition.getSnapshot();
+        if (rangesOwned==null || rangesUsed==null) {
+            return partition;
+        }
+        if (!rangesOwned.containsAll(rangesUsed)) {
+            throw new MDBCServiceException("Transaction was unable to acquire all necessary ranges.");
+        }
+
+        if (rangesUsed.containsAll(rangesOwned)) {
+            //using all ranges in this partition
+            return partition;
+        }
+
+        //split partition
+        logger.info(EELFLoggerDelegate.applicationLogger, "Full partition not being used need (" + rangesUsed
+                +") and own (" + rangesOwned + ", splitting the partition");
+        Set<UUID> prevPartitions = new HashSet<>();
+        prevPartitions.add(partition.getMRIIndex());
+        MusicRangeInformationRow usedRow = createAndAssignLock(rangesUsed, prevPartitions);
+        rangesOwned.removeAll(rangesUsed);
+        Set<Range> rangesNotUsed = rangesOwned;
+        MusicRangeInformationRow unusedRow = createAndAssignLock(rangesNotUsed, prevPartitions);
+
+        changeIsLatestToMRI(partition.getMRIIndex(), false, partition.getLockId());
+
+        Map<Range, Pair<MriReference, Integer>> alreadyApplied = stateManager.getOwnAndCheck().getAlreadyApplied();
+        for (Range range: rangesUsed) {
+            alreadyApplied.put(range, Pair.of(new MriReference(usedRow.getPartitionIndex()), -1));
+        }
+        for (Range range: rangesNotUsed) {
+            alreadyApplied.put(range, Pair.of(new MriReference(unusedRow.getPartitionIndex()), -1));
+        }
+
+        //release/update old partition info
+        relinquish(unusedRow.getDBPartition());
+        relinquish(partition);
+
+        return usedRow.getDBPartition();
+    }
+    
 
     private MusicRangeInformationRow createAndAssignLock(Set<Range> ranges, Set<UUID> prevPartitions) throws MDBCServiceException {
         UUID newUUID = MDBCUtils.generateTimebasedUniqueKey();
