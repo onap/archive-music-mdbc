@@ -72,7 +72,7 @@ public class MySQLMixinTest {
 	
 	@Test
 	public void testGetDataBaseName() throws SQLException {
-		Assert.assertEquals(MdbcTestUtils.getMariaDBDBName(), mysqlMixin.getDatabaseName());
+		Assert.assertEquals(MdbcTestUtils.getMariaDBDBName().toUpperCase(), mysqlMixin.getDatabaseName());
 	}
 
 }

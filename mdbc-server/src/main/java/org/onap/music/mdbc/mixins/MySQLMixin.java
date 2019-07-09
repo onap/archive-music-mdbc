@@ -185,7 +185,7 @@ public class MySQLMixin implements DBInterface {
         String dbname = "mdbc"; // default name
         try {
             Statement stmt = conn.createStatement();
-            ResultSet rs = stmt.executeQuery("SELECT DATABASE() AS DB");
+            ResultSet rs = stmt.executeQuery("SELECT UPPER(DATABASE()) AS DB");
             if (rs.next()) {
                 dbname = rs.getString("DB");
             }
@@ -212,7 +212,7 @@ public class MySQLMixin implements DBInterface {
     public Set<String> getSQLTableSet() {
         Set<String> set = new TreeSet<String>();
         String sql =
-                "SELECT CONCAT(TABLE_SCHEMA, '.', TABLE_NAME) as TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'";
+                "SELECT CONCAT(UPPER(TABLE_SCHEMA), '.', UPPER(TABLE_NAME)) as TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE';";
         try {
             Statement stmt = jdbcConn.createStatement();
             ResultSet rs = stmt.executeQuery(sql);
@@ -232,7 +232,7 @@ public class MySQLMixin implements DBInterface {
     public Set<Range> getSQLRangeSet() {
         Set<String> set = new TreeSet<String>();
         String sql =
-                "SELECT CONCAT(TABLE_SCHEMA, '.', TABLE_NAME) as TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE'";
+                "SELECT CONCAT(UPPER(TABLE_SCHEMA), '.', UPPER(TABLE_NAME)) as TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_TYPE='BASE TABLE';";
         try {
             Statement stmt = jdbcConn.createStatement();
             ResultSet rs = stmt.executeQuery(sql);
