@@ -101,6 +101,7 @@ public class MdbcServer {
     	// Then start it
     	server.start();
   	  
+    	System.out.println("Started Avatica server on port " + server.getPort());
     	logger.info("Started Avatica server on port {} with serialization {}", server.getPort(),
     			serialization);
     } catch (Exception e) {

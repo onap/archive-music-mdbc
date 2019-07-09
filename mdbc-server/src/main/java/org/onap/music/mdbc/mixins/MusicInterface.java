@@ -181,6 +181,7 @@ public interface MusicInterface {
 
 	/**
 	 * Commits the corresponding REDO-log into MUSIC
+	 * Transaction is committed -- add all the updates into the REDO-Log in MUSIC
 	 *
 	 * @param partition information related to ownership of partitions, used to verify ownership when commiting the Tx
 	 * @param eventualRanges 
@@ -337,7 +338,19 @@ public interface MusicInterface {
      */
     OwnershipReturn mergeLatestRowsIfNecessary(Dag currentlyOwned, Map<UUID, LockResult> locksForOwnership, UUID ownershipId)
             throws MDBCServiceException;
-    
+
+    /**
+     * If this connection is using fewer ranges than what is owned in the current partition, split
+     * the partition to avoid a universal partition being passed around.
+     * 
+     * This will follow "most recently used" policy
+     * @param partition2 partition that this transaction currently owns
+     * @param rangesUsed set of ranges that is the minimal required for this transaction
+     * @throws MDBCServiceException 
+     */
+    public DatabasePartition splitPartitionIfNecessary(DatabasePartition partition, Set<Range> rangesUsed)
+            throws MDBCServiceException;
+
     /**
      * Create ranges in MRI table, if not already present
      * @param range to add into mri table
