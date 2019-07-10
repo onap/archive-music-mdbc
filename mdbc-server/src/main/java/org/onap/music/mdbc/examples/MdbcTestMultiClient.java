@@ -22,6 +22,7 @@ package org.onap.music.mdbc.examples;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
@@ -46,7 +47,14 @@ public class MdbcTestMultiClient implements Runnable {
 	private int connectionCloseChancePct = 50;
 	private int skipInitialSelectPct = 25;
 	private int selectInsteadOfUpdatePct = 25;
+	private int rollbackChancePct = 15;
+	private int maxTables = 0;
 	
+	private Long randomSeed = null;
+
+	private List<String> tableNames = new ArrayList<String>();
+    private static final List<String> defaultTableNames = Arrays.asList(new String[] {"persons", "persons2"});
+
 	private boolean explainConnection = true;
 	
     public static class Employee {
@@ -122,6 +130,10 @@ public class MdbcTestMultiClient implements Runnable {
                     case "--connection": 
                         currState = 'c';
                         break;
+                    case "-e":
+                    case "--tableName": 
+                        currState = 'e';
+                        break;
                     case "-n":
                     case "--name": 
                         currState = 'n';
@@ -170,14 +182,27 @@ public class MdbcTestMultiClient implements Runnable {
                     case "--selectNotUpdate":
                         currState = 'i';
                         break;
+                    case "-o":
+                    case "--rollbackChance":
+                    	currState = 'o';
+                    	break;
+                    case "--maxTables":
+                    	currState = '@';
+                    	break;
+                    case "--randomSeed":
+                    	currState = '?';
+                    	break;
                     default:
                         System.out.println("Didn't understand switch " + arg);
                 }
             } else {
                 try {
                     switch (currState) {
-                        case 'c':
-                            connectionStrings.add(arg);
+                    	case 'c':
+                    		connectionStrings.add(arg);
+                    		break;
+                        case 'e':
+                            tableNames.add(arg);
                             break;
                         case 'n':
                             lastName = arg;
@@ -215,6 +240,15 @@ public class MdbcTestMultiClient implements Runnable {
                         case 'i': 
                             selectInsteadOfUpdatePct = Integer.parseInt(arg);
                             break;
+                        case 'o':
+                            rollbackChancePct = Integer.parseInt(arg);
+                            break;
+                        case '@':
+                        	maxTables = Integer.parseInt(arg);
+                        	break;
+                        case '?':
+                        	randomSeed = Long.parseLong(arg);
+                        	break;
                         default:
                             System.out.println("Bad state " + currState + "????");
                     }
@@ -225,12 +259,14 @@ public class MdbcTestMultiClient implements Runnable {
             }
         }
         if (connectionStrings.isEmpty()) connectionStrings.add(defaultConnection);
+        if (tableNames.isEmpty()) tableNames.addAll(defaultTableNames);
 	}
 
 	private void showHelp() {
 	    System.out.println(
 	            "-?; --help: Show help\n" + 
 	                    "-c; --connection: MDBC connection string, may appear multiple times\n" + 
+	            		"-e; --tableName: Table name, may appear multiple times\n" +
 	                    "-n; --name: Last name in persons table, default \"Lastname\"\n" + 
 	                    "-b; --baseId: Base ID, default 700\n" + 
 	                    "-r; --baseRange: Range of ID, default 50\n" + 
@@ -242,13 +278,18 @@ public class MdbcTestMultiClient implements Runnable {
 	                    "-x; --delete: Generate delete statements; default Y\n" + 
 	                    "-l; --closeChance: Percent chance of closing connection after each commit, default 50\n" +
 	                    "-s; --skipInitialSelect: Percent chance of skipping each initial select in a transaction, default 25\n" +
-	                    "-i; --selectNotUpdate: Percent chance of each action in a transaction being a select instead of an update, default 25"
+	                    "-i; --selectNotUpdate: Percent chance of each action in a transaction being a select instead of an update, default 25\n" +
+	                    "-o; --rollbackChance: Percent chance of rolling back each transaction instead of committing, default 15\n" +
+	                    "    --maxTables: Maximum number of tables per transaction, default 0 (no limit)\n" +
+	                    "    --randomSeed: Seed for the initial random number generator, default none\n" +
+	                    ""
 	    );
         
     }
 
     public MdbcTestMultiClient(MdbcTestMultiClient that, int i) {
         this.connectionString = that.connectionStrings.get(i);
+        this.tableNames = that.tableNames;
         this.threadId = i;
         
         this.lastName = that.lastName;
@@ -264,16 +305,22 @@ public class MdbcTestMultiClient implements Runnable {
         this.connectionCloseChancePct = that.connectionCloseChancePct;
         this.skipInitialSelectPct = that.skipInitialSelectPct;
         this.selectInsteadOfUpdatePct = that.selectInsteadOfUpdatePct;
+        this.rollbackChancePct = that.rollbackChancePct;
+        this.maxTables = that.maxTables;
+    }
+
+	private void setRandomSeed(Long randomSeed) {
+		this.randomSeed = randomSeed;
 	}
-    
-    private static String[] tableNames = {"persons", "persons2"};
 
 	private void doTest(Connection connection, Random r) throws SQLException {
 	    doLog("skipInitialSelectPct = " + skipInitialSelectPct + ", selectInsteadOfUpdatePct = " + selectInsteadOfUpdatePct);
 	    HashMap<String, HashMap<Integer, Employee>> employeeMaps = new HashMap<String, HashMap<Integer, Employee>> ();
 //    	HashMap<Integer, Employee> employeeMap = new HashMap<Integer, Employee>();
 
-	    for (String tableName : tableNames) {
+	    List<String> myTableNames = chooseTableNames(r);
+	    
+	    for (String tableName : myTableNames) {
 	        if (r.nextInt(100)<skipInitialSelectPct) {
 	            doLog("Skipping select");
 //	            employeeMap = null;
@@ -317,7 +364,7 @@ public class MdbcTestMultiClient implements Runnable {
 
     	while (firstTry || r.nextBoolean()) {
     	    firstTry = false;
-            String tableName = tableNames[r.nextInt(tableNames.length)];
+            String tableName = myTableNames.get(r.nextInt(myTableNames.size()));
             HashMap<Integer, Employee> employeeMap = employeeMaps.get(tableName);
             if (r.nextInt(100)<selectInsteadOfUpdatePct) {
                 Statement querySt = connection.createStatement();
@@ -330,12 +377,29 @@ public class MdbcTestMultiClient implements Runnable {
             }
     	}
 
-    	connection.commit();
-
+    	if (r.nextInt(100)<rollbackChancePct) {
+    		doLog("Rollback!");
+    		connection.rollback();
+    	} else {
+    		doLog("Commit");
+    		connection.commit();
+    	}
+    	
     	insertStmt.close();
     }
     
-    private void executeUpdateTimed(String sql, Statement insertStmt, boolean swallowException) throws SQLException {
+    private List<String> chooseTableNames(Random r) {
+    	if (maxTables<=0 || maxTables>=tableNames.size()) return tableNames;
+    	boolean[] useTable = new boolean[tableNames.size()];
+    	for (int i=0; i<tableNames.size(); i++) useTable[i] = false;
+    	for (int i=0; i<maxTables; i++) useTable[r.nextInt(tableNames.size())] = true;
+    	List<String> toRet = new ArrayList<String>();
+    	for (int i=0; i<tableNames.size(); i++) if (useTable[i]) toRet.add(tableNames.get(i));
+    	doLog("Selected tables: " + toRet);
+		return toRet;
+	}
+
+	private void executeUpdateTimed(String sql, Statement insertStmt, boolean swallowException) throws SQLException {
         long beforeTime, afterTime;
 
         beforeTime = new java.util.Date().getTime();
@@ -344,6 +408,7 @@ public class MdbcTestMultiClient implements Runnable {
         } catch (org.apache.calcite.avatica.AvaticaSqlException e) {
             if (swallowException) {
                 doLog("Caught exception: " + e);
+                e.printStackTrace();
             } else {
                 throw e;
             }
@@ -488,7 +553,14 @@ public class MdbcTestMultiClient implements Runnable {
 
         int calls = 0;
         long startTime = new java.util.Date().getTime();
-        Random r = new Random();
+        Random r = null;
+        if (randomSeed==null) {
+        	r = new Random();
+        	doLog("Generated new rng");
+        } else {
+        	r = new Random(randomSeed);
+        	doLog("Generated new rng with seed " + randomSeed);
+        }
         boolean done = false;
 
         while (!done) {
@@ -507,6 +579,7 @@ public class MdbcTestMultiClient implements Runnable {
 
         	if (calls==0) {
                 long initialDelay = 1 + (1000*threadId);
+//                initialDelay = 1;
                 synchronized(Thread.currentThread()) {
                     doLog("Delaying for " + initialDelay);
                     try {
@@ -599,8 +672,14 @@ public class MdbcTestMultiClient implements Runnable {
 	}
 
     private void runTests() {
+    	if (randomSeed==null) {
+    		randomSeed = new Random().nextLong();
+    	}
+		doLog("Using random seed = " + randomSeed);
+    	Random seedRandom = new Random(randomSeed);
         for (int i=0; i<connectionStrings.size(); i++) {
             MdbcTestMultiClient mt = new MdbcTestMultiClient(this, i);
+            mt.setRandomSeed(seedRandom.nextLong());
             Thread t = new Thread(mt);
             t.start();
         }
