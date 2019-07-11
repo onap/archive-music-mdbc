@@ -148,7 +148,7 @@ public class StateManager {
                 this));
         txDaemon.setName("TxDaemon");
         txDaemon.setDaemon(true);
-        txDaemon.start();
+      //  txDaemon.start();
     }
 
     /**
@@ -337,14 +337,14 @@ public class StateManager {
 		//check if a range was already created for this connection
         //TODO: later we could try to match it to some more sticky client id
         DatabasePartition ranges;
-        if(connectionRanges.containsKey(id)){
-            ranges=connectionRanges.get(id);
-        }
-        else{
+//        if(connectionRanges.containsKey(id)){
+//            ranges=connectionRanges.get(id);
+//        }
+//        else{
         	//TODO: we don't need to create a partition for each connection
             ranges=new DatabasePartition(musicInterface.generateUniqueKey());
-            connectionRanges.put(id,ranges);
-        }
+//            connectionRanges.put(id,ranges);
+//        }
 		//Create MDBC connection
     	try {
 			newConnection = new MdbcConnection(id,this.sqlDBUrl+"/"+this.sqlDBName, sqlConnection, info, this.musicInterface,

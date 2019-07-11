@@ -814,15 +814,31 @@ public class MySQLMixin implements DBInterface {
     private ArrayList<String> getMusicKey(String tbl, String cmd, String sql) {
         ArrayList<String> musicKeys = new ArrayList<String>();
         /*
-         * if (cmd.equalsIgnoreCase("insert")) { //create key, return key musicKeys.add(msm.generatePrimaryKey()); }
-         * else if (cmd.equalsIgnoreCase("update") || cmd.equalsIgnoreCase("delete")) { try {
-         * net.sf.jsqlparser.statement.Statement stmt = CCJSqlParserUtil.parse(sql); String where; if (stmt instanceof
-         * Update) { where = ((Update) stmt).getWhere().toString(); } else if (stmt instanceof Delete) { where =
-         * ((Delete) stmt).getWhere().toString(); } else { System.err.println("Unknown type: " +stmt.getClass()); where
-         * = ""; } ResultSet rs = executeSQLRead("SELECT * FROM " + tbl + " WHERE " + where); musicKeys =
-         * msm.getMusicKeysWhere(tbl, Utils.parseResults(getTableInfo(tbl), rs)); } catch (JSQLParserException e) {
-         * 
-         * e.printStackTrace(); } catch (SQLException e) { //Not a valid sql query e.printStackTrace(); } }
+        if (cmd.equalsIgnoreCase("insert")) {
+            //create key, return key
+            musicKeys.add(msm.generatePrimaryKey());
+        } else if (cmd.equalsIgnoreCase("update") || cmd.equalsIgnoreCase("delete")) {
+            try {
+                net.sf.jsqlparser.statement.Statement stmt = CCJSqlParserUtil.parse(sql);
+                String where;
+                if (stmt instanceof Update) {
+                    where = ((Update) stmt).getWhere().toString();
+                } else if (stmt instanceof Delete) {
+                    where = ((Delete) stmt).getWhere().toString();
+                } else {
+                    System.err.println("Unknown type: " +stmt.getClass());
+                    where = "";
+                }
+                ResultSet rs = executeSQLRead("SELECT * FROM " + tbl + " WHERE " + where);
+                musicKeys = msm.getMusicKeysWhere(tbl, Utils.parseResults(getTableInfo(tbl), rs));
+            } catch (JSQLParserException e) {
+                
+                e.printStackTrace();
+            } catch (SQLException e) {
+                //Not a valid sql query
+                e.printStackTrace();
+            }
+        }
          */
         return musicKeys;
     }
@@ -939,17 +955,7 @@ public class MySQLMixin implements DBInterface {
 
         ArrayList<String> cols = new ArrayList<String>();
         ArrayList<Object> vals = new ArrayList<Object>();
-        Iterator<String> colIterator = jsonOp.keys();
-        while (colIterator.hasNext()) {
-            String col = colIterator.next();
-            // FIXME: should not explicitly refer to cassandramixin
-            if (col.equals(MusicMixin.MDBC_PRIMARYKEY_NAME)) {
-                // reserved name
-                continue;
-            }
-            cols.add(col);
-            vals.add(jsonOp.get(col));
-        }
+        constructColValues(jsonOp, cols, vals);
 
         // build and replay the queries
         StringBuilder sql = constructSQL(op, cols, vals);
@@ -977,6 +983,20 @@ public class MySQLMixin implements DBInterface {
 
         }
     }
+    public void constructColValues(JSONObject jsonOp, ArrayList<String> cols,
+            ArrayList<Object> vals) {
+        Iterator<String> colIterator = jsonOp.keys();
+        while(colIterator.hasNext()) {
+            String col = colIterator.next();
+            //FIXME: should not explicitly refer to cassandramixin
+            if (col.equals(MusicMixin.MDBC_PRIMARYKEY_NAME)) {
+                //reserved name
+                continue;
+            }
+            cols.add(col);
+            vals.add(jsonOp.get(col));
+        }
+    }
 
     protected void buildAndExecuteSQLInverse(Statement jdbcStmt, Operation op, ArrayList<String> cols,
             ArrayList<Object> vals) throws SQLException, MDBCServiceException {
@@ -999,7 +1019,7 @@ public class MySQLMixin implements DBInterface {
      * @throws MDBCServiceException
      */
 
-    protected StringBuilder constructSQLInverse(Operation op, ArrayList<String> cols, ArrayList<Object> vals)
+    public StringBuilder constructSQLInverse(Operation op, ArrayList<String> cols, ArrayList<Object> vals)
             throws MDBCServiceException {
         StringBuilder sqlInverse = null;
         switch (op.getOperationType()) {
@@ -1015,7 +1035,7 @@ public class MySQLMixin implements DBInterface {
         return sqlInverse;
     }
 
-    protected StringBuilder constructSQL(Operation op, ArrayList<String> cols, ArrayList<Object> vals)
+    public StringBuilder constructSQL(Operation op, ArrayList<String> cols, ArrayList<Object> vals)
             throws MDBCServiceException {
         StringBuilder sql = null;
         switch (op.getOperationType()) {
@@ -1059,7 +1079,7 @@ public class MySQLMixin implements DBInterface {
         sql.append(") VALUES (");
         sep = "";
         for (Object val : vals) {
-            sql.append(sep + "\"" + val + "\"");
+            sql.append(sep + (val!=JSONObject.NULL?"\"" + val +"\"":"null"));
             sep = ", ";
         }
         sql.append(");");
@@ -1074,7 +1094,7 @@ public class MySQLMixin implements DBInterface {
         sql.append(r + " SET ");
         sep = "";
         for (int i = 0; i < cols.size(); i++) {
-            sql.append(sep + cols.get(i) + "=\"" + vals.get(i) + "\"");
+            sql.append(sep + cols.get(i) + (vals.get(i)!=JSONObject.NULL?"=\"" + vals.get(i) +"\"":"=null"));
             sep = ", ";
         }
         sql.append(" WHERE ");
@@ -1095,7 +1115,7 @@ public class MySQLMixin implements DBInterface {
         String and = "";
         for (String key : primaryKeys.keySet()) {
             // We cannot use the default primary key for the sql table and operations
-            if (!key.equals(mi.getMusicDefaultPrimaryKeyName())) {
+            if(!key.equals(MusicMixin.MDBC_PRIMARYKEY_NAME)) {
                 Object val = primaryKeys.get(key);
                 keyCondStmt.append(and + key + "=\"" + val + "\"");
                 and = " AND ";
