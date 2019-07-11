@@ -49,6 +49,12 @@ public class MdbcTestMultiClient implements Runnable {
 	private int selectInsteadOfUpdatePct = 25;
 	private int rollbackChancePct = 15;
 	private int maxTables = 0;
+
+	private boolean sequentialIds = false;
+	private static Integer currentId = -1;
+	
+	private boolean sequentialFirsts = false;
+	private static Integer currentFirstFirst = 0, currentFirstSecond = 0;
 	
 	private Long randomSeed = null;
 
@@ -164,12 +170,12 @@ public class MdbcTestMultiClient implements Runnable {
                         break;
                     case "-u":
                     case "--update": 
-                        currState = 'u';
+                    	doUpdate = false;
                         break;
                     case "-x":
                     case "--delete": 
-                        currState = 'x';
-                        break;
+                    	doDelete = false;
+                    	break;
                     case "-l":
                     case "--closeChance": 
                         currState = 'l';
@@ -191,6 +197,12 @@ public class MdbcTestMultiClient implements Runnable {
                     	break;
                     case "--randomSeed":
                     	currState = '?';
+                    	break;
+                    case "--sequentialId":
+                    	sequentialIds = true;
+                    	break;
+                    case "--sequentialFirst": 
+                    	sequentialFirsts = true;
                     	break;
                     default:
                         System.out.println("Didn't understand switch " + arg);
@@ -224,12 +236,6 @@ public class MdbcTestMultiClient implements Runnable {
                             break;
                         case 'a':
                             additionalDelayBetweenTestsMs = Integer.parseInt(arg);
-                            break;
-                        case 'u':
-                            doUpdate = arg.toUpperCase().startsWith("Y");
-                            break;
-                        case 'x':
-                            doDelete = arg.toUpperCase().startsWith("Y");
                             break;
                         case 'l':
                             connectionCloseChancePct = Integer.parseInt(arg);
@@ -265,23 +271,25 @@ public class MdbcTestMultiClient implements Runnable {
 	private void showHelp() {
 	    System.out.println(
 	            "-?; --help: Show help\n" + 
-	                    "-c; --connection: MDBC connection string, may appear multiple times\n" + 
-	            		"-e; --tableName: Table name, may appear multiple times\n" +
-	                    "-n; --name: Last name in persons table, default \"Lastname\"\n" + 
-	                    "-b; --baseId: Base ID, default 700\n" + 
-	                    "-r; --baseRange: Range of ID, default 50\n" + 
-	                    "-m; --maxCalls: Max number of commits (each may be 1+ updates), default 50\n" + 
-	                    "-t; --maxTime: Max time in ms test will run, default 60000\n" + 
-	                    "-d; --minDelay: Min delay between tests in ms, default 1000\n" + 
-	                    "-a; --addDelay: Max randomized additional delay between tests in ms, default 1000\n" + 
-	                    "-u; --update: Generate update statements; default Y\n" + 
-	                    "-x; --delete: Generate delete statements; default Y\n" + 
-	                    "-l; --closeChance: Percent chance of closing connection after each commit, default 50\n" +
-	                    "-s; --skipInitialSelect: Percent chance of skipping each initial select in a transaction, default 25\n" +
-	                    "-i; --selectNotUpdate: Percent chance of each action in a transaction being a select instead of an update, default 25\n" +
-	                    "-o; --rollbackChance: Percent chance of rolling back each transaction instead of committing, default 15\n" +
-	                    "    --maxTables: Maximum number of tables per transaction, default 0 (no limit)\n" +
-	                    "    --randomSeed: Seed for the initial random number generator, default none\n" +
+	                    "-c; --connection [string]: MDBC connection string, may appear multiple times\n" + 
+	            		"-e; --tableName [string]: Table name, may appear multiple times\n" +
+	                    "-n; --name [string]: Last name in persons table, default \"Lastname\"\n" + 
+	                    "-b; --baseId [int]: Base ID, default 700\n" + 
+	                    "-r; --baseRange [int]: Range of ID, default 50\n" + 
+	                    "-m; --maxCalls [int]: Max number of commits (each may be 1+ updates), default 50\n" + 
+	                    "-t; --maxTime [int]: Max time in ms test will run, default 60000\n" + 
+	                    "-d; --minDelay [int]: Min delay between tests in ms, default 1000\n" + 
+	                    "-a; --addDelay [int]: Max randomized additional delay between tests in ms, default 1000\n" + 
+	                    "-u; --update: Don't generate update statements; default do\n" + 
+	                    "-x; --delete: Don't generate delete statements; default do\n" + 
+	                    "-l; --closeChance [int]: Percent chance of closing connection after each commit, default 50\n" +
+	                    "-s; --skipInitialSelect [int]: Percent chance of skipping each initial select in a transaction, default 25\n" +
+	                    "-i; --selectNotUpdate [int]: Percent chance of each action in a transaction being a select instead of an update, default 25\n" +
+	                    "-o; --rollbackChance [int]: Percent chance of rolling back each transaction instead of committing, default 15\n" +
+	                    "    --maxTables [int]: Maximum number of tables per transaction, default 0 (no limit)\n" +
+	                    "    --randomSeed [long]: Seed for the initial random number generator, default none (generate random random seed)\n" +
+	                    "    --sequentialId: Generate sequential IDs instead of random ones (default random)\n" +
+	                    "    --sequentialFirst: Generate alphabetically sequential first names (default completely random) \n" +
 	                    ""
 	    );
         
@@ -307,6 +315,8 @@ public class MdbcTestMultiClient implements Runnable {
         this.selectInsteadOfUpdatePct = that.selectInsteadOfUpdatePct;
         this.rollbackChancePct = that.rollbackChancePct;
         this.maxTables = that.maxTables;
+        this.sequentialIds = that.sequentialIds;
+        this.sequentialFirsts = that.sequentialFirsts;
     }
 
 	private void setRandomSeed(Long randomSeed) {
@@ -350,6 +360,8 @@ public class MdbcTestMultiClient implements Runnable {
 	                //       		doLog("PersonId = " + rs.getInt("personId") + ", lastname = " + rs.getString("lastname") + ", firstname = " + rs.getString("firstname"));
 	                Employee emp = new Employee(rs.getInt("personId"), rs.getString("lastname"), rs.getString("firstname"), rs.getString("address"), rs.getString("city"));
 	                employeeMap.put(rs.getInt("personId"), emp);
+	                if (sequentialIds) updateId(rs.getInt("personId"));
+	                if (sequentialFirsts) updateFirst(rs.getString("firstname"));
 	                doLog("Found: " + emp);
 	            }
 	            querySt.close();
@@ -388,7 +400,32 @@ public class MdbcTestMultiClient implements Runnable {
     	insertStmt.close();
     }
     
-    private List<String> chooseTableNames(Random r) {
+    private void updateFirst(String firstName) {
+    	if (firstName==null || firstName.length()<2) return;
+    	synchronized(currentFirstFirst) {
+//			return (char)(65+currentFirstFirst) + "" + (char)(97+currentFirstSecond) + generateLetters(r, 4+r.nextInt(4));
+    		int ff = ((int)firstName.charAt(0))-65;
+    		int fs = ((int)firstName.charAt(1))-97;
+    		if (ff>=26 || ff<0 || fs>=26 || fs<0) return;
+    		if ( (ff>currentFirstFirst) || (ff==currentFirstFirst && fs>currentFirstSecond) ) {
+    			currentFirstFirst = ff;
+    			currentFirstSecond = fs;
+    			doLog("Saw " + firstName + ", updating currentFirstName to " + currentFirstFirst + ", " + currentFirstSecond);
+    		}
+    	}
+		
+	}
+
+	private void updateId(int id) {
+    	synchronized(currentId) {
+    		if (currentId<=id) {
+    			currentId = id+1;
+    			doLog ("Saw " + id + ", updating current id");
+    		}
+    	}
+	}
+
+	private List<String> chooseTableNames(Random r) {
     	if (maxTables<=0 || maxTables>=tableNames.size()) return tableNames;
     	boolean[] useTable = new boolean[tableNames.size()];
     	for (int i=0; i<tableNames.size(); i++) useTable[i] = false;
@@ -462,18 +499,47 @@ public class MdbcTestMultiClient implements Runnable {
 	private String generateInsert(HashMap<Integer, Employee> employeeMap, Random r, String tableName) {
 		String toRet = null;
 		
-		Integer id = null;
-		int range = baseIdRange;
-		while (id==null) {
-			id = baseId + r.nextInt(range);
-			if (employeeMap!=null && employeeMap.containsKey(id)) id = null;
-			if (employeeMap==null) id+=baseIdRange;
-			range+=(baseIdRange/5);
-		}
-		Employee newEmp = new Employee(id, lastName, Character.toUpperCase(randomLetter(r)) + generateLetters(r, 4+r.nextInt(4)), generateLetters(r, 4).toUpperCase(), generateLetters(r, 4).toUpperCase());
+		Integer id = generateId(employeeMap, r);
+		Employee newEmp = new Employee(id, lastName, generateFirstName(r), generateLetters(r, 4).toUpperCase(), generateLetters(r, 4).toUpperCase());
+//		Employee newEmp = new Employee(id, lastName, Character.toUpperCase(randomLetter(r)) + generateLetters(r, 4+r.nextInt(4)), generateLetters(r, 4).toUpperCase(), generateLetters(r, 4).toUpperCase());
 		toRet = "insert into " + tableName + " values (" + id + ", '" + newEmp.getLastname() + "', '" + newEmp.getFirstname() + "', '" + newEmp.getAddress() + "', '" + newEmp.getCity() + "')";
 		if (employeeMap!=null) employeeMap.put(id, newEmp);
 		
+		return toRet;
+	}
+
+	private String generateFirstName(Random r) {
+		if (sequentialFirsts) {
+			synchronized(currentFirstFirst) {
+				currentFirstSecond++;
+				if (currentFirstSecond==26) {
+					currentFirstSecond = 0;
+					currentFirstFirst++;
+					if (currentFirstFirst==26) currentFirstFirst=0;
+				}
+				return (char)(65+currentFirstFirst) + "" + (char)(97+currentFirstSecond) + generateLetters(r, 4+r.nextInt(4));
+			}
+		} else {
+			return Character.toUpperCase(randomLetter(r)) + generateLetters(r, 4+r.nextInt(4));
+		}
+	}
+
+	private Integer generateId(HashMap<Integer, Employee> employeeMap, Random r) {
+		Integer toRet = null;
+		if (currentId<0 && baseId>0) currentId = baseId; // setup, only matters if sequentialIds is true
+		int range = baseIdRange; // setup, only matters if sequentialIds is false
+		while (toRet==null) {
+			if (sequentialIds) {
+				synchronized(currentId) {
+					toRet = currentId++;
+				}
+			} else {
+				toRet = baseId + r.nextInt(range);
+				if (employeeMap==null) toRet+=baseIdRange;
+				range+=(baseIdRange/5);
+			}
+			if (employeeMap!=null && employeeMap.containsKey(toRet)) toRet = null;
+		}
 		return toRet;
 	}
 
@@ -483,12 +549,13 @@ public class MdbcTestMultiClient implements Runnable {
 		Employee toUpd = chooseTarget(employeeMap, r);
 		if (toUpd!=null) {
 			String newFirst = null;
-			if (toUpd.getFirstname().length()<=3 || r.nextBoolean()) {
+			if (sequentialFirsts) {
+				newFirst = generateFirstName(r);
+			} else if (toUpd.getFirstname().length()<=3 || r.nextBoolean()) {
 				newFirst = toUpd.getFirstname() + randomLetter(r);
 			} else {
 				newFirst = toUpd.getFirstname().substring(0, toUpd.getFirstname().length()-1);
 			}
-//			toRet = "update " + tableName + " set firstname = '" + newFirst + "' where personid = " + toUpd.getEmpid();
 			toRet = "update " + tableName + " set firstname = '" + newFirst + "' where personid = " + toUpd.getEmpid() + " and lastname = '" + toUpd.getLastname() + "'";
 			toUpd.setFirstname(newFirst);
 		}
