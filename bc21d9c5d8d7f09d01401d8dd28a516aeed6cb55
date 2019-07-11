@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d072042a_bef9dedb",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/tools/TxDigestDecompression.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 106,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-07-11T20:45:55Z",
+      "side": 1,
+      "message": "this duplicates functionality from mysqlmixin",
+      "revId": "bc21d9c5d8d7f09d01401d8dd28a516aeed6cb55",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}

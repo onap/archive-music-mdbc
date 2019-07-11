@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "0c2d535d_5f52f987",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/StateManager.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 346,
+      "author": {
+        "id": 4079
+      },
+      "writtenOn": "2019-07-11T20:45:55Z",
+      "side": 0,
+      "message": "Please remove connectionRanges if we don\u0027t need the map anymore",
+      "revId": "24f854ddde6164f18ec2c7b6223befe83c583181",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": false
+    }
+  ]
+}
