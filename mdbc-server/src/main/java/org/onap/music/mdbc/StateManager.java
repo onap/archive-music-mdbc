@@ -109,7 +109,6 @@ public class StateManager {
         this.info = new Properties();
         this.mdbcServerName = mdbcServerName;
     
-        this.connectionRanges = new ConcurrentHashMap<>();
         this.transactionInfo = new TxCommitProgress();
         //\fixme this might not be used, delete?
         try {
@@ -309,11 +308,9 @@ public class StateManager {
             }
             mdbcConnections.remove(connectionId);
         }
-        if(connectionRanges.containsKey(connectionId)){
-            //We relinquish all locks obtained by a given
-            //relinquish(connectionRanges.get(connectionId));
-            connectionRanges.remove(connectionId);
-        }
+        
+        connectionRanges.remove(connectionId);
+        
     }
 
     /**
@@ -334,18 +331,12 @@ public class StateManager {
                     ErrorTypes.QUERYERROR);
 			sqlConnection = null;
 		}
-		//check if a range was already created for this connection
-        //TODO: later we could try to match it to some more sticky client id
-        DatabasePartition ranges;
-        if(connectionRanges.containsKey(id)){
-            ranges=connectionRanges.get(id);
-        }
-        else{
-        	//TODO: we don't need to create a partition for each connection
-            ranges=new DatabasePartition(musicInterface.generateUniqueKey());
-            connectionRanges.put(id,ranges);
-        }
-		//Create MDBC connection
+		
+		//TODO: later we could try to match it to some more sticky client id
+        DatabasePartition ranges=new DatabasePartition(musicInterface.generateUniqueKey());
+        connectionRanges.put(id,ranges);
+        
+        //Create MDBC connection
     	try {
 			newConnection = new MdbcConnection(id,this.sqlDBUrl+"/"+this.sqlDBName, sqlConnection, info, this.musicInterface,
                 transactionInfo,ranges, this);
@@ -414,7 +405,7 @@ public class StateManager {
      * Close all connections for this server, relinquishing any locks/partitions owned by this server
      */
     public void releaseAllPartitions() {
-        for(String connection: this.connectionRanges.keySet()) {
+        for(String connection: this.mdbcConnections.keySet()) {
             closeConnection(connection);
         } 
     }
