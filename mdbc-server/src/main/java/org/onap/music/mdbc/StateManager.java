@@ -123,11 +123,10 @@ public class StateManager {
         musicmixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
         
         initMusic();
-        initSqlDatabase();
+        alreadyApplied = initSqlDatabase();
         initTxDaemonThread();
         String t = info.getProperty(Configuration.KEY_OWNERSHIP_TIMEOUT);
         long timeout = (t == null) ? Configuration.DEFAULT_OWNERSHIP_TIMEOUT : Integer.parseInt(t);
-        alreadyApplied = new ConcurrentHashMap<>();
         ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied, timeout);
     }
 
@@ -160,7 +159,12 @@ public class StateManager {
         this.mdbcConnections = new HashMap<>();
     }
     
-    protected void initSqlDatabase() throws MDBCServiceException {
+    /**
+     * Do everything necessary to initialize the sql database
+     * @return the current checkpoint location of this database, if restarting
+     * @throws MDBCServiceException
+     */
+    protected Map<Range, Pair<MriReference, Integer>> initSqlDatabase() throws MDBCServiceException {
         if(!this.sqlDBUrl.toLowerCase().startsWith("jdbc:postgresql")) {
             try {
                 Connection sqlConnection = DriverManager.getConnection(this.sqlDBUrl, this.info);
@@ -178,16 +182,21 @@ public class StateManager {
             }
         }
         
-        // Verify the tables in MUSIC match the tables in the database
-        // and create triggers on any tables that need them
+        Map<Range, Pair<MriReference, Integer>> alreadyAppliedToDb = null;
         try {
             MdbcConnection mdbcConn = (MdbcConnection) openConnection("init");
             mdbcConn.initDatabase();
+            alreadyAppliedToDb = mdbcConn.getDBInterface().getCheckpointLocations();
             closeConnection("init");
         } catch (QueryException e) {
-            logger.error("Error syncrhonizing tables");
+            logger.error("Error initializing sql database tables");
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
         }
+        
+        if (alreadyAppliedToDb==null) {
+            alreadyAppliedToDb = new ConcurrentHashMap<>();
+        }
+        return alreadyAppliedToDb;
     }
     
     /**

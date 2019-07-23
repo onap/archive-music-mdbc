@@ -42,6 +42,7 @@ import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.mixins.MySQLMixin.StagingTableUpdateRunnable;
+import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.query.SQLOperation;
 import org.onap.music.mdbc.tables.StagingTable;
@@ -1065,12 +1066,17 @@ public class PostgresMixin implements DBInterface {
     }
 
     @Override
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) {
+    public void updateCheckpointLocations(Range r, Pair<MriReference, Integer> playbackPointer) {
         throw new org.apache.commons.lang.NotImplementedException();
     }
 
     @Override
     public void initTables() {
+        throw new org.apache.commons.lang.NotImplementedException();
+    }
+
+    @Override
+    public Map<Range, Pair<MriReference, Integer>> getCheckpointLocations() {
         throw new org.apache.commons.lang.NotImplementedException();
     }
 
