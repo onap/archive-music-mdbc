@@ -31,6 +31,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
+import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.StagingTable;
 
 /**
@@ -151,10 +152,16 @@ public interface DBInterface {
 	 * @param r
 	 * @param playbackPointer
 	 */
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer);
+    public void updateCheckpointLocations(Range r, Pair<MriReference, Integer> playbackPointer);
+    /**
+     * Get current locations of this database's already applied locations
+     * @return
+     */
+    public Map<Range, Pair<MriReference, Integer>> getCheckpointLocations();
     
     /**
      * Initialize the SQL database by creating any tables necessary
      */
     public void initTables();
+    
 }

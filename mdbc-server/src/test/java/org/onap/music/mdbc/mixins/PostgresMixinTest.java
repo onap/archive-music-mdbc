@@ -65,7 +65,7 @@ public class PostgresMixinTest {
     public static void close(){
         //TODO: shutdown cassandra
         mixin=null;
-        MdbcTestUtils.cleanDatabase(DBType.POSTGRES);
+        MdbcTestUtils.stopDatabase(DBType.POSTGRES);
         MdbcTestUtils.stopCassandra();
      }
 

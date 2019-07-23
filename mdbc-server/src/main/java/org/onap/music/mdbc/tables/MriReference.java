@@ -28,6 +28,14 @@ public final class MriReference {
 		this.index=  index;
 	}
 
-	public long getTimestamp() { return index.timestamp();}
+	public MriReference(String mrirow) {
+        index = UUID.fromString(mrirow);
+    }
+
+    public long getTimestamp() { return index.timestamp();}
+    
+    public UUID getIndex() {
+        return this.index;
+    }
 
 }

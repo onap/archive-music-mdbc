@@ -363,7 +363,7 @@ public interface MusicInterface {
      * @param r
      * @param playbackPointer
      */
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer);
+    public void updateCheckpointLocations(Range r, Pair<MriReference, Integer> playbackPointer);
 
 }
 
