@@ -194,16 +194,17 @@ public class MdbcTestUtils {
         }
     }
 
-    static void stopMySql(){
+    private static void stopMySql(){
         try {
             db.stop();
+            db = null;
         } catch (ManagedProcessException e) {
             e.printStackTrace();
             fail("Error closing mysql");
         }
     }
 
-    public static void cleanDatabase(DBType type){
+    public static void stopDatabase(DBType type){
         switch(type) {
             case MySQL:
                 stopMySql();

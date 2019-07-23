@@ -35,6 +35,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
@@ -44,6 +45,7 @@ import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;
 import net.sf.jsqlparser.JSQLParserException;
@@ -1144,11 +1146,11 @@ public class MySQLMixin implements DBInterface {
     }
 
     @Override
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) {
+    public void updateCheckpointLocations(Range r, Pair<MriReference, Integer> playbackPointer) {
         String query = "UPDATE " + CKPT_TBL + " SET MRIROW=?, DIGESTINDEX=? where RANGENAME=?;";
         try {
             PreparedStatement stmt = jdbcConn.prepareStatement(query);
-            stmt.setString(1, playbackPointer.getLeft().toString());
+            stmt.setString(1, playbackPointer.getLeft().getIndex().toString());
             stmt.setInt(2, playbackPointer.getRight());
             stmt.setString(3, r.getTable());
             stmt.execute();
@@ -1156,6 +1158,30 @@ public class MySQLMixin implements DBInterface {
         } catch (SQLException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Unable to update replay checkpoint location");
         }
+    }
+    
+    @Override
+    public Map<Range, Pair<MriReference, Integer>> getCheckpointLocations() {
+        Map<Range, Pair<MriReference, Integer>> alreadyApplied = new ConcurrentHashMap<>();
+        try {
+            Statement stmt = jdbcConn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * FROM " + CKPT_TBL + ";");
+            while (rs.next()) {
+                Range r = new Range(rs.getString("RANGENAME"));
+                String mrirow = rs.getString("MRIROW");
+                int index = rs.getInt("DIGESTINDEX");
+                if (mrirow!=null) {
+                    logger.info(EELFLoggerDelegate.applicationLogger,
+                            "Previously checkpointed: " + r.getTable() + " at (" + mrirow + ", " + index + ")");
+                    alreadyApplied.put(r, Pair.of(new MriReference(mrirow), index));
+                }
+            }
+            stmt.close();
+        } catch (SQLException e) {
+            logger.error(EELFLoggerDelegate.errorLogger, "Unable to get replay checkpoint location", e);
+        }
+
+        return alreadyApplied;
     }
 
     @Override

@@ -250,9 +250,10 @@ public class OwnershipAndCheckpoint{
         applyTxDigest(ranges,di, txDigest);
         for (Range r : pair.getValue()) {
             MusicRangeInformationRow row = node.getRow();
-            alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
+            MriReference mriRef = new MriReference(row.getPartitionIndex());
+            alreadyApplied.put(r, Pair.of(mriRef, pair.getKey().index));
             
-            updateCheckpointLocations(mi, di, r, row.getPartitionIndex(), pair.getKey().index);
+            updateCheckpointLocations(mi, di, r, mriRef, pair.getKey().index);
         }
     }
 
@@ -264,7 +265,7 @@ public class OwnershipAndCheckpoint{
      * @param partitionIndex
      * @param index
      */
-    private void updateCheckpointLocations(MusicInterface mi, DBInterface dbi, Range r, UUID partitionIndex, int index) {
+    private void updateCheckpointLocations(MusicInterface mi, DBInterface dbi, Range r, MriReference partitionIndex, int index) {
         dbi.updateCheckpointLocations(r, Pair.of(partitionIndex, index));
         mi.updateCheckpointLocations(r, Pair.of(partitionIndex, index));
     }

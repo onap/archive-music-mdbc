@@ -2516,9 +2516,9 @@ public class MusicMixin implements MusicInterface {
     }
 
     @Override
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) {
+    public void updateCheckpointLocations(Range r, Pair<MriReference, Integer> playbackPointer) {
         String cql = String.format("INSERT INTO %s.%s (mdbcnode, mridigest, digestindex) VALUES ("
-                + this.myId + ", " + playbackPointer.getLeft() + ", " + playbackPointer.getRight() + ");",
+                + this.myId + ", " + playbackPointer.getLeft().getIndex() + ", " + playbackPointer.getRight() + ");",
                 music_ns, this.musicMdbcCheckpointsTableName);
         PreparedQueryObject pQueryObject = new PreparedQueryObject();
         pQueryObject.appendQueryString(cql);
