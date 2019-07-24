@@ -140,7 +140,7 @@ public interface DBInterface {
 
 	void enableForeignKeyChecks() throws SQLException;
 
-	void applyTxDigest(StagingTable txDigest, Set<Range> ranges) throws SQLException, MDBCServiceException;
+	void applyTxDigest(StagingTable txDigest) throws SQLException, MDBCServiceException;
 
 	Connection getSQLConnection();
 
