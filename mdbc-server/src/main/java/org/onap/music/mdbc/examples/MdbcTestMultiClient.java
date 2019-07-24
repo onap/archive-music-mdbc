@@ -62,6 +62,7 @@ public class MdbcTestMultiClient implements Runnable {
     private static final List<String> defaultTableNames = Arrays.asList(new String[] {"persons", "persons2"});
 
 	private boolean explainConnection = true;
+	private boolean endInSelect = true;
 	
     public static class Employee {
         public final int empid;
@@ -717,6 +718,34 @@ public class MdbcTestMultiClient implements Runnable {
         	doLog("");
         }
 
+        if (endInSelect) {
+            doLog("Ending in select to ensure all db's are in sync");
+            if (connection==null) {
+                try {
+                    doLog("Opening new connection");
+                    connection = DriverManager.getConnection(connectionString);
+                    connection.setAutoCommit(false);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                    return;
+                }
+            }
+            for (String tableName : tableNames) {
+                try {
+                    Statement querySt = connection.createStatement();
+                    ResultSet rs = executeQueryTimed("select * from " + tableName, querySt, false);
+                    while (rs.next()) {
+                        //              doLog("PersonId = " + rs.getInt("personId") + ", lastname = " + rs.getString("lastname") + ", firstname = " + rs.getString("firstname"));
+                        Employee emp = new Employee(rs.getInt("personId"), rs.getString("lastname"), rs.getString("firstname"), rs.getString("address"), rs.getString("city"));
+                        doLog("Found: " + emp);
+                    }
+                    querySt.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        
         if (connection!=null) {
         	try {
         		doLog("Closing connection at end");
