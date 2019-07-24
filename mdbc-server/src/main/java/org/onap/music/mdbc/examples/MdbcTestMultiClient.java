@@ -49,6 +49,8 @@ public class MdbcTestMultiClient implements Runnable {
 	private int selectInsteadOfUpdatePct = 25;
 	private int rollbackChancePct = 15;
 	private int maxTables = 0;
+    public static boolean[] threadsDone;
+
 
 	private boolean sequentialIds = false;
 	private static Integer currentId = -1;
@@ -62,6 +64,7 @@ public class MdbcTestMultiClient implements Runnable {
     private static final List<String> defaultTableNames = Arrays.asList(new String[] {"persons", "persons2"});
 
 	private boolean explainConnection = true;
+	private boolean endInSelect = true;
 	
     public static class Employee {
         public final int empid;
@@ -716,7 +719,44 @@ public class MdbcTestMultiClient implements Runnable {
         	
         	doLog("");
         }
+        threadsDone[threadId] = true;
 
+        if (endInSelect) {
+            doLog("Ending in select to ensure all db's are in sync");
+            while (!allThreadsDone()) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    continue;
+                }
+            }
+            doLog("All threads are done. Ending in select");
+            if (connection==null) {
+                try {
+                    doLog("Opening new connection");
+                    connection = DriverManager.getConnection(connectionString);
+                    connection.setAutoCommit(false);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                    return;
+                }
+            }
+            for (String tableName : tableNames) {
+                try {
+                    Statement querySt = connection.createStatement();
+                    ResultSet rs = executeQueryTimed("select * from " + tableName, querySt, false);
+                    while (rs.next()) {
+                        //              doLog("PersonId = " + rs.getInt("personId") + ", lastname = " + rs.getString("lastname") + ", firstname = " + rs.getString("firstname"));
+                        Employee emp = new Employee(rs.getInt("personId"), rs.getString("lastname"), rs.getString("firstname"), rs.getString("address"), rs.getString("city"));
+                        doLog("Found: " + emp);
+                    }
+                    querySt.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        
         if (connection!=null) {
         	try {
         		doLog("Closing connection at end");
@@ -729,27 +769,39 @@ public class MdbcTestMultiClient implements Runnable {
         doLog("All done.");
     }
 
-	private void doLog(String string) {
+	private boolean allThreadsDone() {
+        for (Boolean b: this.threadsDone) {
+            if (!b) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void doLog(String string) {
 		System.out.println(">> Thread " + threadId + " " + sdf.format(new java.util.Date()) + " >> " + string);
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		MdbcTestMultiClient mtc = new MdbcTestMultiClient(args);
 		mtc.runTests(); 
 	}
 
-    private void runTests() {
+    private void runTests() throws InterruptedException {
     	if (randomSeed==null) {
     		randomSeed = new Random().nextLong();
     	}
 		doLog("Using random seed = " + randomSeed);
     	Random seedRandom = new Random(randomSeed);
+    	this.threadsDone = new boolean[connectionStrings.size()];
+
         for (int i=0; i<connectionStrings.size(); i++) {
             MdbcTestMultiClient mt = new MdbcTestMultiClient(this, i);
             mt.setRandomSeed(seedRandom.nextLong());
             Thread t = new Thread(mt);
             t.start();
         }
+        
     }
 		
 }
