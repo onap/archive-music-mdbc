@@ -60,8 +60,7 @@ public class MusicTxDigestDaemon implements Runnable {
 		for (UUID txTimeID : keys) {
 			transaction = ecDigestInformation.get(txTimeID);
 			try {
-				dbi.replayTransaction(transaction,
-					ranges); // I think this Might change if the data is coming from a new table.. ( what is the new table structure??)
+				dbi.replayTransaction(transaction); // I think this Might change if the data is coming from a new table.. ( what is the new table structure??)
 			} catch (SQLException e) {
 				logger.error("EC:Rolling back the entire digest replay.");
 				return;

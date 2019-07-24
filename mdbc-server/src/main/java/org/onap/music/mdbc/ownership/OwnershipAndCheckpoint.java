@@ -171,10 +171,10 @@ public class OwnershipAndCheckpoint{
         }
     }
 
-    private void applyTxDigest(Set<Range> ranges, DBInterface di, StagingTable txDigest)
+    private void applyTxDigest(DBInterface di, StagingTable txDigest)
         throws MDBCServiceException {
         try {
-            di.applyTxDigest(txDigest,ranges);
+            di.applyTxDigest(txDigest);
         } catch (SQLException e) {
             throw new MDBCServiceException("Error applying tx digest in local SQL",e);
         }
@@ -213,7 +213,7 @@ public class OwnershipAndCheckpoint{
                             checkpointLock.unlock();
                             break;
                         } else {
-                            applyDigestAndUpdateDataStructures(mi, di, rangesToWarmup, node, pair);
+                            applyDigestAndUpdateDataStructures(mi, di, node, pair);
                         }
                         pair = node.nextNotAppliedTransaction(rangeSet);
                         enableForeignKeys(di);
@@ -228,15 +228,14 @@ public class OwnershipAndCheckpoint{
     }
 
     /**
-     * Apply tx digest for ranges, update checkpoint location (alreadyApplied)
+     * Apply tx digest for dagnode update checkpoint location (alreadyApplied)
      * @param mi
      * @param di
-     * @param ranges
      * @param node
      * @param pair
      * @throws MDBCServiceException
      */
-    private void applyDigestAndUpdateDataStructures(MusicInterface mi, DBInterface di, Set<Range> ranges, DagNode node,
+    private void applyDigestAndUpdateDataStructures(MusicInterface mi, DBInterface di, DagNode node,
                                                     Pair<MusicTxDigestId, List<Range>> pair) throws MDBCServiceException {
         final StagingTable txDigest;
         try {
@@ -247,7 +246,7 @@ public class OwnershipAndCheckpoint{
                 +" case for txID "+pair.getKey().transactionId.toString());
             return;
         }
-        applyTxDigest(ranges,di, txDigest);
+        applyTxDigest(di, txDigest);
         for (Range r : pair.getValue()) {
             MusicRangeInformationRow row = node.getRow();
             alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), pair.getKey().index));
@@ -287,7 +286,7 @@ public class OwnershipAndCheckpoint{
             if(node!=null) {
                 Pair<MusicTxDigestId, List<Range>> pair = node.nextNotAppliedTransaction(rangeSet);
                 while (pair != null) {
-                    applyDigestAndUpdateDataStructures(mi, db, ranges, node, pair);
+                    applyDigestAndUpdateDataStructures(mi, db, node, pair);
                     pair = node.nextNotAppliedTransaction(rangeSet);
                     if (timeout(ownOpId)) {
                         enableForeignKeys(db);

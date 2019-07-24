@@ -211,7 +211,7 @@ public class PostgresMixinTest {
         Set<Range> ranges = new HashSet<>();
         ranges.add(new Range("public.testtable"));
         try {
-            mixin.applyTxDigest(st,ranges);
+            mixin.applyTxDigest(st);
         } catch (SQLException|MDBCServiceException e) {
             e.printStackTrace();
             fail();
