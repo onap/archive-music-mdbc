@@ -229,8 +229,8 @@
         </dependency>
         <dependency>
             <groupId>org.onap.music</groupId>
-            <artifactId>dev-MUSIC-cassandra</artifactId>
-            <version>3.2.1</version>
+            <artifactId>MUSIC</artifactId>
+            <version>3.2.34</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.netty</groupId>
