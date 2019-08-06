@@ -151,7 +151,6 @@ public class OwnershipAndCheckpointTest {
         String sqlOperation = "INSERT INTO "+TABLE+" (PersonID,LastName,FirstName,Address,City) VALUES "+
             "(1,'SAUREZ','ENRIQUE','GATECH','ATLANTA');";
         StagingTable stagingTable = new StagingTable();
-        ownAndCheck.reloadAlreadyApplied(partition);
         final Statement executeStatement = this.conn.createStatement();
         executeStatement.execute(sqlOperation);
         this.conn.commit();
@@ -224,7 +223,7 @@ public class OwnershipAndCheckpointTest {
             locks.put(own.getDag().getNode(own.getRangeId()).getRow(),
                 new LockResult(own.getRangeId(), own.getOwnerId(), true,
                     ranges));
-            ownAndCheck.checkpoint(musicMixin, mysqlMixin, own.getDag(), ranges, locks, ownOpId);
+            ownAndCheck.checkpoint(musicMixin, mysqlMixin, own.getDag(), ranges, ownOpId);
         }
 
         checkData();

@@ -32,6 +32,7 @@ import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MriRowComparator;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
+import org.onap.music.mdbc.tables.MusicTxDigestId;
 
 public class Dag {
 
@@ -145,7 +146,6 @@ public class Dag {
         if(!readyInit){
             initApplyDatastructures();
         }
-        Set<Range> rangesSet = new HashSet<>(ranges);
         while(!toApplyNodes.isEmpty()){
             DagNode nextNode = toApplyNodes.poll();
             List<DagNode> outgoing = nextNode.getOutgoingEdges();
@@ -155,7 +155,7 @@ public class Dag {
                     toApplyNodes.add(out);
                 }
             }
-            if(!nextNode.wasApplied(rangesSet)){
+            if(!nextNode.wasApplied(ranges)){
                 return nextNode;
             }
         }
@@ -233,23 +233,23 @@ public class Dag {
         return toApplyNodes.isEmpty();
     }
 
-    public void setAlreadyApplied(Map<Range, Pair<MriReference,Integer>> alreadyApplied, Set<Range> ranges)
+    public void setAlreadyApplied(Map<Range, Pair<MriReference,MusicTxDigestId>> alreadyApplied, Set<Range> ranges)
         throws MDBCServiceException {
-        for(Map.Entry<UUID,DagNode> node : nodes.entrySet()){
+        for (DagNode node: nodes.values()) {
             Set<Range> intersection = new HashSet<>(ranges);
-            intersection.retainAll(node.getValue().getRangeSet());
+            intersection.retainAll(node.getRangeSet());
             for(Range r : intersection){
                 if(alreadyApplied.containsKey(r)){
-                    final Pair<MriReference, Integer> appliedPair = alreadyApplied.get(r);
+                    final Pair<MriReference, MusicTxDigestId> appliedPair = alreadyApplied.get(r);
                     final MriReference appliedRow = appliedPair.getKey();
-                    final int index = appliedPair.getValue();
+                    final int index = appliedPair.getValue().index;
                     final long appliedTimestamp = appliedRow.getTimestamp();
-                    final long nodeTimestamp = node.getValue().getTimestamp();
+                    final long nodeTimestamp = node.getTimestamp();
                     if(appliedTimestamp > nodeTimestamp){
-                        setReady(node.getValue(),r);
+                        setReady(node,r);
                     }
                     else if(appliedTimestamp == nodeTimestamp){
-                        setPartiallyReady(node.getValue(),r,index);
+                        setPartiallyReady(node,r,index);
                     }
                 }
             }

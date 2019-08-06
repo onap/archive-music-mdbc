@@ -55,4 +55,8 @@ public final class MusicTxDigestId {
     public int hashCode(){
         return transactionId.hashCode();
     }
+    
+    public String toString() {
+        return this.transactionId.toString();
+    }
 }

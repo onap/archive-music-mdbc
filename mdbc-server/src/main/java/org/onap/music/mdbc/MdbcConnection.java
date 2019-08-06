@@ -193,7 +193,8 @@ public class MdbcConnection implements Connection {
         try {
             partition = mi.splitPartitionIfNecessary(partition, rangesUsed);
         } catch (MDBCServiceException e) {
-            logger.warn(EELFLoggerDelegate.errorLogger, "Failure to split partition, trying to continue",
+            logger.warn(EELFLoggerDelegate.errorLogger,
+                    "Failure to split partition '" + partition.getMRIIndex() + "' trying to continue",
                     AppMessages.UNKNOWNERROR, ErrorTypes.UNKNOWN, ErrorSeverity.FATAL);
         }
         
@@ -541,7 +542,6 @@ public class MdbcConnection implements Connection {
         DatabasePartition tempPartition = own(scRanges, MDBCUtils.getOperationType(tableToQueryType));
         if(tempPartition!=null && tempPartition != partition) {
             this.partition.updateDatabasePartition(tempPartition);
-            statemanager.getOwnAndCheck().reloadAlreadyApplied(this.partition);
         }
         dbi.preStatementHook(sql);
     }
@@ -619,7 +619,8 @@ public class MdbcConnection implements Connection {
                 MusicRangeInformationRow row = node.getRow();
                 Map<MusicRangeInformationRow, LockResult> lock = new HashMap<>();
                 lock.put(row, new LockResult(row.getPartitionIndex(), ownershipReturn.getOwnerId(), true, ranges));
-                ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, lock, ownershipReturn.getOwnershipId());
+                ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, ownershipReturn.getOwnershipId());
+                //TODO: need to update pointer in alreadyapplied if a merge happened instead of in prestatement hook
                 newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
                     ownershipReturn.getOwnerId());
             }

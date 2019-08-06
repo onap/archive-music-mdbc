@@ -57,6 +57,7 @@ import org.onap.music.main.ResultType;
 import org.onap.music.main.ReturnType;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
+import org.onap.music.mdbc.MdbcConnection;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.StateManager;
 import org.onap.music.mdbc.TableInfo;
@@ -1123,22 +1124,19 @@ public class MusicMixin implements MusicInterface {
      * Build a preparedQueryObject that appends a transaction to the mriTable
      * @param mriTable
      * @param uuid
-     * @param table
      * @param redoUuid
      * @return
      */
-    private PreparedQueryObject createAppendMtxdIndexToMriQuery(String mriTable, UUID uuid, String table, UUID redoUuid){
+    private PreparedQueryObject createAppendMtxdIndexToMriQuery(String mriTable, UUID uuid, UUID redoUuid){
         PreparedQueryObject query = new PreparedQueryObject();
         StringBuilder appendBuilder = new StringBuilder();
         appendBuilder.append("UPDATE ")
             .append(music_ns)
             .append(".")
             .append(mriTable)
-            .append(" SET txredolog = txredolog +[('")
-            .append(table)
-            .append("',")
+            .append(" SET txredolog = txredolog +[")
             .append(redoUuid)
-            .append(")] WHERE rangeid = ")
+            .append("] WHERE rangeid = ")
             .append(uuid)
             .append(";");
         query.appendQueryString(appendBuilder.toString());
@@ -1342,8 +1340,7 @@ public class MusicMixin implements MusicInterface {
         };
         Callable<Boolean> appendCallable=()-> {
             try {
-                appendToRedoLog(music_ns, mriIndex, digestId.transactionId, lockId, musicTxDigestTableName,
-                    musicRangeInformationTableName);
+                appendToRedoLog(music_ns, mriIndex, digestId.transactionId, lockId, musicRangeInformationTableName);
                 return true;
             } catch (MDBCServiceException e) {
                 logger.error(EELFLoggerDelegate.errorLogger, "Error creating and pushing tx digest to music",e);
@@ -1369,20 +1366,12 @@ public class MusicMixin implements MusicInterface {
         if (progressKeeper != null) {
             progressKeeper.setRecordId(txId, digestId);
         }
+        
         Set<Range> ranges = partition.getSnapshot();
+        
+        Map<Range, Pair<MriReference, MusicTxDigestId>> alreadyApplied = stateManager.getOwnAndCheck().getAlreadyApplied();
         for(Range r : ranges) {
-            Map<Range, Pair<MriReference, Integer>> alreadyApplied = stateManager.getOwnAndCheck().getAlreadyApplied();
-            if(!alreadyApplied.containsKey(r)){
-                throw new MDBCServiceException("already applied data structure was not updated correctly and range "
-                    +r+" is not contained");
-            }
-            Pair<MriReference, Integer> rowAndIndex = alreadyApplied.get(r);
-            MriReference key = rowAndIndex.getKey();
-            if(!mriIndex.equals(key.index)){
-                throw new MDBCServiceException("already applied data structure was not updated correctly and range "+
-                    r+" is not pointing to row: "+mriIndex.toString());
-            }
-            alreadyApplied.put(r, Pair.of(new MriReference(mriIndex), rowAndIndex.getValue()+1));
+            alreadyApplied.put(r, Pair.of(new MriReference(mriIndex), digestId));
         }
     }    
 
@@ -1482,13 +1471,11 @@ public class MusicMixin implements MusicInterface {
 
     static public MusicRangeInformationRow getMRIRowFromCassandraRow(Row newRow){
         UUID partitionIndex = newRow.getUUID("rangeid");
-        List<TupleValue> log = newRow.getList("txredolog",TupleValue.class);
+        List<UUID> log = newRow.getList("txredolog",UUID.class);
         List<MusicTxDigestId> digestIds = new ArrayList<>();
         int index=0;
-        for(TupleValue t: log){
-            //final String tableName = t.getString(0);
-            final UUID id = t.getUUID(1);
-            digestIds.add(new MusicTxDigestId(partitionIndex,id,index++));
+        for(UUID u: log){
+            digestIds.add(new MusicTxDigestId(partitionIndex,u,index++));
         }
         Set<Range> partitions = new HashSet<>();
         Set<String> tables = newRow.getSet("keys",String.class);
@@ -1569,7 +1556,7 @@ public class MusicMixin implements MusicInterface {
         fields.append("prevmrirows set<uuid>, ");
         fields.append("islatest boolean, ");
         //TODO: Frozen is only needed for old versions of cassandra, please update correspondingly
-        fields.append("txredolog list<frozen<tuple<text,uuid>>> ");
+        fields.append("txredolog list<uuid> ");
         String cql = String.format("CREATE TABLE IF NOT EXISTS %s.%s (%s, PRIMARY KEY (%s));",
            namespace, tableName, fields, priKey);
         try {
@@ -1703,15 +1690,12 @@ public class MusicMixin implements MusicInterface {
     @Override
     public void appendToRedoLog(UUID MRIIndex,  String lockId, MusicTxDigestId newRecord) throws MDBCServiceException {
         logger.debug("Appending to redo log for partition " + MRIIndex + " txId=" + newRecord.transactionId);
-        appendToRedoLog(music_ns,MRIIndex,newRecord.transactionId,lockId,musicTxDigestTableName,
-            musicRangeInformationTableName);
+        appendToRedoLog(music_ns,MRIIndex,newRecord.transactionId,lockId,musicRangeInformationTableName);
     }
 
-    public void appendToRedoLog(String musicNamespace, UUID MRIIndex, UUID transactionId, String lockId,
-                                        String musicTxDigestTableName, String musicRangeInformationTableName)
+    public void appendToRedoLog(String musicNamespace, UUID MRIIndex, UUID transactionId, String lockId, String musicRangeInformationTableName)
         throws MDBCServiceException{
-        PreparedQueryObject appendQuery = createAppendMtxdIndexToMriQuery(musicRangeInformationTableName, MRIIndex,
-            musicTxDigestTableName, transactionId);
+        PreparedQueryObject appendQuery = createAppendMtxdIndexToMriQuery(musicRangeInformationTableName, MRIIndex, transactionId);
         ReturnType returnType = MusicCore.criticalPut(musicNamespace, musicRangeInformationTableName, MRIIndex.toString(),
             appendQuery, lockId, null);
         //returnType.getExecutionInfo()
@@ -2226,13 +2210,15 @@ public class MusicMixin implements MusicInterface {
 
         changeIsLatestToMRI(partition.getMRIIndex(), false, partition.getLockId());
 
-        Map<Range, Pair<MriReference, Integer>> alreadyApplied = stateManager.getOwnAndCheck().getAlreadyApplied();
+        /*
+        Map<Range, Pair<MriReference, MusicTxDigestId>> alreadyApplied = stateManager.getOwnAndCheck().getAlreadyApplied();
         for (Range range: rangesUsed) {
             alreadyApplied.put(range, Pair.of(new MriReference(usedRow.getPartitionIndex()), -1));
         }
         for (Range range: rangesNotUsed) {
             alreadyApplied.put(range, Pair.of(new MriReference(unusedRow.getPartitionIndex()), -1));
         }
+        */
 
         //release/update old partition info
         relinquish(unusedRow.getDBPartition());

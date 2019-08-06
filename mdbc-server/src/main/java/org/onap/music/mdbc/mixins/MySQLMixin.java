@@ -247,7 +247,10 @@ public class MySQLMixin implements DBInterface {
         logger.debug(EELFLoggerDelegate.applicationLogger, "getSQLTableSet returning: " + set);
         Set<Range> rangeSet = new HashSet<>();
         for (String table : set) {
-            rangeSet.add(new Range(table));
+            if (getReservedTblNames().contains(table)) {
+                // Don't create triggers for the table the triggers write into!!!
+                rangeSet.add(new Range(table));
+            }
         }
         return rangeSet;
     }

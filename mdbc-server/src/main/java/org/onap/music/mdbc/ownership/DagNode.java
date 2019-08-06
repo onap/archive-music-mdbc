@@ -30,6 +30,7 @@ import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 
@@ -73,6 +74,10 @@ public class DagNode {
         return owned;
     }
 
+    /**
+     * 
+     * @return the row's MRI Index represented by this dagnode
+     */
     public UUID getId(){
         return row.getPartitionIndex();
     }
@@ -149,20 +154,25 @@ public class DagNode {
         currentIndex = currentIndex+1;
     }
 
-    public synchronized Pair<MusicTxDigestId, List<Range>> nextNotAppliedTransaction(Set<Range> ranges){
+    /**
+     * 
+     * @param ranges
+     * @return the index of the next transaction to replay and the ranges needed for this transaction
+     */
+    public synchronized Pair<MusicTxDigestId, Set<Range>> nextNotAppliedTransaction(Set<Range> ranges){
         if(row.getRedoLog().isEmpty()) return null;
         if(!applyInit){
             initializeApply(ranges);
         }
         final List<MusicTxDigestId> redoLog = row.getRedoLog();
         if(currentIndex  < redoLog.size()){
-            List<Range> responseRanges= new ArrayList<>();
+            Set<Range> responseRanges= new HashSet<>();
             startIndex.forEach((r, index) -> {
                 if(index < currentIndex){
                    responseRanges.add(r);
                 }
             });
-            return Pair.of(redoLog.get(currentIndex++),responseRanges);
+            return Pair.of(row.getRedoLog().get(currentIndex++),responseRanges);
         }
         return null;
     }
@@ -179,7 +189,7 @@ public class DagNode {
         if(row.getRedoLog().isEmpty()) return true;
         if(!applyInit){
             initializeApply(ranges);
-        }
+        }        
         return currentIndex >= row.getRedoLog().size();
     }
 
@@ -194,11 +204,13 @@ public class DagNode {
         if(o == null) return false;
         if(!(o instanceof DagNode)) return false;
         DagNode other = (DagNode) o;
-        return other.row.getPartitionIndex().equals(this.row.getPartitionIndex());
+        return other.row.equals(this.row);
     }
 
     @Override
     public int hashCode(){
         return row.getPartitionIndex().hashCode();
     }
+
+
 }

@@ -30,4 +30,7 @@ public final class MriReference {
 
 	public long getTimestamp() { return index.timestamp();}
 
+	public String toString() {
+	    return index.toString();
+	}
 }
