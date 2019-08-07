@@ -49,6 +49,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 
 public class MDBCUtils {
+    public static boolean writeLocksOnly = false;
 
     public static void saveToFile(String serializedContent, String filename, EELFLoggerDelegate logger) throws IOException {
         try (PrintWriter fout = new PrintWriter(filename)) {
@@ -129,6 +130,10 @@ public class MDBCUtils {
      * @return write if any table has a write query. Read otherwise
      */
     public static SQLOperationType getOperationType(Map<String, List<SQLOperation>> tableToQueryType) {
+        if (writeLocksOnly) {
+            return SQLOperationType.WRITE;
+        }
+
         for (List<org.onap.music.mdbc.query.SQLOperation> tablesOps : tableToQueryType.values()) {
             for (org.onap.music.mdbc.query.SQLOperation op : tablesOps) {
                 if (op.getOperationType() != SQLOperationType.READ) {

@@ -48,4 +48,8 @@ public class Configuration {
     public static final String KEY_WARMUPRANGES = "warmupranges";
 	/** Default async staging table update o ption*/
 	public static final String ASYNC_STAGING_TABLE_UPDATE = "false";
+	/** The property name to determine if only write locks are allowed */
+	public static final String KEY_WRITE_LOCKS_ONLY = "write_locks_only";
+	/** Default if only write locks are allowed */
+	public static final Boolean WRITE_LOCK_ONLY_DEFAULT = false;
 }

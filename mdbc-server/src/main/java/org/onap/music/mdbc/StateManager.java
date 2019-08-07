@@ -122,6 +122,9 @@ public class StateManager {
         cassandraUrl = info.getProperty(Configuration.KEY_CASSANDRA_URL, Configuration.CASSANDRA_URL_DEFAULT);
         musicmixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
         
+        String writeLocksOnly = info.getProperty(Configuration.KEY_WRITE_LOCKS_ONLY);
+        MDBCUtils.writeLocksOnly = (writeLocksOnly==null) ? Configuration.WRITE_LOCK_ONLY_DEFAULT : Boolean.parseBoolean(writeLocksOnly);
+        
         initMusic();
         initSqlDatabase();
         initTxDaemonThread();
