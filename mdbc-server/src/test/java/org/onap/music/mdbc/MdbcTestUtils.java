@@ -25,6 +25,8 @@ import static org.junit.Assert.fail;
 
 import ch.vorburger.exec.ManagedProcessException;
 import ch.vorburger.mariadb4j.DB;
+import ch.vorburger.mariadb4j.DBConfiguration;
+import ch.vorburger.mariadb4j.DBConfigurationBuilder;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.opentable.db.postgres.embedded.EmbeddedPostgres;
@@ -49,7 +51,7 @@ public class MdbcTestUtils {
     // Postgres variables
     static EmbeddedPostgres pg=null;
     static DataSource postgresDatabase=null;
-    final private static int postgresPort = 13307;
+    final private static int postgresPort = 6604;
     @Rule
     public static TemporaryFolder tf = new TemporaryFolder();
 
@@ -69,7 +71,7 @@ public class MdbcTestUtils {
     //Mariadb variables
     static DB db=null;
     final public static String mariaDBDatabaseName="TEST";
-    final static Integer mariaDbPort=13306;
+    final static Integer mariaDbPort=6603;
 
 
 
@@ -137,7 +139,6 @@ public class MdbcTestUtils {
     }
 
     synchronized static Connection getMariadbConnection(){
-        startMariaDb();
         Connection conn = null;
         try {
             conn = DriverManager
@@ -194,16 +195,17 @@ public class MdbcTestUtils {
         }
     }
 
-    static void stopMySql(){
+    private static void stopMySql(){
         try {
             db.stop();
+            db = null;
         } catch (ManagedProcessException e) {
             e.printStackTrace();
             fail("Error closing mysql");
         }
     }
 
-    public static void cleanDatabase(DBType type){
+    public static void stopDatabase(DBType type){
         switch(type) {
             case MySQL:
                 stopMySql();

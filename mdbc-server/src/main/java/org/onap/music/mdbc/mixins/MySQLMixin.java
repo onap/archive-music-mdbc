@@ -35,6 +35,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
@@ -44,6 +45,8 @@ import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.query.SQLOperation;
+import org.onap.music.mdbc.tables.MriReference;
+import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.Operation;
 import org.onap.music.mdbc.tables.StagingTable;
 import net.sf.jsqlparser.JSQLParserException;
@@ -85,7 +88,7 @@ public class MySQLMixin implements DBInterface {
             + "CONNECTION_ID INT, PRIMARY KEY (IX));";
     private static final String CKPT_TBL = "MDBC_CHECKPOINT";
     private static final String CREATE_CKPT_SQL =
-            "CREATE TABLE IF NOT EXISTS " + CKPT_TBL + " (RANGENAME VARCHAR(64) PRIMARY KEY, MRIROW VARCHAR(36), DIGESTINDEX INT);";
+            "CREATE TABLE IF NOT EXISTS " + CKPT_TBL + " (RANGENAME VARCHAR(64) PRIMARY KEY, MRIROW VARCHAR(36), DIGESTID VARCHAR(36));";
 
     private final MusicInterface mi;
     private final int connId;
@@ -247,7 +250,7 @@ public class MySQLMixin implements DBInterface {
         logger.debug(EELFLoggerDelegate.applicationLogger, "getSQLTableSet returning: " + set);
         Set<Range> rangeSet = new HashSet<>();
         for (String table : set) {
-            if (getReservedTblNames().contains(table)) {
+            if (!getReservedTblNames().contains(table)) {
                 // Don't create triggers for the table the triggers write into!!!
                 rangeSet.add(new Range(table));
             }
@@ -1145,12 +1148,12 @@ public class MySQLMixin implements DBInterface {
     }
 
     @Override
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) {
-        String query = "UPDATE " + CKPT_TBL + " SET MRIROW=?, DIGESTINDEX=? where RANGENAME=?;";
+    public void updateCheckpointLocations(Range r, Pair<MriReference, MusicTxDigestId> playbackPointer) {
+        String query = "UPDATE " + CKPT_TBL + " SET MRIROW=?, DIGESTID=? where RANGENAME=?;";
         try {
             PreparedStatement stmt = jdbcConn.prepareStatement(query);
-            stmt.setString(1, playbackPointer.getLeft().toString());
-            stmt.setInt(2, playbackPointer.getRight());
+            stmt.setString(1, playbackPointer.getLeft().getIndex().toString());
+            stmt.setString(2, playbackPointer.getRight().transactionId.toString());
             stmt.setString(3, r.getTable());
             stmt.execute();
             stmt.close();
@@ -1159,6 +1162,30 @@ public class MySQLMixin implements DBInterface {
         }
     }
 
+    @Override
+    public Map<Range, Pair<MriReference, MusicTxDigestId>> getCheckpointLocations() {
+        Map<Range, Pair<MriReference, MusicTxDigestId>> alreadyApplied = new ConcurrentHashMap<>();
+        try {
+            Statement stmt = jdbcConn.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * FROM " + CKPT_TBL + ";");
+            while (rs.next()) {
+                Range r = new Range(rs.getString("RANGENAME"));
+                String mrirow = rs.getString("MRIROW");
+                String txId = rs.getString("DIGESTID");
+                if (mrirow!=null) {
+                    logger.info(EELFLoggerDelegate.applicationLogger,
+                            "Previously checkpointed: " + r.getTable() + " at (" + mrirow + ", " + txId + ")");
+                    alreadyApplied.put(r, Pair.of(new MriReference(mrirow), new MusicTxDigestId(mrirow, txId, -1)));
+                }
+            }
+            stmt.close();
+        } catch (SQLException e) {
+            logger.error(EELFLoggerDelegate.errorLogger, "Unable to get replay checkpoint location", e);
+        }
+
+        return alreadyApplied;
+    }
+    
     @Override
     public void initTables() {
         try {
