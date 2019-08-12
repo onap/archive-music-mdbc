@@ -188,9 +188,10 @@ public interface MusicInterface {
 	 * @param transactionDigest digest of the transaction that is being committed into the Redo log in music.
 	 * @param txId id associated with the log being send
 	 * @param progressKeeper data structure that is used to handle to detect failures, and know what to do
+	 * @return digest that was created for this transaction commit 
 	 * @throws MDBCServiceException
 	 */
-	void commitLog(DatabasePartition partition, Set<Range> eventualRanges, StagingTable transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
+	MusicTxDigestId commitLog(DatabasePartition partition, Set<Range> eventualRanges, StagingTable transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
 
     /**
@@ -363,7 +364,7 @@ public interface MusicInterface {
      * @param r
      * @param playbackPointer
      */
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer);
+    public void updateCheckpointLocations(Range r, Pair<MriReference, MusicTxDigestId> playbackPointer);
 
 }
 

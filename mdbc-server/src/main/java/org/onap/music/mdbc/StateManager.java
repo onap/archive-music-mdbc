@@ -49,6 +49,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -92,8 +93,6 @@ public class StateManager {
     private final Lock warmupLock = new ReentrantLock();
     /** a set of ranges that should be periodically updated with latest information, if null all tables should be warmed up */
     private Set<Range> rangesToWarmup;
-    /** map of transactions that have already been applied/updated in this sites SQL db */
-    private Map<Range, Pair<MriReference, MusicTxDigestId>> alreadyApplied;
     private OwnershipAndCheckpoint ownAndCheck;
     private Thread txDaemon ;
 
@@ -124,12 +123,12 @@ public class StateManager {
         musicmixin = info.getProperty(Configuration.KEY_MUSIC_MIXIN_NAME, Configuration.MUSIC_MIXIN_DEFAULT);
         
         initMusic();
-        initSqlDatabase();
-        initTxDaemonThread();
+        Map<Range, Pair<MriReference, MusicTxDigestId>> alreadyApplied = initSqlDatabase();
         String t = info.getProperty(Configuration.KEY_OWNERSHIP_TIMEOUT);
         long timeout = (t == null) ? Configuration.DEFAULT_OWNERSHIP_TIMEOUT : Integer.parseInt(t);
-        alreadyApplied = new ConcurrentHashMap<>();
         ownAndCheck = new OwnershipAndCheckpoint(alreadyApplied, timeout);
+        
+        initTxDaemonThread();
     }
 
     protected String cleanSqlUrl(String url){
@@ -161,7 +160,12 @@ public class StateManager {
         this.mdbcConnections = new HashMap<>();
     }
     
-    protected void initSqlDatabase() throws MDBCServiceException {
+    /**
+     * Do everything necessary to initialize the sql database
+     * @return the current checkpoint location of this database, if restarting
+     * @throws MDBCServiceException
+     */
+    protected Map<Range, Pair<MriReference, MusicTxDigestId>> initSqlDatabase() throws MDBCServiceException {
         if(!this.sqlDBUrl.toLowerCase().startsWith("jdbc:postgresql")) {
             try {
                 Connection sqlConnection = DriverManager.getConnection(this.sqlDBUrl, this.info);
@@ -179,16 +183,21 @@ public class StateManager {
             }
         }
         
-        // Verify the tables in MUSIC match the tables in the database
-        // and create triggers on any tables that need them
+        Map<Range, Pair<MriReference, MusicTxDigestId>> alreadyAppliedToDb = null;
         try {
             MdbcConnection mdbcConn = (MdbcConnection) openConnection("init");
             mdbcConn.initDatabase();
+            alreadyAppliedToDb = mdbcConn.getDBInterface().getCheckpointLocations();
             closeConnection("init");
         } catch (QueryException e) {
-            logger.error("Error syncrhonizing tables");
+            logger.error("Error initializing sql database tables");
             logger.error(EELFLoggerDelegate.errorLogger, e.getMessage(), AppMessages.QUERYERROR, ErrorTypes.QUERYERROR, ErrorSeverity.CRITICAL);
         }
+        
+        if (alreadyAppliedToDb==null) {
+            alreadyAppliedToDb = new ConcurrentHashMap<>();
+        }
+        return alreadyAppliedToDb;
     }
     
     /**

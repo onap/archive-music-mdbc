@@ -235,12 +235,9 @@ public class OwnershipAndCheckpoint{
             return;
         }
         applyTxDigest(dbi, txDigest);
-        for (Range r : ranges) {
-            MusicRangeInformationRow row = node.getRow();
-            alreadyApplied.put(r, Pair.of(new MriReference(row.getPartitionIndex()), digestId));
-            
-            updateCheckpointLocations(mi, dbi, r, row.getPartitionIndex(), digestId);
-        }
+        
+        MusicRangeInformationRow row = node.getRow();
+        updateAlreadyApplied(mi, dbi, ranges, row.getPartitionIndex(), digestId);
     }
     
     /**
@@ -258,10 +255,10 @@ public class OwnershipAndCheckpoint{
             }
             MriReference appliedMriRef = applied.getLeft();
             MusicTxDigestId appliedDigest = applied.getRight();
-            int appliedIndex = node.getRow().getRedoLog().indexOf(appliedDigest);
+            appliedDigest.index = node.getRow().getRedoLog().indexOf(appliedDigest);
             if (appliedMriRef==null || appliedMriRef.getTimestamp() < node.getTimestamp()
                     || (appliedMriRef.getTimestamp() == node.getTimestamp()
-                            && appliedIndex < index)) {
+                            && appliedDigest.index < index)) {
                 return false;
             }
         }
@@ -273,12 +270,12 @@ public class OwnershipAndCheckpoint{
      * @param mi
      * @param di
      * @param r
-     * @param partitionIndex
+     * @param mriRef
      * @param index
      */
-    private void updateCheckpointLocations(MusicInterface mi, DBInterface dbi, Range r, UUID partitionIndex, MusicTxDigestId txdigest) {
-        dbi.updateCheckpointLocations(r, Pair.of(partitionIndex, txdigest.index));
-        mi.updateCheckpointLocations(r, Pair.of(partitionIndex, txdigest.index));
+    private void updateCheckpointLocations(MusicInterface mi, DBInterface dbi, Range r, MriReference mriRef, MusicTxDigestId txdigest) {
+        dbi.updateCheckpointLocations(r, Pair.of(mriRef, txdigest));
+        mi.updateCheckpointLocations(r, Pair.of(mriRef, txdigest));
     }
 
     /**
@@ -500,6 +497,18 @@ public class OwnershipAndCheckpoint{
             
     public Map<Range, Pair<MriReference, MusicTxDigestId>> getAlreadyApplied() {
         return this.alreadyApplied;
+    }
+
+    public void updateAlreadyApplied(MusicInterface mi, DBInterface dbi, Set<Range> ranges, UUID mriIndex, MusicTxDigestId digestId) {
+        for (Range r: ranges) {
+            updateAlreadyApplied(mi, dbi, r, mriIndex, digestId);
+        }
+    }
+    
+    public void updateAlreadyApplied(MusicInterface mi, DBInterface dbi, Range r, UUID mriIndex, MusicTxDigestId digestId) {
+        MriReference mriRef = new MriReference(mriIndex);
+        alreadyApplied.put(r, Pair.of(mriRef, digestId));
+        updateCheckpointLocations(mi, dbi, r, mriRef, digestId);
     } 
     
 }
