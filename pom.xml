@@ -230,7 +230,7 @@
         <dependency>
             <groupId>org.onap.music</groupId>
             <artifactId>MUSIC</artifactId>
-            <version>3.2.34-SNAPSHOT</version>
+            <version>3.2.35</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.netty</groupId>
