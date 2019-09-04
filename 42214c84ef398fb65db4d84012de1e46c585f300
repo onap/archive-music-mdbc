@@ -1,0 +1,10 @@
+Verified+1: ONAP Jobbuilder <onap-jobbuilder@jenkins.onap.org>
+Code-Review+1: Brendan Tschaen <ctschaen@att.com>
+Code-Review+1: Arthur Martella <arthur.martella.1@att.com>
+Code-Review+2: Bharath Balasubramanian <bharathb@research.att.com>
+Verified+1: Bharath Balasubramanian <bharathb@research.att.com>
+Submitted-by: Bharath Balasubramanian <bharathb@research.att.com>
+Submitted-at: Wed, 04 Sep 2019 15:45:01 +0000
+Reviewed-on: https://gerrit.onap.org/r/c/music/mdbc/+/92899
+Project: music/mdbc
+Branch: refs/heads/master
