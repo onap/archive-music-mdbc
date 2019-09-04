@@ -170,7 +170,7 @@ public class DagTest {
         HashSet<Range> rangesSet = new HashSet<>(ranges);
         while(!dag.applied()){
             DagNode node = dag.nextToApply(ranges);
-            Pair<MusicTxDigestId, List<Range>> pair = node.nextNotAppliedTransaction(rangesSet);
+            Pair<MusicTxDigestId, Set<Range>> pair = node.nextNotAppliedTransaction(rangesSet);
             int transactionCounter = 0;
             while(pair!=null) {
                 assertNotEquals(1,transactionCounter);
@@ -178,9 +178,10 @@ public class DagTest {
                 MusicTxDigestId id = row.getRedoLog().get(transactionCounter);
                 assertEquals(id,pair.getKey());
                 assertEquals(0,pair.getKey().index);
-                List<Range> value = pair.getValue();
+                Set<Range> value = pair.getValue();
                 assertEquals(1,value.size());
-                assertEquals(new Range("schema.range1"),value.get(0));
+                assertTrue(value.contains(new Range("schema.range1")));
+                //assertEquals(new Range("schema.range1"),value.get(0));
                 pair = node.nextNotAppliedTransaction(rangesSet);
                 transactionCounter++;
             }
@@ -192,7 +193,7 @@ public class DagTest {
 
     @Test
     public void nextToApply2() throws InterruptedException, MDBCServiceException {
-        Map<Range, Pair<MriReference, Integer>> alreadyApplied = new HashMap<>();
+        Map<Range, Pair<MriReference, MusicTxDigestId>> alreadyApplied = new HashMap<>();
         List<MusicRangeInformationRow> rows = new ArrayList<>();
         Set<Range> ranges = new HashSet<>( Arrays.asList(
             new Range("schema.range1")
@@ -207,7 +208,7 @@ public class DagTest {
             new MusicTxDigestId(null,MDBCUtils.generateUniqueKey(),1)
         ));
         MusicRangeInformationRow newRow = createNewRow(new HashSet<>(ranges), "", false, redo2);
-        alreadyApplied.put(new Range("schema.range1"),Pair.of(new MriReference(newRow.getPartitionIndex()), 0));
+        alreadyApplied.put(new Range("schema.range1"),Pair.of(new MriReference(newRow.getPartitionIndex()), redo1.get(0)));
         rows.add(newRow);
         MILLISECONDS.sleep(10);
         List<MusicTxDigestId> redo3 = new ArrayList<>(Arrays.asList(
@@ -220,7 +221,7 @@ public class DagTest {
         int nodeCounter = 1;
         while(!dag.applied()){
             DagNode node = dag.nextToApply(ranges);
-            Pair<MusicTxDigestId, List<Range>> pair = node.nextNotAppliedTransaction(rangesSet);
+            Pair<MusicTxDigestId, Set<Range>> pair = node.nextNotAppliedTransaction(rangesSet);
             int transactionCounter = 0;
             while(pair!=null) {
                 assertNotEquals(1,transactionCounter);
@@ -228,9 +229,10 @@ public class DagTest {
                 MusicTxDigestId id = row.getRedoLog().get(2-nodeCounter);
                 assertEquals(id,pair.getKey());
                 assertEquals(2-nodeCounter,pair.getKey().index);
-                List<Range> value = pair.getValue();
+                Set<Range> value = pair.getValue();
                 assertEquals(1,value.size());
-                assertEquals(new Range("schema.range1"),value.get(0));
+                assertTrue(value.contains(new Range("schema.range1")));
+                //assertEquals(new Range("schema.range1"),value.get(0));
                 pair = node.nextNotAppliedTransaction(rangesSet);
                 transactionCounter++;
             }

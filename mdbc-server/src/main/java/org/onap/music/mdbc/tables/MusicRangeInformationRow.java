@@ -96,7 +96,7 @@ public final class MusicRangeInformationRow implements Comparable<MusicRangeInfo
         if(o == null) return false;
         if(!(o instanceof MusicRangeInformationRow)) return false;
         MusicRangeInformationRow other = (MusicRangeInformationRow) o;
-        return other.getPartitionIndex().equals(this.getPartitionIndex());
+        return other.getPartitionIndex().equals(this.getPartitionIndex()) && other.getRedoLog().equals(this.getRedoLog());
     }
 
     @Override

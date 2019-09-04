@@ -36,6 +36,7 @@ import org.onap.music.mdbc.mixins.MusicInterface.OwnershipReturn;
 import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicTxDigestDaemon;
+import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
 import java.io.IOException;
@@ -92,7 +93,7 @@ public class StateManager {
     /** a set of ranges that should be periodically updated with latest information, if null all tables should be warmed up */
     private Set<Range> rangesToWarmup;
     /** map of transactions that have already been applied/updated in this sites SQL db */
-    private Map<Range, Pair<MriReference, Integer>> alreadyApplied;
+    private Map<Range, Pair<MriReference, MusicTxDigestId>> alreadyApplied;
     private OwnershipAndCheckpoint ownAndCheck;
     private Thread txDaemon ;
 
