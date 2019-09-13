@@ -83,7 +83,7 @@ public class OwnershipAndCheckpointTest {
 	
 
     @BeforeClass
-    public static void init() throws MusicServiceException, ClassNotFoundException, ManagedProcessException {
+    public static void init() throws MusicServiceException, ClassNotFoundException, ManagedProcessException, MDBCServiceException {
         MdbcTestUtils.initCassandra();
         Class.forName("org.mariadb.jdbc.Driver");
 		//start embedded mariadb

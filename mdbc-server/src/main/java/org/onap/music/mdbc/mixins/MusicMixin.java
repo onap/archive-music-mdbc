@@ -51,6 +51,7 @@ import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
+import org.onap.music.lockingservice.cassandra.LockType;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicCore;
 import org.onap.music.main.ResultType;
@@ -70,6 +71,7 @@ import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.RangeDependency;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
+import org.onap.music.service.impl.MusicCassaCore;
 
 /**
  * This class provides the methods that MDBC needs to access Cassandra directly in order to provide persistence
@@ -289,6 +291,8 @@ public class MusicMixin implements MusicInterface {
                 throw new MDBCServiceException("Error creating namespace: "+keyspace+". Internal error:"+e.getErrorMessage(),
                     e);
             }
+        } catch (MusicQueryException e) {
+            throw new MDBCServiceException(e); 
         }
     }
 
@@ -1213,7 +1217,11 @@ public class MusicMixin implements MusicInterface {
             newLockId = currentLockRef.get(pending.getKey());
             success = (MusicCore.whoseTurnIsIt(newFullyQualifiedKey) == newLockId);
         } else {
-            newLockId = MusicCore.createLockReference(newFullyQualifiedKey);
+            try {
+                newLockId = MusicCore.createLockReference(newFullyQualifiedKey);
+            } catch (MusicLockingException e) {
+                throw new MDBCServiceException(e); 
+            }
             ReturnType newLockReturn = acquireLock(fullyQualifiedKey, lockId);
             success = newLockReturn.getResult().compareTo(ResultType.SUCCESS) == 0;
         }
@@ -1238,7 +1246,11 @@ public class MusicMixin implements MusicInterface {
     protected String createAndAssignLock(String fullyQualifiedKey, DatabasePartition partition) throws MDBCServiceException {
         UUID mriIndex = partition.getMRIIndex();
         String lockId;
-        lockId = MusicCore.createLockReference(fullyQualifiedKey);
+        try {
+            lockId = MusicCore.createLockReference(fullyQualifiedKey);
+        } catch (MusicLockingException e1) {
+            throw new MDBCServiceException(e1); 
+        }
         if(lockId==null) {
            throw new MDBCServiceException("lock reference is null");
         }
@@ -1833,6 +1845,8 @@ public class MusicMixin implements MusicInterface {
         } catch (MusicServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Transaction Digest serialization was invalid for digest id "+digestId.toString()+ "with error "+e.getErrorMessage());
             throw new MDBCServiceException("Transaction Digest serialization for digest id "+digestId.toString(), e);
+        } catch (MusicQueryException e) {
+            throw new MDBCServiceException(e); 
         }
     }
     
@@ -1859,6 +1873,8 @@ public class MusicMixin implements MusicInterface {
         } catch (MusicServiceException e) {
             logger.error(EELFLoggerDelegate.errorLogger, "Transaction Digest serialization was invalid for commit "+newId.transactionId.toString()+ "with error "+e.getErrorMessage());
             throw new MDBCServiceException("Transaction Digest serialization for commit "+newId.transactionId.toString(), e);
+        } catch (MusicQueryException e) {
+            throw new MDBCServiceException(e); 
         }
     }
 
@@ -2016,7 +2032,7 @@ public class MusicMixin implements MusicInterface {
     private void unlockKeyInMusic(String table, String key, String lockref) throws MDBCServiceException {
         String fullyQualifiedKey= music_ns+"."+ table+"."+key;
         try {
-            MusicCore.voluntaryReleaseLock(fullyQualifiedKey,lockref);
+            MusicCassaCore.getInstance().voluntaryReleaseLock(fullyQualifiedKey,lockref);
         } catch (MusicLockingException e) {
             throw new MDBCServiceException(e.getMessage(), e);
         }
@@ -2055,6 +2071,15 @@ public class MusicMixin implements MusicInterface {
         }
     }
 
+    @Override
+    public void releaseAllLocksForOwner(String ownerId, String keyspace, String table) throws MDBCServiceException {
+        try {
+            MusicCore.releaseAllLocksForOwner(ownerId, keyspace, table);
+        } catch (MusicLockingException | MusicServiceException | MusicQueryException e) {
+            throw new MDBCServiceException(e);
+        }
+    }
+
     /**
      * Get a list of ranges and their range dependencies
      * @param range
@@ -2076,9 +2101,19 @@ public class MusicMixin implements MusicInterface {
 
     @Override
     public String createLock(LockRequest request) throws MDBCServiceException{
+        return createLock(request, null);
+    }
+
+    @Override
+    public String createLock(LockRequest request, String ownerId) throws MDBCServiceException{
         String fullyQualifiedKey= music_ns+"."+ musicRangeInformationTableName + "." + request.getId();
         boolean isWrite = (request.getLockType()==SQLOperationType.WRITE);
-        String lockId = MusicCore.createLockReference(fullyQualifiedKey, isWrite);
+        String lockId;
+        try {
+            lockId = MusicCore.createLockReference(fullyQualifiedKey, isWrite?LockType.WRITE:LockType.READ, ownerId);
+        } catch (MusicLockingException e) {
+            throw new MDBCServiceException(e); 
+        }
         return lockId;
     }
 
@@ -2558,7 +2593,7 @@ public class MusicMixin implements MusicInterface {
     }
 
     @Override
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) {
+    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) throws MDBCServiceException {
         String cql = String.format("INSERT INTO %s.%s (mdbcnode, mridigest, digestindex) VALUES ("
                 + this.myId + ", " + playbackPointer.getLeft() + ", " + playbackPointer.getRight() + ");",
                 music_ns, this.musicMdbcCheckpointsTableName);
@@ -2568,8 +2603,10 @@ public class MusicMixin implements MusicInterface {
             MusicCore.nonKeyRelatedPut(pQueryObject,"eventual");
         } catch (MusicServiceException e) {
             logger.warn(EELFLoggerDelegate.applicationLogger, "Unable to update the checkpoint location", e);
+        } catch (MusicQueryException e) {
+            throw new MDBCServiceException(e); 
         }
     }
-    
+
     
 }

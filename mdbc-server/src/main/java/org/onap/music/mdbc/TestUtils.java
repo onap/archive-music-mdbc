@@ -34,6 +34,7 @@ import java.io.InputStream;
 import java.util.*;
 import org.onap.music.mdbc.mixins.MusicInterface;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
+import org.onap.music.service.impl.MusicCassaCore;
 
 public class TestUtils {
 
@@ -55,7 +56,7 @@ public class TestUtils {
     public static void unlockRow(String keyspace, String mriTableName, DatabasePartition partition)
         throws MusicLockingException {
         String fullyQualifiedMriKey = keyspace+"."+ mriTableName+"."+partition.getMRIIndex().toString();
-        MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
+        MusicLockState musicLockState = MusicCassaCore.getInstance().voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
     }
 
     public static void createKeyspace(String keyspace, Session session) {
@@ -142,7 +143,7 @@ public class TestUtils {
         }
     }
 
-
+/*
     public static void populateMusicUtilsWithProperties(Properties prop){
         //TODO: Learn how to do this properly within music
         String[] propKeys = MusicUtil.getPropkeys();
@@ -207,6 +208,6 @@ public class TestUtils {
             }
         }
 
-
     }
+*/
 }

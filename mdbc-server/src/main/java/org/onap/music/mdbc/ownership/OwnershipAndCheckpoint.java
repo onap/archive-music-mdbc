@@ -27,9 +27,11 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicDeadlockException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.Utils;
 import org.onap.music.mdbc.mixins.DBInterface;
 import org.onap.music.mdbc.mixins.LockRequest;
 import org.onap.music.mdbc.mixins.LockResult;
@@ -275,8 +277,9 @@ public class OwnershipAndCheckpoint{
      * @param r
      * @param partitionIndex
      * @param index
+     * @throws MDBCServiceException 
      */
-    private void updateCheckpointLocations(MusicInterface mi, DBInterface dbi, Range r, UUID partitionIndex, MusicTxDigestId txdigest) {
+    private void updateCheckpointLocations(MusicInterface mi, DBInterface dbi, Range r, UUID partitionIndex, MusicTxDigestId txdigest) throws MDBCServiceException {
         dbi.updateCheckpointLocations(r, Pair.of(partitionIndex, txdigest.index));
         mi.updateCheckpointLocations(r, Pair.of(partitionIndex, txdigest.index));
     }
@@ -322,7 +325,11 @@ public class OwnershipAndCheckpoint{
      */
     public OwnershipReturn own(MusicInterface mi, Set<Range> ranges,
             DatabasePartition currPartition, UUID opId, SQLOperationType lockType) throws MDBCServiceException {
-        
+        return own(mi, ranges, currPartition, opId, lockType, null);
+    }
+
+    public OwnershipReturn own(MusicInterface mi, Set<Range> ranges,
+            DatabasePartition currPartition, UUID opId, SQLOperationType lockType, String ownerId) throws MDBCServiceException {
         if (ranges == null || ranges.isEmpty()) {
               return null;
         }
@@ -342,7 +349,19 @@ public class OwnershipAndCheckpoint{
         while ( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
                 !timeout(opId)
             ) {
-            takeOwnershipOfDag(mi, currPartition, opId, locksForOwnership, toOwn, lockType);
+            try {
+                takeOwnershipOfDag(mi, currPartition, opId, locksForOwnership, toOwn, lockType, ownerId);
+            } catch (MDBCServiceException e) {
+                MusicDeadlockException de = Utils.getDeadlockException(e);
+                if (de!=null) {
+//                    System.out.println("IN O&C.OWN, DETECTED DEADLOCK, REMOVING " + currPartition + ", RELEASING " + locksForOwnership);
+                    locksForOwnership.remove(currPartition.getMRIIndex());
+                    mi.releaseLocks(locksForOwnership);
+                    stopOwnershipTimeoutClock(opId);
+                    logger.error("Error when owning a range: Deadlock detected");
+                }
+                throw e;
+            }
             currentlyOwn=toOwn;
             //TODO instead of comparing dags, compare rows
             rangesToOwnRows = extractRowsForRange(mi, rangesToOwn, false);
@@ -373,7 +392,7 @@ public class OwnershipAndCheckpoint{
      * @throws MDBCServiceException
      */
     private void takeOwnershipOfDag(MusicInterface mi, DatabasePartition partition, UUID opId,
-            Map<UUID, LockResult> ownershipLocks, Dag toOwn, SQLOperationType lockType) throws MDBCServiceException {
+            Map<UUID, LockResult> ownershipLocks, Dag toOwn, SQLOperationType lockType, String ownerId) throws MDBCServiceException {
         
         while(toOwn.hasNextToOwn()){
             DagNode node = toOwn.nextToOwn();
@@ -394,7 +413,7 @@ public class OwnershipAndCheckpoint{
             } else {
                 LockRequest request = new LockRequest(uuidToOwn,
                         new ArrayList<>(node.getRangeSet()), lockType);
-                String lockId = mi.createLock(request);
+                String lockId = mi.createLock(request, ownerId);
                 LockResult result = null;
                 boolean owned = false;
                 while(!owned && !timeout(opId)){
