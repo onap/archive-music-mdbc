@@ -31,12 +31,11 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.Random;
 
-import org.apache.log4j.Logger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
+import org.onap.music.logging.EELFLoggerDelegate;
 
 /**
  * This test tests a copy of data from DB1 to DB2.  It tests the following H2 data types:
@@ -46,7 +45,7 @@ public class CrossSiteTest extends TestCommon {
 	private static final String DB_CONNECTION1 = "avatica://" + "mem:db1";
 	private static final String DB_CONNECTION2 = "avatica://" + "mem:db2";
 	private static final String KEYSPACE       = "CrossSite_Test";
-	private final static Logger logger = Logger.getLogger(CrossSiteTest.class);
+    private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(CrossSiteTest.class);
 
 	private Connection db1, db2;
 
@@ -96,7 +95,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT COUNT(*) produced no result");
 			}
 		} catch (Exception e) {
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", e);
 			e.printStackTrace();
 			fail("2: " + e.toString());
 		}
@@ -121,7 +120,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT COUNT(*) produced no result");
 			}
 		} catch (Exception e) {
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", e);
 			e.printStackTrace();
 			fail("2: " + e.toString());
 		}
@@ -158,7 +157,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT COUNT(*) produced no result");
 			}
 		} catch (Exception e) {
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", e);
 			e.printStackTrace();
 			fail("2: " + e.toString());
 		}
@@ -214,7 +213,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT * FROM DATATYPES");
 			}
 		} catch (Exception ex) {
-			logger.error(ex);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", ex);
 			ex.printStackTrace();
 			fail("2: " + ex.toString());
 		}
@@ -252,7 +251,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT * FROM DATATYPES");
 			}
 		} catch (Exception ex) {
-			logger.error(ex);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", ex);
 			ex.printStackTrace();
 			fail("testIdentity 2: " + ex.toString());
 		}
@@ -320,7 +319,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT * FROM BLOBTEST");
 			}
 		} catch (Exception ex) {
-			logger.error(ex);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", ex);
 			ex.printStackTrace();
 			fail("testBLOBColumn 2: " + ex.toString());
 		}
@@ -358,7 +357,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT COUNT(*) produced no result");
 			}
 		} catch (Exception e) {
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", e);
 			e.printStackTrace();
 			fail("2: " + e.toString());
 		}
@@ -383,7 +382,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT COUNT(*) produced no result");
 			}
 		} catch (Exception e) {
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", e);
 			e.printStackTrace();
 			fail("2: " + e.toString());
 		}
@@ -417,7 +416,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT COUNT(*) produced no result");
 			}
 		} catch (Exception e) {
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", e);
 			e.printStackTrace();
 			fail("2: " + e.toString());
 		}
@@ -442,7 +441,7 @@ public class CrossSiteTest extends TestCommon {
 				fail("SELECT OTHER produced no result");
 			}
 		} catch (Exception e) {
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", e);
 			e.printStackTrace();
 			fail("2: " + e.toString());
 		}

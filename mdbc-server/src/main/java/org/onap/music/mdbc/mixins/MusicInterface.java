@@ -321,9 +321,12 @@ public interface MusicInterface {
     void updateNodeInfoTableWithTxTimeIDKey(UUID txTimeID, String nodeName) throws MDBCServiceException;
 
     String createLock(LockRequest request) throws MDBCServiceException;
+    String createLock(LockRequest request, String ownerId) throws MDBCServiceException;
     LockResult acquireLock(LockRequest request, String lockId) throws MDBCServiceException;
 
     void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
+
+    public void releaseAllLocksForOwner(String owner, String keyspace, String table) throws MDBCServiceException;
 
     /**
      * Combine previous musicrangeinformation rows for new partition, if necessary
@@ -362,8 +365,9 @@ public interface MusicInterface {
      * This is an eventual operation for minimal performance hits
      * @param r
      * @param playbackPointer
+     * @throws MDBCServiceException
      */
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer);
+    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) throws MDBCServiceException;
 
 }
 
