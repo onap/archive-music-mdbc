@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+
+import org.onap.music.exceptions.MusicDeadlockException;
 import org.onap.music.logging.EELFLoggerDelegate;
 
 public class Utils {
@@ -76,5 +78,13 @@ public class Utils {
                 logger.error(EELFLoggerDelegate.errorLogger, "Driver class " + driver + " not found.");
             }
         }
+    }
+
+    public static MusicDeadlockException getDeadlockException(Throwable t) {
+        while (t!=null) {
+            if (t instanceof MusicDeadlockException) return (MusicDeadlockException)t;
+            t = t.getCause();
+        }
+        return null;
     }
 }

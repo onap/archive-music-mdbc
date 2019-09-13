@@ -44,6 +44,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicDeadlockException;
 import org.onap.music.exceptions.QueryException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
@@ -89,6 +90,7 @@ public class MdbcConnection implements Connection {
     private DatabasePartition partition;
     /** ranges needed for this transaction */
     private Set<Range> rangesUsed;
+    private String ownerId = UUID.randomUUID().toString();
 
     public MdbcConnection(String id, String url, Connection c, Properties info, MusicInterface mi,
             TxCommitProgress progressKeeper, DatabasePartition partition, StateManager statemanager) throws MDBCServiceException {
@@ -609,7 +611,7 @@ public class MdbcConnection implements Connection {
         OwnershipAndCheckpoint ownAndCheck = statemanager.getOwnAndCheck();
         UUID ownOpId = MDBCUtils.generateTimebasedUniqueKey();
         try {
-            final OwnershipReturn ownershipReturn = ownAndCheck.own(mi, ranges, partition, ownOpId, lockType);
+            final OwnershipReturn ownershipReturn = ownAndCheck.own(mi, ranges, partition, ownOpId, lockType, ownerId);
             if(ownershipReturn==null){
                 return null;
             }
@@ -624,8 +626,20 @@ public class MdbcConnection implements Connection {
                 newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
                     ownershipReturn.getOwnerId());
             }
-        }
-        finally{
+        } catch (MDBCServiceException e) {
+            MusicDeadlockException de = Utils.getDeadlockException(e);
+            if (de!=null) {
+                //release all partitions
+                mi.releaseAllLocksForOwner(de.getOwner(), de.getKeyspace(), de.getTable());
+                //rollback transaction
+                try {
+                    rollback();
+                } catch (SQLException e1) {
+                    throw new MDBCServiceException("Failed to rollback transaction after detecting deadlock while taking ownership of table, which, wow", e1);
+                }
+            }
+            throw e;
+        } finally {
             ownAndCheck.stopOwnershipTimeoutClock(ownOpId);
         }
         return newPartition;
