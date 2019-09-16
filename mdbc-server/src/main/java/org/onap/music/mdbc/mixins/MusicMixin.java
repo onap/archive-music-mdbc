@@ -54,6 +54,7 @@ import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.lockingservice.cassandra.LockType;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicCore;
+import org.onap.music.main.PropertiesLoader;
 import org.onap.music.main.ResultType;
 import org.onap.music.main.ReturnType;
 import org.onap.music.mdbc.DatabasePartition;
@@ -214,6 +215,8 @@ public class MusicMixin implements MusicInterface {
     }
 
     public MusicMixin(StateManager stateManager, String mdbcServerName, Properties info) throws MDBCServiceException {
+        PropertiesLoader.loadProperties(info);
+
         // Default values -- should be overridden in the Properties
         // Default to using the host_ids of the various peers as the replica IDs (this is probably preferred)
         this.musicAddress   = info.getProperty(KEY_MUSIC_ADDRESS, DEFAULT_MUSIC_ADDRESS);
