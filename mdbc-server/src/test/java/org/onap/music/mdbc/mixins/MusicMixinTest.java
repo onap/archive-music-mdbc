@@ -107,7 +107,7 @@ public class MusicMixinTest {
     public void initTest() throws MDBCServiceException {
         session = MdbcTestUtils.getSession();
         session.execute("DROP KEYSPACE IF EXISTS "+ MdbcTestUtils.getKeyspace());
-        mixin=MdbcTestUtils.getMusicMixin();
+        mixin = MdbcTestUtils.getMusicMixin();
     }
 
     //@Test(timeout=10000)
@@ -253,21 +253,7 @@ public class MusicMixinTest {
         mixin.addEventualTxDigest(digestId, compressed);
         
         LinkedHashMap<UUID, StagingTable> digest =  mixin.getEveTxDigest("n1");
-        
-        Consumer<Map.Entry<UUID,StagingTable>> consumer = new Consumer<Map.Entry<UUID,StagingTable>>() {
-
-            @Override
-            public void accept(Entry<UUID, StagingTable> mapEntry) {
-                assertNotNull(mapEntry.getValue());
-            }
-            
-        };
-       
-        digest.entrySet().forEach(consumer);
-        
-        
-        
-        
+        digest.entrySet().forEach(e -> assertNotNull(e.getValue()));
     }
 
     protected ByteBuffer mockCompressedProtoByteBuff() throws MDBCServiceException, InvalidProtocolBufferException {

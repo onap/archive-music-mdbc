@@ -249,7 +249,6 @@ public class MdbcTestUtils {
 
     public static MusicMixin getMusicMixin() throws MDBCServiceException {
         initNamespaces();
-        initTables();
         MusicMixin mixin=null;
         try {
             Properties properties = new Properties();
@@ -268,13 +267,4 @@ public class MdbcTestUtils {
         MusicMixin.createKeyspace("music_internal",1);
         MusicMixin.createKeyspace(keyspace,1);
     }
-
-    public static void initTables() throws MDBCServiceException{
-        MusicMixin.createMusicRangeInformationTable(keyspace, mriTableName);
-        MusicMixin.createMusicTxDigest(mtdTableName,keyspace, -1);
-        MusicMixin.createMusicEventualTxDigest(eventualMtxdTableName,keyspace, -1);
-        MusicMixin.createMusicNodeInfoTable(nodeInfoTableName,keyspace,-1);
-        MusicMixin.createMusicRangeDependencyTable(keyspace,rangeDependencyTableName);
-    }
-
 }
