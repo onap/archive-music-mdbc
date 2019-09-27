@@ -67,6 +67,8 @@ import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
+import org.onap.music.service.impl.MusicCassaCore;
+
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -77,6 +79,7 @@ import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 
+@Ignore
 public class MusicMixinTest {
 	
 
@@ -151,7 +154,7 @@ public class MusicMixinTest {
         }
         String fullyQualifiedMriKey = MdbcTestUtils.getKeyspace()+"."+ MdbcTestUtils.getMriTableName()+"."+partition.getMRIIndex().toString();
         try {
-            MusicLockState musicLockState = MusicCore.voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
+            MusicLockState musicLockState = MusicCassaCore.getInstance().voluntaryReleaseLock(fullyQualifiedMriKey, partition.getLockId());
         } catch (MusicLockingException e) {
             fail("failure when releasing lock");
         }

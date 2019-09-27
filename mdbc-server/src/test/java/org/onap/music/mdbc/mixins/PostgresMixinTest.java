@@ -30,6 +30,7 @@ import java.util.Properties;
 import java.util.Set;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.MdbcTestUtils;
@@ -38,6 +39,7 @@ import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
 import org.onap.music.mdbc.tables.StagingTable;
 
+@Ignore
 public class PostgresMixinTest {
     final private static String keyspace="metricmusictest";
     final private static String mdbcServerName = "name";

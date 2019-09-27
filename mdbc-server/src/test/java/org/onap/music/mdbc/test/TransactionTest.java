@@ -29,15 +29,15 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.apache.log4j.Logger;
 import org.junit.Test;
+import org.onap.music.logging.EELFLoggerDelegate;
 
 
 public class TransactionTest extends TestCommon {
 	private static final String DB_CONNECTION1 = "avatica://" + "mem:db1";
 	private static final String DB_CONNECTION2 = "avatica://" + "mem:db2";
 	private static final String KEYSPACE       = "CrossSite_Test";
-	private final static Logger logger = Logger.getLogger(CrossSiteTest.class);
+    private EELFLoggerDelegate logger = EELFLoggerDelegate.getLogger(TransactionTest.class);
 
 	//@Test
 	public void testWithAutocommitTrue() {
@@ -175,7 +175,7 @@ public class TransactionTest extends TestCommon {
 					fail("missing element: "+t);
 			}
 		} catch (Exception e) {
-			logger.error(e);
+			logger.error(EELFLoggerDelegate.errorLogger, "Error", e);
 			e.printStackTrace();
 			fail("2: " + e.toString());
 		}
