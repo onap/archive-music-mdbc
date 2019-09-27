@@ -40,6 +40,7 @@ import org.junit.rules.TemporaryFolder;
 import org.onap.music.datastore.MusicDataStore;
 import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.PostgresMixin;
@@ -216,7 +217,7 @@ public class MdbcTestUtils {
         }
     }
 
-    public static void initCassandra(){
+    public static void initCassandra() throws MDBCServiceException {
         try {
             EmbeddedCassandraServerHelper.startEmbeddedCassandra(EmbeddedCassandraServerHelper.CASSANDRA_RNDPORT_YML_FILE);
         } catch (Exception e) {
@@ -230,8 +231,14 @@ public class MdbcTestUtils {
         session = EmbeddedCassandraServerHelper.getSession();
         assertNotNull("Invalid configuration for cassandra", session);
 
-        MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
-        CassaLockStore store = new CassaLockStore(MusicDataStoreHandle.mDstoreHandle);
+//        MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
+//        CassaLockStore store = new CassaLockStore(MusicDataStoreHandle.mDstoreHandle);
+        CassaLockStore store;
+        try {
+            store = new CassaLockStore(MusicDataStoreHandle.getDSHandle());
+        } catch (MusicServiceException e) {
+            throw new MDBCServiceException(e);
+        }
         assertNotNull("Invalid configuration for music", store);
     }
 

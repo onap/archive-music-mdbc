@@ -180,8 +180,8 @@
         </dependency>
         <dependency>
             <groupId>org.onap.music</groupId>
-            <artifactId>dev-MUSIC-cassandra</artifactId>
-            <version>3.2.1</version>
+            <artifactId>MUSIC-core</artifactId>
+            <version>3.2.37-SNAPSHOT</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.netty</groupId>
@@ -211,7 +211,13 @@
             <version>0.13.1</version>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>javax.websocket</groupId>
+            <artifactId>javax.websocket-api</artifactId>
+            <version>1.1</version>
+            <scope>provided</scope>
+        </dependency>
+ 
 
     </dependencies>
 
