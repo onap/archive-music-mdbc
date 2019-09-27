@@ -34,6 +34,7 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -60,6 +61,7 @@ import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
+@Ignore
 public class OwnershipAndCheckpointTest {
     public static final String DATABASE = MdbcTestUtils.mariaDBDatabaseName;
 	public static final String TABLE= MdbcTestUtils.mariaDBDatabaseName+".PERSONS";

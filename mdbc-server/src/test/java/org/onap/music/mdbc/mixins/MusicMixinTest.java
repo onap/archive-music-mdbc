@@ -79,6 +79,7 @@ import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 
+@Ignore
 public class MusicMixinTest {
 	
 
