@@ -45,7 +45,7 @@ public class TestUtils {
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
         Set<Range> ranges = new HashSet<>();
         ranges.add(range);
-        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
+        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid);
         new MusicRangeInformationRow(dbPartition, new ArrayList<>(), true);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), true);
         DatabasePartition partition=null;

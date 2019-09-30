@@ -26,6 +26,7 @@ import java.io.FileReader;
 import java.util.*;
 
 import org.onap.music.logging.EELFLoggerDelegate;
+import org.onap.music.mdbc.query.SQLOperationType;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -39,6 +40,7 @@ public class DatabasePartition {
 
     private UUID musicRangeInformationIndex;//Index that can be obtained either from
     private String lockId;
+    private SQLOperationType lockType;
     protected Set<Range> ranges;
 
     private boolean ready;
@@ -48,15 +50,20 @@ public class DatabasePartition {
      * The only requirement is that the ranges are not overlapping.
      */
 
-    public DatabasePartition() {
-        this(new HashSet<Range>(),null,"");
-    }
-
     public DatabasePartition(UUID mriIndex) {
-        this(new HashSet<Range>(), mriIndex,"");
+        this(new HashSet<Range>(), mriIndex, null, null);
     }
     
-    public DatabasePartition(Set<Range> knownRanges, UUID mriIndex, String lockId) {
+    /**
+     * Create unlocked partition
+     * @param ranges
+     * @param mriIndex
+     */
+    public DatabasePartition(Set<Range> ranges, UUID mriIndex) {
+        this(ranges, mriIndex, null, null);
+    }
+    
+    public DatabasePartition(Set<Range> knownRanges, UUID mriIndex, String lockId, SQLOperationType lockType) {
         if(mriIndex==null){
             ready = false;
         }
@@ -66,7 +73,8 @@ public class DatabasePartition {
         ranges = knownRanges;
 
         this.setMusicRangeInformationIndex(mriIndex);
-        this.setLockId(lockId);
+        this.setLock(lockId, lockType);
+
     }
 
     /**
@@ -182,9 +190,17 @@ public class DatabasePartition {
     public synchronized String getLockId() {
         return lockId;
     }
+    public synchronized SQLOperationType getLockType() {
+        return this.lockType;
+    }
 
-    public synchronized void setLockId(String lockId) {
+    public synchronized void setLock(String lockId, SQLOperationType lockType) {
         this.lockId = lockId;
+        this.lockType = lockType;
+    }
+    
+    public void clearLock() {
+        this.setLock(null, null);
     }
 
     public synchronized boolean isContained(Range range){

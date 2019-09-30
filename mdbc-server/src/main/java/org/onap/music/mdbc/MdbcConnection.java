@@ -624,7 +624,7 @@ public class MdbcConnection implements Connection {
                 ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, ownershipReturn.getOwnershipId());
                 //TODO: need to update pointer in alreadyapplied if a merge happened instead of in prestatement hook
                 newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
-                    ownershipReturn.getOwnerId());
+                    ownershipReturn.getOwnerId(), lockType);
             }
         } catch (MDBCServiceException e) {
             MusicDeadlockException de = Utils.getDeadlockException(e);
