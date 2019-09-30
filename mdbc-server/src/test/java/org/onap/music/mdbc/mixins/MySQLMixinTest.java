@@ -60,7 +60,7 @@ public class MySQLMixinTest {
 	
 	@AfterClass
 	public static void close() throws Exception {
-		
+	    MdbcTestUtils.cleanDatabase(DBType.MySQL);
 	}
 	
 	@Before
