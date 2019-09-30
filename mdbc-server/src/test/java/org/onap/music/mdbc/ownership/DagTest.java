@@ -34,6 +34,7 @@ import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.MDBCUtils;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MriReference;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.MusicTxDigestId;
@@ -51,7 +52,7 @@ public class DagTest {
     private MusicRangeInformationRow createNewRow(Set<Range> ranges, String lockid, boolean isLatest,
                                                   List<MusicTxDigestId> redoLog) {
         UUID id = MDBCUtils.generateTimebasedUniqueKey();
-        DatabasePartition dbPartition = new DatabasePartition(ranges, id, lockid);
+        DatabasePartition dbPartition = new DatabasePartition(ranges, id, lockid, SQLOperationType.WRITE);
         return new MusicRangeInformationRow(dbPartition, redoLog, isLatest);
     }
 

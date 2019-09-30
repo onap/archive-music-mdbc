@@ -193,7 +193,7 @@ public class MdbcConnection implements Connection {
 
         dbi.preCommitHook();
         try {
-            partition = mi.splitPartitionIfNecessary(partition, rangesUsed);
+            partition = mi.splitPartitionIfNecessary(partition, rangesUsed, ownerId);
         } catch (MDBCServiceException e) {
             logger.warn(EELFLoggerDelegate.errorLogger,
                     "Failure to split partition '" + partition.getMRIIndex() + "' trying to continue",
@@ -620,11 +620,11 @@ public class MdbcConnection implements Connection {
                 DagNode node = dag.getNode(ownershipReturn.getRangeId());
                 MusicRangeInformationRow row = node.getRow();
                 Map<MusicRangeInformationRow, LockResult> lock = new HashMap<>();
-                lock.put(row, new LockResult(row.getPartitionIndex(), ownershipReturn.getOwnerId(), true, ranges));
+                lock.put(row, new LockResult(row.getPartitionIndex(), ownershipReturn.getLockId(), true, ranges));
                 ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, ownershipReturn.getOwnershipId());
                 //TODO: need to update pointer in alreadyapplied if a merge happened instead of in prestatement hook
                 newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
-                    ownershipReturn.getOwnerId());
+                    ownershipReturn.getLockId(), SQLOperationType.FromMusicLockType(ownershipReturn.getLockType()));
             }
         } catch (MDBCServiceException e) {
             MusicDeadlockException de = Utils.getDeadlockException(e);

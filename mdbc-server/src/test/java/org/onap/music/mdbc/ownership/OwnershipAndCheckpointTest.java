@@ -34,7 +34,6 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -61,7 +60,6 @@ import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
-@Ignore
 public class OwnershipAndCheckpointTest {
     public static final String DATABASE = MdbcTestUtils.mariaDBDatabaseName;
 	public static final String TABLE= MdbcTestUtils.mariaDBDatabaseName+".PERSONS";
@@ -223,7 +221,7 @@ public class OwnershipAndCheckpointTest {
         Map<MusicRangeInformationRow, LockResult> locks = new HashMap<>();
         if(own.getDag()!=null) {
             locks.put(own.getDag().getNode(own.getRangeId()).getRow(),
-                new LockResult(own.getRangeId(), own.getOwnerId(), true,
+                new LockResult(own.getRangeId(), own.getLockId(), true,
                     ranges));
             ownAndCheck.checkpoint(musicMixin, mysqlMixin, own.getDag(), ranges, ownOpId);
         }
@@ -248,7 +246,7 @@ public class OwnershipAndCheckpointTest {
         Map<MusicRangeInformationRow, LockResult> locks = new HashMap<>();
         if(own.getDag()!=null) {
             locks.put(own.getDag().getNode(own.getRangeId()).getRow(),
-                new LockResult(own.getRangeId(), own.getOwnerId(), true,
+                new LockResult(own.getRangeId(), own.getLockId(), true,
                     ranges));
         }
         ownAndCheck.warmup(musicMixin,mysqlMixin,ranges);

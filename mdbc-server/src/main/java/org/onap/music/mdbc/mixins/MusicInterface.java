@@ -27,6 +27,7 @@ import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicServiceException;
+import org.onap.music.lockingservice.cassandra.LockType;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
 import org.onap.music.mdbc.TableInfo;
@@ -36,6 +37,7 @@ import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.OwnershipAndCheckpoint;
+import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.*;
 
 /**
@@ -47,21 +49,26 @@ public interface MusicInterface {
 	class OwnershipReturn{
 	    private final UUID ownershipId;
 		private final String lockId;
+		private final LockType lockType;
 		private final UUID rangeId;
 		private final Set<Range> ranges;
 		private final Dag dag;
-		public OwnershipReturn(UUID ownershipId, String ownerId, UUID rangeId, Set<Range> ranges, Dag dag){
+		public OwnershipReturn(UUID ownershipId, String lockId, LockType lockType, UUID rangeId, Set<Range> ranges, Dag dag){
 		    this.ownershipId=ownershipId;
-			this.lockId=ownerId;
+			this.lockId=lockId;
+			this.lockType=lockType;
 			this.rangeId=rangeId;
 			this.ranges=ranges;
 			this.dag=dag;
 		}
-		public String getOwnerId(){
+		public String getLockId(){
 			return lockId;
 		}
 		public UUID getRangeId(){
 			return rangeId;
+		}
+		public LockType getLockType() {
+		    return lockType;
 		}
 		public Set<Range> getRanges(){  return ranges; }
 		public Dag getDag(){return dag;}
@@ -214,10 +221,12 @@ public interface MusicInterface {
 	/**
      * This function is used to create a new locked row in the MRI table
      * @param info the information used to create the row
+     * @param lockType type of lock needed for created row
+     * @param owner the owner of the lock for deadlock detection
      * @return the new partition object that contain the new information used to create the row
      * @throws MDBCServiceException
      */
-	DatabasePartition createLockedMRIRow(MusicRangeInformationRow info) throws MDBCServiceException;
+	DatabasePartition createLockedMRIRow(MusicRangeInformationRow info, LockType lockType, String owner) throws MDBCServiceException;
 
     /**
      * This function is used to create all the required music dependencies
@@ -323,6 +332,13 @@ public interface MusicInterface {
     String createLock(LockRequest request) throws MDBCServiceException;
     String createLock(LockRequest request, String ownerId) throws MDBCServiceException;
     LockResult acquireLock(LockRequest request, String lockId) throws MDBCServiceException;
+    
+    /**
+     * Promote lock to a write lock
+     * @param lockId
+     * @throws MDBCServiceException 
+     */
+    public void promoteLock(String lockId) throws MDBCServiceException;
 
     void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
 
@@ -335,12 +351,13 @@ public interface MusicInterface {
      * 
      * @param currentlyOwned
      * @param locksForOwnership
+     * @param lockType 
      * @param ownershipId
      * @return
      * @throws MDBCServiceException
      */
-    OwnershipReturn mergeLatestRowsIfNecessary(Dag currentlyOwned, Map<UUID, LockResult> locksForOwnership, UUID ownershipId)
-            throws MDBCServiceException;
+    OwnershipReturn mergeLatestRowsIfNecessary(Dag currentlyOwned, Map<UUID, LockResult> locksForOwnership,
+            UUID ownershipOpId, SQLOperationType lockType, String ownerId) throws MDBCServiceException;
 
     /**
      * If this connection is using fewer ranges than what is owned in the current partition, split
@@ -351,8 +368,8 @@ public interface MusicInterface {
      * @param rangesUsed set of ranges that is the minimal required for this transaction
      * @throws MDBCServiceException 
      */
-    public DatabasePartition splitPartitionIfNecessary(DatabasePartition partition, Set<Range> rangesUsed)
-            throws MDBCServiceException;
+    public DatabasePartition splitPartitionIfNecessary(DatabasePartition partition, Set<Range> rangesUsed,
+            String ownerId) throws MDBCServiceException;
 
     /**
      * Create ranges in MRI table, if not already present
@@ -368,6 +385,7 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
     public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) throws MDBCServiceException;
+
 
 }
 

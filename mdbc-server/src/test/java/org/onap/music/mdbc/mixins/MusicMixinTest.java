@@ -54,6 +54,7 @@ import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
+import org.onap.music.lockingservice.cassandra.LockType;
 import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.main.MusicCore;
 import org.onap.music.mdbc.DatabasePartition;
@@ -79,7 +80,6 @@ import org.onap.music.mdbc.ownership.Dag;
 import org.onap.music.mdbc.ownership.DagNode;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
 
-@Ignore
 public class MusicMixinTest {
 	
 
@@ -144,11 +144,11 @@ public class MusicMixinTest {
 
     private DatabasePartition addRow(Set<Range> ranges,boolean isLatest){
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
-        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
+        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), isLatest);
         DatabasePartition partition=null;
         try {
-            partition = mixin.createLockedMRIRow(newRow);
+            partition = mixin.createLockedMRIRow(newRow, LockType.WRITE, "");
         } catch (MDBCServiceException e) {
             fail("failure when creating new row");
         }

@@ -336,9 +336,9 @@ public class OwnershipAndCheckpoint{
 
         //Init timeout clock
         startOwnershipTimeoutClock(opId);
-        if (currPartition.isLocked()&&currPartition.getSnapshot().containsAll(ranges)) {
-            return new OwnershipReturn(opId,currPartition.getLockId(),currPartition.getMRIIndex(),
-                    currPartition.getSnapshot(),null);
+        if (currPartition.isLocked() && currPartition.getSnapshot().containsAll(ranges) && currPartition.getLockType().compareTo(lockType)>=0) {
+            return new OwnershipReturn(opId,currPartition.getLockId(), SQLOperationType.ToMusicLockType(currPartition.getLockType()), 
+                    currPartition.getMRIIndex(), currPartition.getSnapshot(),null);
         }
         //Find
         Map<UUID,LockResult> locksForOwnership = new HashMap<>();
@@ -346,6 +346,7 @@ public class OwnershipAndCheckpoint{
         List<MusicRangeInformationRow> rangesToOwnRows = extractRowsForRange(mi,rangesToOwn, false);
         Dag toOwn =  Dag.getDag(rangesToOwnRows,rangesToOwn);
         Dag currentlyOwn = new Dag();
+
         while ( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
                 !timeout(opId)
             ) {
@@ -379,7 +380,7 @@ public class OwnershipAndCheckpoint{
         //TODO: we shouldn't need to go back to music at this point
         List<MusicRangeInformationRow> latestRows = extractRowsForRange(mi, allRanges, true);
         currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,latestRows));
-        return mi.mergeLatestRowsIfNecessary(currentlyOwn,locksForOwnership,opId);
+        return mi.mergeLatestRowsIfNecessary(currentlyOwn,locksForOwnership,opId, lockType, ownerId);
     }
    
     /**
@@ -392,16 +393,25 @@ public class OwnershipAndCheckpoint{
      * @throws MDBCServiceException
      */
     private void takeOwnershipOfDag(MusicInterface mi, DatabasePartition partition, UUID opId,
-            Map<UUID, LockResult> ownershipLocks, Dag toOwn, SQLOperationType lockType, String ownerId) throws MDBCServiceException {
-        
+            Map<UUID, LockResult> ownershipLocks, Dag toOwn, SQLOperationType lockType, String ownerId)
+                    throws MDBCServiceException {
+
         while(toOwn.hasNextToOwn()){
             DagNode node = toOwn.nextToOwn();
             MusicRangeInformationRow row = node.getRow();
             UUID uuidToOwn = row.getPartitionIndex();
             if (partition.isLocked() && partition.getMRIIndex().equals(uuidToOwn) ) {
-                toOwn.setOwn(node);
-                ownershipLocks.put(uuidToOwn, new LockResult(true, uuidToOwn, partition.getLockId(),
-                        false, partition.getSnapshot()));
+                //already own partition
+                if (partition.getLockType().compareTo(lockType)>=0) {
+                    //already own sufficient permissions
+                    toOwn.setOwn(node);
+                    ownershipLocks.put(uuidToOwn, new LockResult(true, uuidToOwn, partition.getLockId(),
+                            partition.getLockType(), false, partition.getSnapshot()));
+                } else {
+                    //try to promote current lock
+                    mi.promoteLock(partition.getLockId());
+                    partition.setLock(partition.getLockId(), lockType);
+                }
             } else if ( ownershipLocks.containsKey(uuidToOwn) || !row.getIsLatest() ) {
                 toOwn.setOwn(node);
                 if (ownershipLocks.containsKey(uuidToOwn) && !row.getIsLatest()) {

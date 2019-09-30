@@ -19,6 +19,33 @@
  */
 package org.onap.music.mdbc.query;
 
+import org.onap.music.lockingservice.cassandra.LockType;
+
 public enum SQLOperationType {
+    //READ < WRITE < TABLE.... order important here
     READ, WRITE, TABLE; 
+    
+    public static SQLOperationType FromMusicLockType(LockType lockType) {
+        switch (lockType) {
+            case READ:
+                return SQLOperationType.READ;
+            case WRITE:
+                return SQLOperationType.WRITE;
+            default:
+                return null;
+        }
+
+    }
+    
+    public static LockType ToMusicLockType(SQLOperationType opType) {
+        switch (opType) {
+            case READ:
+                return LockType.READ;
+            case WRITE:
+                return LockType.WRITE;
+            default:
+                return null;
+        }
+
+    }
 }

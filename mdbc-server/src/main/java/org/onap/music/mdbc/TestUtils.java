@@ -22,6 +22,7 @@ package org.onap.music.mdbc;
 import com.datastax.driver.core.*;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicLockingException;
+import org.onap.music.lockingservice.cassandra.LockType;
 import org.onap.music.lockingservice.cassandra.MusicLockState;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.main.MusicCore;
@@ -45,11 +46,11 @@ public class TestUtils {
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
         Set<Range> ranges = new HashSet<>();
         ranges.add(range);
-        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
+        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid);
         new MusicRangeInformationRow(dbPartition, new ArrayList<>(), true);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), true);
         DatabasePartition partition=null;
-        partition = mixin.createLockedMRIRow(newRow);
+        partition = mixin.createLockedMRIRow(newRow, LockType.WRITE, "");
         return partition;
     }
 

@@ -30,6 +30,7 @@ import org.apache.calcite.avatica.util.Casing;
 import org.apache.calcite.avatica.util.Quoting;
 import org.apache.calcite.sql.SqlBasicCall;
 import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlDelete;
 import org.apache.calcite.sql.SqlIdentifier;
 import org.apache.calcite.sql.SqlInsert;
 import org.apache.calcite.sql.SqlJoin;
@@ -120,12 +121,15 @@ public class QueryProcessor {
             case UPDATE:
                 parseUpdate((SqlUpdate) sqlNode, tableOpsMap);
                 break;
+            case DELETE:
+                parseDelete((SqlDelete) sqlNode, tableOpsMap);
+                break;
             case SELECT:
                 parseSelect((SqlSelect) sqlNode, tableOpsMap);
                 break;
             case ORDER_BY:
                 parseSelect((SqlSelect)((SqlOrderBy) sqlNode).query, tableOpsMap);
-                break;    
+                break;
             default:
                 logger.error("Unhandled sql query type " + sqlNode.getKind() +" for query " + query);
         }
@@ -150,6 +154,17 @@ public class QueryProcessor {
         switch (targetTable.getKind()) {
             case IDENTIFIER:
                 addIdentifierToMap(tableOpsMap, (SqlIdentifier) targetTable, SQLOperation.UPDATE);
+                break;
+            default:
+                logger.error("Unable to process: " + targetTable.getKind() + " query");
+        }
+    }
+    
+    private static void parseDelete(SqlDelete sqlDelete, Map<String, List<SQLOperation>> tableOpsMap) {
+        SqlNode targetTable = sqlDelete.getTargetTable();
+        switch (targetTable.getKind()) {
+            case IDENTIFIER:
+                addIdentifierToMap(tableOpsMap, (SqlIdentifier) targetTable, SQLOperation.DELETE);
                 break;
             default:
                 logger.error("Unable to process: " + targetTable.getKind() + " query");

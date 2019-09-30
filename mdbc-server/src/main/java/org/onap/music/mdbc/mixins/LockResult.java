@@ -24,23 +24,27 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.onap.music.mdbc.Range;
+import org.onap.music.mdbc.query.SQLOperationType;
 
 public class LockResult{
     private boolean successful;
     private UUID musicRangeInformationIndex;
     private String lockId;
+    private SQLOperationType lockType;
     private Set<Range> ranges;
     private boolean newLock;
     /** back off time in milliseconds */
     private long backOffPeriodms;
 
-    public LockResult(boolean succesful, UUID rowId, String lockId, boolean newLock, Set<Range> ranges){
+    public LockResult(boolean succesful, UUID rowId, String lockId, SQLOperationType lockType, boolean newLock, Set<Range> ranges){
         this.successful = succesful;
         this.musicRangeInformationIndex = rowId;
         this.lockId=lockId;
+        this.lockType = lockType;
         this.newLock=newLock;
         this.ranges=ranges;
     }
+
     /**
      * Please use constructor which specifies whether lock result was succesful
      * @param rowId
@@ -67,6 +71,9 @@ public class LockResult{
     
     public String getLockId(){
         return lockId;
+    }
+    public SQLOperationType getLockType() {
+        return lockType;
     }
     public boolean isNewLock(){
         return newLock;
