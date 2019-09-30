@@ -392,16 +392,24 @@ public class OwnershipAndCheckpoint{
      * @throws MDBCServiceException
      */
     private void takeOwnershipOfDag(MusicInterface mi, DatabasePartition partition, UUID opId,
-            Map<UUID, LockResult> ownershipLocks, Dag toOwn, SQLOperationType lockType, String ownerId) throws MDBCServiceException {
+            Map<UUID, LockResult> ownershipLocks, Dag toOwn, SQLOperationType lockType, String ownerId)
+                    throws MDBCServiceException {
         
         while(toOwn.hasNextToOwn()){
             DagNode node = toOwn.nextToOwn();
             MusicRangeInformationRow row = node.getRow();
             UUID uuidToOwn = row.getPartitionIndex();
             if (partition.isLocked() && partition.getMRIIndex().equals(uuidToOwn) ) {
-                toOwn.setOwn(node);
-                ownershipLocks.put(uuidToOwn, new LockResult(true, uuidToOwn, partition.getLockId(),
+                //already own partition
+                if (lockType.compareTo(partition.getLockType()) >=0) {
+                    //already own sufficient permissions
+                    toOwn.setOwn(node);
+                    ownershipLocks.put(uuidToOwn, new LockResult(true, uuidToOwn, partition.getLockId(),
                         false, partition.getSnapshot()));
+                } else {
+                    //try to promote current lock
+                    mi.promoteLock(partition.getLockId());
+                }
             } else if ( ownershipLocks.containsKey(uuidToOwn) || !row.getIsLatest() ) {
                 toOwn.setOwn(node);
                 if (ownershipLocks.containsKey(uuidToOwn) && !row.getIsLatest()) {

@@ -20,5 +20,7 @@
 package org.onap.music.mdbc.query;
 
 public enum SQLOperationType {
+    //READ < WRITE < TABLE.... order important here
     READ, WRITE, TABLE; 
+    
 }

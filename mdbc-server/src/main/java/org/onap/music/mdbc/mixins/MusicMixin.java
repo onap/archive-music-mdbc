@@ -1277,7 +1277,8 @@ public class MusicMixin implements MusicInterface {
             logger.error("Lock acquire returned invalid error: "+lockReturn.getResult().name());
             return null;
         }
-        partition.setLockId(lockId);
+        
+        partition.setLock(lockId, SQLOperationType.WRITE);
         return lockId;
     }
 
@@ -1497,7 +1498,7 @@ public class MusicMixin implements MusicInterface {
         for (String table:tables){
             partitions.add(new Range(table));
         }
-        return new MusicRangeInformationRow(new DatabasePartition(partitions, partitionIndex, ""),
+        return new MusicRangeInformationRow(new DatabasePartition(partitions, partitionIndex),
             digestIds, newRow.getBool("islatest"), newRow.getSet("prevmrirows", UUID.class));
     }
 
@@ -1599,7 +1600,7 @@ public class MusicMixin implements MusicInterface {
                 "for key "+fullyQualifiedMriKey) ;
         }
         logger.info("Creating MRI " + newPartition.getMRIIndex() + " for ranges " + newPartition.getSnapshot());
-        newPartition.setLockId(lockId);
+        newPartition.setLock(lockId, SQLOperationType.WRITE);
         
         createEmptyMriRow(info);
         return newPartition;
@@ -2137,7 +2138,41 @@ public class MusicMixin implements MusicInterface {
         return new LockResult(true, request.getId(),lockId,true,null);
     }
 
-
+    /**
+     * Promote lock to a write lock. This is a blocking call and will continue to try to promote
+     * until successful or an error occurs
+     * @param lockId
+     * @throws MusicLockingException 
+     */
+    public void promoteLock(String lockId) throws MDBCServiceException {
+        logger.info(EELFLoggerDelegate.applicationLogger, "Attempting to upgrade lock " + lockId);
+        ReturnType promotionResult;
+        try {
+            promotionResult = MusicCore.promoteLock(lockId);
+        } catch (MusicLockingException e) {
+            promotionResult = new ReturnType(ResultType.FAILURE, e.getMessage());
+        }
+        //should have a retry count here to not loop forever?
+        logger.info(EELFLoggerDelegate.applicationLogger, "Result of promotion: " + promotionResult.getMessage());
+        while (promotionResult.getResult() == ResultType.FAILURE && promotionResult.getMessage()
+                .equals("Your lock upgrade is in progress. Check again to see if successful.")) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+            }
+            try {
+                promotionResult = MusicCore.promoteLock(lockId);
+            } catch (MusicLockingException e) {
+                promotionResult = new ReturnType(ResultType.FAILURE, e.getMessage());
+            }
+            logger.info(EELFLoggerDelegate.applicationLogger, "Result of promotion: " + promotionResult.getMessage());
+        }
+        
+        if (promotionResult.getResult()==ResultType.FAILURE) {
+            throw new MDBCServiceException(promotionResult.getMessage());
+        }
+    }
+    
     /**
      *  fixes the DAG in case the previous owner failed while trying to own the row
      * @param latestDag
@@ -2268,7 +2303,7 @@ public class MusicMixin implements MusicInterface {
 
     private MusicRangeInformationRow createAndAssignLock(Set<Range> ranges, Set<UUID> prevPartitions) throws MDBCServiceException {
         UUID newUUID = MDBCUtils.generateTimebasedUniqueKey();
-        DatabasePartition newPartition = new DatabasePartition(ranges,newUUID,null);
+        DatabasePartition newPartition = new DatabasePartition(ranges,newUUID);
         MusicRangeInformationRow row = new MusicRangeInformationRow(newPartition, true, prevPartitions);
         createLockedMRIRow(row);
         return row;
@@ -2306,7 +2341,7 @@ public class MusicMixin implements MusicInterface {
             return;
         }
         unlockKeyInMusic(musicRangeInformationTableName, rangeId, lockId);
-        partition.setLockId(null);
+        partition.clearLock();
     }
 
     @Override
@@ -2349,7 +2384,7 @@ public class MusicMixin implements MusicInterface {
             } catch (MDBCServiceException e) {
                 logger.error("Error relinquishing lock, will use timeout to solve");
             }
-            partition.setLockId("");
+            partition.clearLock();
         }
     }
 

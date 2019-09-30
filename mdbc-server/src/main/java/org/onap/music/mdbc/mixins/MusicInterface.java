@@ -323,6 +323,13 @@ public interface MusicInterface {
     String createLock(LockRequest request) throws MDBCServiceException;
     String createLock(LockRequest request, String ownerId) throws MDBCServiceException;
     LockResult acquireLock(LockRequest request, String lockId) throws MDBCServiceException;
+    
+    /**
+     * Promote lock to a write lock
+     * @param lockId
+     * @throws MDBCServiceException 
+     */
+    public void promoteLock(String lockId) throws MDBCServiceException;
 
     void releaseLocks(Map<UUID, LockResult> newLocks) throws MDBCServiceException;
 
@@ -368,6 +375,8 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
     public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) throws MDBCServiceException;
+    
+
 
 }
 
