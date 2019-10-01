@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c45c96ee_f7d60839",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/ownership/OwnershipAndCheckpoint.java",
+        "patchSetId": 2
+      },
+      "lineNbr": 404,
+      "author": {
+        "id": 2025
+      },
+      "writtenOn": "2019-10-01T21:40:11Z",
+      "side": 1,
+      "message": "This is generating a NullPointerException from Enum.compareTo()",
+      "range": {
+        "startLine": 404,
+        "startChar": 29,
+        "endLine": 404,
+        "endChar": 38
+      },
+      "revId": "18ca1690e44f62e60da149b7ffe3f886a322ab33",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": true
+    }
+  ]
+}
