@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f6191f5f_983ff56e",
+        "filename": "mdbc-server/src/main/java/org/onap/music/mdbc/mixins/MusicMixin.java",
+        "patchSetId": 4
+      },
+      "lineNbr": 2225,
+      "author": {
+        "id": 2025
+      },
+      "writtenOn": "2019-10-04T21:39:11Z",
+      "side": 1,
+      "message": "Getting NullPointerException in promoteLocksForMerge",
+      "revId": "95ac5899a97b3ca08cbf18cb64119fef819b0265",
+      "serverId": "14b4e41f-c4e3-4fb9-9955-6a9b5656895a",
+      "unresolved": true
+    }
+  ]
+}
