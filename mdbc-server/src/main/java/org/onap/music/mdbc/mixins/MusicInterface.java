@@ -25,6 +25,7 @@ import java.util.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicDeadlockException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.lockingservice.cassandra.LockType;

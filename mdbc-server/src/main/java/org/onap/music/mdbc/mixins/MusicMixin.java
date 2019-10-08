@@ -48,6 +48,7 @@ import org.onap.music.datastore.MusicDataStore;
 import org.onap.music.datastore.MusicDataStoreHandle;
 import org.onap.music.datastore.PreparedQueryObject;
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicDeadlockException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicQueryException;
 import org.onap.music.exceptions.MusicServiceException;
@@ -2157,7 +2158,8 @@ public class MusicMixin implements MusicInterface {
         }
         
         MusicRangeInformationRow r = createAndAssignLock(rangesAndDependents.getKey(), prevPartitions, ownerId);
-        locks.put(r.getPartitionIndex(),new LockResult(r.getPartitionIndex(),r.getDBPartition().getLockId(),true,rangesAndDependents.getKey()));
+        locks.put(r.getPartitionIndex(), new LockResult(true, r.getPartitionIndex(), r.getDBPartition().getLockId(),
+                SQLOperationType.WRITE, true, rangesAndDependents.getKey()));
         latestDag.addNewNode(r,new ArrayList<>(rangesAndDependents.getValue()));
     }
 
@@ -2205,6 +2207,7 @@ public class MusicMixin implements MusicInterface {
         
         //merge is necessary
         promoteLocksForMerge(locksForOwnership);
+
         List<MusicRangeInformationRow> changed = setReadOnlyAnyDoubleRow(currentlyOwned, locksForOwnership);
         releaseLocks(changed, locksForOwnership);
         
@@ -2220,7 +2223,7 @@ public class MusicMixin implements MusicInterface {
     }
     
     
-    private void promoteLocksForMerge(Map<UUID, LockResult> locksForOwnership) throws MDBCServiceException {
+    private void promoteLocksForMerge(Map<UUID, LockResult> locksForOwnership) throws MDBCServiceException  {
         for (LockResult lock: locksForOwnership.values()) {
             if (lock.getLockType().compareTo(SQLOperationType.WRITE)<0) {
                 promoteLock(lock.getLockId());
@@ -2355,7 +2358,6 @@ public class MusicMixin implements MusicInterface {
             } catch (MDBCServiceException e) {
                 logger.error("Error relinquishing lock, will use timeout to solve");
             }
-            partition.clearLock();
         }
     }
 

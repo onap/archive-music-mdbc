@@ -28,6 +28,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.commons.lang3.tuple.Pair;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicDeadlockException;
+import org.onap.music.exceptions.MusicPromotionException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.mdbc.DatabasePartition;
 import org.onap.music.mdbc.Range;
@@ -347,20 +348,11 @@ public class OwnershipAndCheckpoint{
         Dag toOwn =  Dag.getDag(rangesToOwnRows,rangesToOwn);
         Dag currentlyOwn = new Dag();
 
-        while ( (toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned() ) &&
-                !timeout(opId)
-            ) {
+        while ((toOwn.isDifferent(currentlyOwn) || !currentlyOwn.isOwned()) && !timeout(opId)) {
             try {
                 takeOwnershipOfDag(mi, currPartition, opId, locksForOwnership, toOwn, lockType, ownerId);
             } catch (MDBCServiceException e) {
-                MusicDeadlockException de = Utils.getDeadlockException(e);
-                if (de!=null) {
-//                    System.out.println("IN O&C.OWN, DETECTED DEADLOCK, REMOVING " + currPartition + ", RELEASING " + locksForOwnership);
-                    locksForOwnership.remove(currPartition.getMRIIndex());
-                    mi.releaseLocks(locksForOwnership);
-                    stopOwnershipTimeoutClock(opId);
-                    logger.error("Error when owning a range: Deadlock detected");
-                }
+                handleDeadlockAndPromotion(mi, currPartition, opId, locksForOwnership, e);
                 throw e;
             }
             currentlyOwn=toOwn;
@@ -381,6 +373,29 @@ public class OwnershipAndCheckpoint{
         List<MusicRangeInformationRow> latestRows = extractRowsForRange(mi, allRanges, true);
         currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,latestRows));
         return mi.mergeLatestRowsIfNecessary(currentlyOwn,locksForOwnership,opId, lockType, ownerId);
+    }
+
+    /**
+     * Can't continue with ownership since we've hit deadlock or promotion lock
+     * Release locks created
+     * 
+     * @param mi
+     * @param currPartition
+     * @param opId
+     * @param locksForOwnership
+     * @param e
+     * @throws MDBCServiceException
+     */
+    private void handleDeadlockAndPromotion(MusicInterface mi, DatabasePartition currPartition, UUID opId,
+            Map<UUID, LockResult> locksForOwnership, MDBCServiceException e) throws MDBCServiceException {
+        MusicDeadlockException de = Utils.getDeadlockException(e);
+        MusicPromotionException pe = Utils.getPromotionException(e);
+        if (de!=null || pe!=null) {
+            locksForOwnership.remove(currPartition.getMRIIndex());
+            mi.releaseLocks(locksForOwnership);
+            stopOwnershipTimeoutClock(opId);
+            logger.error("Error when owning a range: Deadlock detected");
+        }
     }
    
     /**

@@ -617,10 +617,6 @@ public class MdbcConnection implements Connection {
             }
             Dag dag = ownershipReturn.getDag();
             if(dag!=null) {
-                DagNode node = dag.getNode(ownershipReturn.getRangeId());
-                MusicRangeInformationRow row = node.getRow();
-                Map<MusicRangeInformationRow, LockResult> lock = new HashMap<>();
-                lock.put(row, new LockResult(row.getPartitionIndex(), ownershipReturn.getLockId(), true, ranges));
                 ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, ownershipReturn.getOwnershipId());
                 //TODO: need to update pointer in alreadyapplied if a merge happened instead of in prestatement hook
                 newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
