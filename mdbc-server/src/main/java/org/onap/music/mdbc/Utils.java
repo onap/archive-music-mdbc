@@ -24,8 +24,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
+import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicDeadlockException;
+import org.onap.music.exceptions.MusicPromotionException;
 import org.onap.music.logging.EELFLoggerDelegate;
 
 public class Utils {
@@ -83,6 +84,14 @@ public class Utils {
     public static MusicDeadlockException getDeadlockException(Throwable t) {
         while (t!=null) {
             if (t instanceof MusicDeadlockException) return (MusicDeadlockException)t;
+            t = t.getCause();
+        }
+        return null;
+    }
+
+    public static MusicPromotionException getPromotionException(Throwable t) {
+        while (t!=null) {
+            if (t instanceof MusicPromotionException) return (MusicPromotionException)t;
             t = t.getCause();
         }
         return null;

@@ -45,6 +45,7 @@ import java.util.UUID;
 import java.util.concurrent.Executor;
 import org.onap.music.exceptions.MDBCServiceException;
 import org.onap.music.exceptions.MusicDeadlockException;
+import org.onap.music.exceptions.MusicPromotionException;
 import org.onap.music.exceptions.QueryException;
 import org.onap.music.logging.EELFLoggerDelegate;
 import org.onap.music.logging.format.AppMessages;
@@ -617,10 +618,6 @@ public class MdbcConnection implements Connection {
             }
             Dag dag = ownershipReturn.getDag();
             if(dag!=null) {
-                DagNode node = dag.getNode(ownershipReturn.getRangeId());
-                MusicRangeInformationRow row = node.getRow();
-                Map<MusicRangeInformationRow, LockResult> lock = new HashMap<>();
-                lock.put(row, new LockResult(row.getPartitionIndex(), ownershipReturn.getLockId(), true, ranges));
                 ownAndCheck.checkpoint(this.mi, this.dbi, dag, ranges, ownershipReturn.getOwnershipId());
                 //TODO: need to update pointer in alreadyapplied if a merge happened instead of in prestatement hook
                 newPartition = new DatabasePartition(ownershipReturn.getRanges(), ownershipReturn.getRangeId(),
@@ -628,9 +625,10 @@ public class MdbcConnection implements Connection {
             }
         } catch (MDBCServiceException e) {
             MusicDeadlockException de = Utils.getDeadlockException(e);
-            if (de!=null) {
+            MusicPromotionException pe = Utils.getPromotionException(e);
+            if (de!=null || pe !=null) {
                 //release all partitions
-                mi.releaseAllLocksForOwner(de.getOwner(), de.getKeyspace(), de.getTable());
+                mi.releaseMRILocksForOwner(ownerId);
                 //rollback transaction
                 try {
                     rollback();

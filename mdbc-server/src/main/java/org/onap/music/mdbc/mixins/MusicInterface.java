@@ -25,6 +25,7 @@ import java.util.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.json.JSONObject;
 import org.onap.music.exceptions.MDBCServiceException;
+import org.onap.music.exceptions.MusicDeadlockException;
 import org.onap.music.exceptions.MusicLockingException;
 import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.lockingservice.cassandra.LockType;
@@ -385,6 +386,7 @@ public interface MusicInterface {
      * @throws MDBCServiceException
      */
     public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) throws MDBCServiceException;
+    public void releaseMRILocksForOwner(String ownerId) throws MDBCServiceException;
 
 
 }
