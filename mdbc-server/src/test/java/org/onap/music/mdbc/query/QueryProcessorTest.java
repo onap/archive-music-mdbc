@@ -98,6 +98,16 @@ public class QueryProcessorTest {
     }
 
     @Test
+    public void deleteQuery() throws SQLException {
+        String sqlQuery = "delete from db.employees where personid = 721 and lastname = 'Lastname'";
+        HashMap<String, List<SQLOperation>> expectedOut = new HashMap<>();
+        List<SQLOperation> t1op = new ArrayList<>();
+        t1op.add(SQLOperation.DELETE);
+        expectedOut.put("DB.EMPLOYEES", t1op);
+        assertEquals(expectedOut, QueryProcessor.parseSqlQuery(sqlQuery, null));
+    }
+
+    @Test
     public void insertSelect() throws SQLException {
         String sqlQuery =
                 "INSERT INTO table1 (CustomerName, City, Country) SELECT SupplierName, City, Country FROM table2";

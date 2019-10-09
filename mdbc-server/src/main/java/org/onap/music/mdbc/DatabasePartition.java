@@ -48,12 +48,18 @@ public class DatabasePartition {
      * The only requirement is that the ranges are not overlapping.
      */
 
-    public DatabasePartition() {
-        this(new HashSet<Range>(),null,"");
-    }
 
     public DatabasePartition(UUID mriIndex) {
-        this(new HashSet<Range>(), mriIndex,"");
+        this(new HashSet<Range>(), mriIndex);
+    }
+
+    /**
+     * Create unlocked partition
+     * @param ranges
+     * @param mriIndex
+     */
+    public DatabasePartition(Set<Range> ranges, UUID mriIndex) {
+        this(ranges, mriIndex, null);
     }
     
     public DatabasePartition(Set<Range> knownRanges, UUID mriIndex, String lockId) {
@@ -90,7 +96,9 @@ public class DatabasePartition {
     }
 
 
-    public synchronized boolean isLocked(){return lockId != null && !lockId.isEmpty(); }
+    public synchronized boolean isLocked(){
+        return lockId != null && !lockId.isEmpty();
+    }
 
     public synchronized boolean isReady() {
         return ready;

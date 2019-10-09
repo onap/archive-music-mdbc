@@ -49,7 +49,7 @@ public class TestUtils {
         new MusicRangeInformationRow(dbPartition, new ArrayList<>(), true);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), true);
         DatabasePartition partition=null;
-        partition = mixin.createLockedMRIRow(newRow);
+        partition = mixin.createLockedMRIRow(newRow, "");
         return partition;
     }
 

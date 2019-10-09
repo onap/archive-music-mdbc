@@ -144,11 +144,11 @@ public class MusicMixinTest {
 
     private DatabasePartition addRow(Set<Range> ranges,boolean isLatest){
         final UUID uuid = MDBCUtils.generateTimebasedUniqueKey();
-        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid,null);
+        DatabasePartition dbPartition = new DatabasePartition(ranges,uuid);
         MusicRangeInformationRow newRow = new MusicRangeInformationRow(dbPartition, new ArrayList<>(), isLatest);
         DatabasePartition partition=null;
         try {
-            partition = mixin.createLockedMRIRow(newRow);
+            partition = mixin.createLockedMRIRow(newRow, "");
         } catch (MDBCServiceException e) {
             fail("failure when creating new row");
         }

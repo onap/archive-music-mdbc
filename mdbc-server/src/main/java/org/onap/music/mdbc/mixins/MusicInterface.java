@@ -45,19 +45,19 @@ import org.onap.music.mdbc.tables.*;
  */
 public interface MusicInterface {
 	class OwnershipReturn{
-	    private final UUID ownershipId;
+	    private final UUID ownershipOpId;
 		private final String lockId;
 		private final UUID rangeId;
 		private final Set<Range> ranges;
 		private final Dag dag;
-		public OwnershipReturn(UUID ownershipId, String ownerId, UUID rangeId, Set<Range> ranges, Dag dag){
-		    this.ownershipId=ownershipId;
-			this.lockId=ownerId;
+		public OwnershipReturn(UUID ownershipOpId, String lockId, UUID rangeId, Set<Range> ranges, Dag dag){
+		    this.ownershipOpId=ownershipOpId;
+			this.lockId=lockId;
 			this.rangeId=rangeId;
 			this.ranges=ranges;
 			this.dag=dag;
 		}
-		public String getOwnerId(){
+		public String getLockId(){
 			return lockId;
 		}
 		public UUID getRangeId(){
@@ -65,7 +65,7 @@ public interface MusicInterface {
 		}
 		public Set<Range> getRanges(){  return ranges; }
 		public Dag getDag(){return dag;}
-		public UUID getOwnershipId() { return ownershipId; }
+		public UUID getOwnershipId() { return ownershipOpId; }
 	}
 	/**
 	 * Get the name of this MusicInterface mixin object.
@@ -214,10 +214,11 @@ public interface MusicInterface {
 	/**
      * This function is used to create a new locked row in the MRI table
      * @param info the information used to create the row
+     * @param owner owner of the lock for deadlock detection
      * @return the new partition object that contain the new information used to create the row
      * @throws MDBCServiceException
      */
-	DatabasePartition createLockedMRIRow(MusicRangeInformationRow info) throws MDBCServiceException;
+	DatabasePartition createLockedMRIRow(MusicRangeInformationRow info, String owner) throws MDBCServiceException;
 
     /**
      * This function is used to create all the required music dependencies
@@ -335,12 +336,13 @@ public interface MusicInterface {
      * 
      * @param currentlyOwned
      * @param locksForOwnership
-     * @param ownershipId
+     * @param ownershipOpId
+     * @param ownerId
      * @return
      * @throws MDBCServiceException
      */
-    OwnershipReturn mergeLatestRowsIfNecessary(Dag currentlyOwned, Map<UUID, LockResult> locksForOwnership, UUID ownershipId)
-            throws MDBCServiceException;
+    OwnershipReturn mergeLatestRowsIfNecessary(Dag currentlyOwned, Map<UUID, LockResult> locksForOwnership,
+            UUID ownershipOpId, String ownerId) throws MDBCServiceException;
 
     /**
      * If this connection is using fewer ranges than what is owned in the current partition, split
@@ -351,8 +353,8 @@ public interface MusicInterface {
      * @param rangesUsed set of ranges that is the minimal required for this transaction
      * @throws MDBCServiceException 
      */
-    public DatabasePartition splitPartitionIfNecessary(DatabasePartition partition, Set<Range> rangesUsed)
-            throws MDBCServiceException;
+    public DatabasePartition splitPartitionIfNecessary(DatabasePartition partition, Set<Range> rangesUsed,
+            String ownerId) throws MDBCServiceException;
 
     /**
      * Create ranges in MRI table, if not already present

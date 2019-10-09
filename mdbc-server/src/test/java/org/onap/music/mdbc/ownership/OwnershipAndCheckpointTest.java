@@ -223,7 +223,7 @@ public class OwnershipAndCheckpointTest {
         Map<MusicRangeInformationRow, LockResult> locks = new HashMap<>();
         if(own.getDag()!=null) {
             locks.put(own.getDag().getNode(own.getRangeId()).getRow(),
-                new LockResult(own.getRangeId(), own.getOwnerId(), true,
+                new LockResult(own.getRangeId(), own.getLockId(), true,
                     ranges));
             ownAndCheck.checkpoint(musicMixin, mysqlMixin, own.getDag(), ranges, ownOpId);
         }
@@ -248,7 +248,7 @@ public class OwnershipAndCheckpointTest {
         Map<MusicRangeInformationRow, LockResult> locks = new HashMap<>();
         if(own.getDag()!=null) {
             locks.put(own.getDag().getNode(own.getRangeId()).getRow(),
-                new LockResult(own.getRangeId(), own.getOwnerId(), true,
+                new LockResult(own.getRangeId(), own.getLockId(), true,
                     ranges));
         }
         ownAndCheck.warmup(musicMixin,mysqlMixin,ranges);

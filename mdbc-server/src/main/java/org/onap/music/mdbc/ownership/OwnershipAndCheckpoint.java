@@ -354,7 +354,6 @@ public class OwnershipAndCheckpoint{
             } catch (MDBCServiceException e) {
                 MusicDeadlockException de = Utils.getDeadlockException(e);
                 if (de!=null) {
-//                    System.out.println("IN O&C.OWN, DETECTED DEADLOCK, REMOVING " + currPartition + ", RELEASING " + locksForOwnership);
                     locksForOwnership.remove(currPartition.getMRIIndex());
                     mi.releaseLocks(locksForOwnership);
                     stopOwnershipTimeoutClock(opId);
@@ -379,7 +378,7 @@ public class OwnershipAndCheckpoint{
         //TODO: we shouldn't need to go back to music at this point
         List<MusicRangeInformationRow> latestRows = extractRowsForRange(mi, allRanges, true);
         currentlyOwn.setRowsPerLatestRange(getIsLatestPerRange(toOwn,latestRows));
-        return mi.mergeLatestRowsIfNecessary(currentlyOwn,locksForOwnership,opId);
+        return mi.mergeLatestRowsIfNecessary(currentlyOwn,locksForOwnership,opId, ownerId);
     }
    
     /**
@@ -392,7 +391,8 @@ public class OwnershipAndCheckpoint{
      * @throws MDBCServiceException
      */
     private void takeOwnershipOfDag(MusicInterface mi, DatabasePartition partition, UUID opId,
-            Map<UUID, LockResult> ownershipLocks, Dag toOwn, SQLOperationType lockType, String ownerId) throws MDBCServiceException {
+            Map<UUID, LockResult> ownershipLocks, Dag toOwn, SQLOperationType lockType, String ownerId)
+            throws MDBCServiceException {
         
         while(toOwn.hasNextToOwn()){
             DagNode node = toOwn.nextToOwn();

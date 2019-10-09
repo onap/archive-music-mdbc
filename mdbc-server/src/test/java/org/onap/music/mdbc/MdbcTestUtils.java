@@ -44,6 +44,7 @@ import org.onap.music.exceptions.MusicServiceException;
 import org.onap.music.lockingservice.cassandra.CassaLockStore;
 import org.onap.music.mdbc.mixins.MusicMixin;
 import org.onap.music.mdbc.mixins.PostgresMixin;
+import org.powermock.reflect.Whitebox;
 
 public class MdbcTestUtils {
 
@@ -198,6 +199,7 @@ public class MdbcTestUtils {
     static void stopMySql(){
         try {
             db.stop();
+            db=null;
         } catch (ManagedProcessException e) {
             e.printStackTrace();
             fail("Error closing mysql");
@@ -231,14 +233,11 @@ public class MdbcTestUtils {
         session = EmbeddedCassandraServerHelper.getSession();
         assertNotNull("Invalid configuration for cassandra", session);
 
-//        MusicDataStoreHandle.mDstoreHandle = new MusicDataStore(cluster, session);
-//        CassaLockStore store = new CassaLockStore(MusicDataStoreHandle.mDstoreHandle);
-        CassaLockStore store;
-        try {
-            store = new CassaLockStore(MusicDataStoreHandle.getDSHandle());
-        } catch (MusicServiceException e) {
-            throw new MDBCServiceException(e);
-        }
+
+        MusicDataStore mds = new MusicDataStore(cluster, session);
+        Whitebox.setInternalState(MusicDataStoreHandle.class, "mDstoreHandle", mds);
+        CassaLockStore store = new CassaLockStore(mds);
+
         assertNotNull("Invalid configuration for music", store);
     }
 
