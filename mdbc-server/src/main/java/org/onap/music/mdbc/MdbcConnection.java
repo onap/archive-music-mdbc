@@ -62,6 +62,7 @@ import org.onap.music.mdbc.query.QueryProcessor;
 import org.onap.music.mdbc.query.SQLOperation;
 import org.onap.music.mdbc.query.SQLOperationType;
 import org.onap.music.mdbc.tables.MusicRangeInformationRow;
+import org.onap.music.mdbc.tables.MusicTxDigestId;
 import org.onap.music.mdbc.tables.StagingTable;
 import org.onap.music.mdbc.tables.TxCommitProgress;
 
@@ -203,7 +204,8 @@ public class MdbcConnection implements Connection {
         try {
             logger.debug(EELFLoggerDelegate.applicationLogger, " commit ");
             // transaction was committed -- add all the updates into the REDO-Log in MUSIC
-            mi.commitLog(partition, statemanager.getEventualRanges(), transactionDigest, id, progressKeeper);
+            MusicTxDigestId digestCreated = mi.commitLog(partition, statemanager.getEventualRanges(), transactionDigest, id, progressKeeper);
+            statemanager.getOwnAndCheck().updateAlreadyApplied(mi, dbi, partition.getSnapshot(), partition.getMRIIndex(), digestCreated);
         } catch (MDBCServiceException e) {
             //If the commit fail, then a new commitId should be used
             logger.error(EELFLoggerDelegate.errorLogger, "Commit to music failed", AppMessages.UNKNOWNERROR, ErrorTypes.UNKNOWN, ErrorSeverity.FATAL);

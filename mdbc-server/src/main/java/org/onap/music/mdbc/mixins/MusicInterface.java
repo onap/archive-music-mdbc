@@ -183,14 +183,19 @@ public interface MusicInterface {
 	 * Commits the corresponding REDO-log into MUSIC
 	 * Transaction is committed -- add all the updates into the REDO-Log in MUSIC
 	 *
+     * This officially commits the transaction globally
+     *
+	 *
+	 *
 	 * @param partition information related to ownership of partitions, used to verify ownership when commiting the Tx
 	 * @param eventualRanges 
 	 * @param transactionDigest digest of the transaction that is being committed into the Redo log in music.
 	 * @param txId id associated with the log being send
 	 * @param progressKeeper data structure that is used to handle to detect failures, and know what to do
+	 * @return digest that was created for this transaction commit
 	 * @throws MDBCServiceException
 	 */
-	void commitLog(DatabasePartition partition, Set<Range> eventualRanges, StagingTable transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
+	public MusicTxDigestId commitLog(DatabasePartition partition, Set<Range> eventualRanges, StagingTable transactionDigest, String txId,TxCommitProgress progressKeeper) throws MDBCServiceException;
 	
 
     /**
@@ -369,7 +374,7 @@ public interface MusicInterface {
      * @param playbackPointer
      * @throws MDBCServiceException
      */
-    public void updateCheckpointLocations(Range r, Pair<UUID, Integer> playbackPointer) throws MDBCServiceException;
+    public void updateCheckpointLocations(Range r, Pair<MriReference, MusicTxDigestId> playbackPointer);
 
 }
 

@@ -206,7 +206,7 @@ public class MdbcTestUtils {
         }
     }
 
-    public static void cleanDatabase(DBType type){
+    public static void stopDatabase(DBType type){
         switch(type) {
             case MySQL:
                 stopMySql();

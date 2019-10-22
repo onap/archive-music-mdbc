@@ -24,13 +24,19 @@ import java.util.UUID;
 public final class MusicTxDigestId {
     public final UUID mriId;
 	public final UUID transactionId;
-	public final int index;
+	public int index;
 
 	public MusicTxDigestId(UUID mriRowId, UUID digestId, int index) {
 	    this.mriId=mriRowId;
 		this.transactionId= digestId;
 		this.index=index;
 	}
+	
+	public MusicTxDigestId(String mriRowId, String digestId, int index) {
+        this.mriId = UUID.fromString(mriRowId);
+        this.transactionId = UUID.fromString(digestId);
+        this.index = index;
+    }
 
 	public MusicTxDigestId(UUID digestId, int index) {
 		this.mriId = null;

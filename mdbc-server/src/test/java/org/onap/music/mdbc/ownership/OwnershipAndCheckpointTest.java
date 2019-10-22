@@ -96,7 +96,7 @@ public class OwnershipAndCheckpointTest {
     public static void close() throws MusicServiceException, MusicQueryException, ManagedProcessException {
         //TODO: shutdown cassandra
         musicMixin=null;
-        MdbcTestUtils.cleanDatabase(DBType.MySQL);
+        MdbcTestUtils.stopDatabase(DBType.MySQL);
         MdbcTestUtils.stopCassandra();
     }
 
