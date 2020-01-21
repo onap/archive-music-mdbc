@@ -118,7 +118,7 @@ public class OwnershipAndCheckpoint{
      * @param onlyIsLatest - only return the "latest" rows
      * @return
      */
-    private List<MusicRangeInformationRow> extractRowsForRange(MusicInterface music, Set<Range> ranges, boolean onlyIsLatest)
+    public List<MusicRangeInformationRow> extractRowsForRange(MusicInterface music, Set<Range> ranges, boolean onlyIsLatest)
         throws MDBCServiceException {
         final List<MusicRangeInformationRow> allMriRows = music.getAllMriRows();
         return extractRowsForRange(allMriRows,ranges,onlyIsLatest);
